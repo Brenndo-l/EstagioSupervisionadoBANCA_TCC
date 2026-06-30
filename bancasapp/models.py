@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+#Quem e o usuario logado - coordenação ou docente
+#conectado ao sistema de login
 class pUsuario(models.Model):
     Tipos_Perfil = (
         ('COORDENACAO', 'Coordenação'),
@@ -11,17 +13,20 @@ class pUsuario(models.Model):
     def __str__(self):
         return f"{self.usuario.primeiroNome} - {self.perfil}"
 
+#Cadasttro basico das salas
 class EspacoFisico(models.Model):
     nome = models.CharField(max_length=255)
     def __str__(self):
         return self.nome
 
+#Dados dos alunos que defendem a banca
 class Discente(models.Model):
     nome = models.CharField(max_length=255)
     matricula = models.CharField(max_length=11, unique=True)
     def __str__(self):
         return self.nome
 
+#Propria banca da o status atual 
 class ProjetoTCC(models.Model):
     STATUS_TIPO = (
         ('EM_ANÁLISE', 'Em Análise'),
@@ -36,6 +41,7 @@ class ProjetoTCC(models.Model):
     def __str__(self):
         return self.titulo
 
+#Define a banca e decide a sala, dia e horario.
 class BancaTCC(models.Model):
     projeto_tcc = models.ForeignKey(ProjetoTCC, on_delete=models.CASCADE)
     espaco = models.ForeignKey(EspacoFisico, on_delete=models.RESTRICT)
@@ -44,6 +50,7 @@ class BancaTCC(models.Model):
     def __str__(self):
         return f"Banca: {self.projeto_tcc.titulo}"
 
+#Diz quem esta na banca orientador ou avaliador
 class MembroBanca(models.Model):
     PAPEIS = (
         ('ORIENTADOR', 'Orientador'),
@@ -53,6 +60,7 @@ class MembroBanca(models.Model):
     docente = models.ForeignKey(pUsuario, on_delete=models.CASCADE)
     papel = models.CharField(max_length=15, choices=PAPEIS)
 
+#Formulario de aguardo na coordenação que e enviado pelo professor.
 class SolicitacaoAgendamento(models.Model):
     STATUS_SOLICITACAO = (
         ('EM_ANÁLISE', 'Em Análise'),
@@ -66,6 +74,7 @@ class SolicitacaoAgendamento(models.Model):
     opcao_data_fim = models.DateTimeField()
     status = models.CharField(max_length=15, choices=STATUS_SOLICITACAO, default='EM_ANÁLISE')
 
+#Documentos que a coordenação gera tanto para o docente como para o SEI
 class DocumentoEmitido(models.Model):
     banca = models.ForeignKey(BancaTCC, on_delete=models.CASCADE)
     data_emissao = models.DateTimeField(auto_now_add=True)
