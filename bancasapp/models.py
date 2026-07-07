@@ -35,7 +35,7 @@ class ProjetoTCC(models.Model):
     )
     titulo = models.CharField(max_length=255)
     resumo = models.TextField()
-    semestre_letico = models.CharField(max_length=6)
+    semestre_letivo = models.CharField(max_length=6)
     discente = models.ForeignKey(Discente, on_delete=models.CASCADE)
     status = models.CharField(max_length=15, choices=STATUS_TIPO, default='EM_ANÁLISE')
     def __str__(self):
