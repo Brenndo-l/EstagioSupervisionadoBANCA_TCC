@@ -11,7 +11,7 @@ class pUsuario(models.Model):
     usuario = models.OneToOneField(User, on_delete=models.CASCADE)
     perfil = models.CharField(max_length=15, choices=Tipos_Perfil)
     def __str__(self):
-        return f"{self.usuario.primeiroNome} - {self.perfil}"
+        return f"{self.usuario.first_name} - {self.perfil}"
 
 #Cadasttro basico das salas
 class EspacoFisico(models.Model):

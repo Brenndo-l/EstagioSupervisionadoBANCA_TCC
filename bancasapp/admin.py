@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import EspacoFisico, Discente, ProjetoTCC
+from .models import EspacoFisico, Discente, ProjetoTCC, pUsuario, SolicitacaoAgendamento, BancaTCC, MembroBanca
 
 #config tabela espaços fisicos
 @admin.register(EspacoFisico)
@@ -19,4 +19,7 @@ class ProjetoTCCAdmin(admin.ModelAdmin):
     list_display = ('titulo', 'discente', 'status', 'semestre_letivo')
     search_fields = ('titulo', 'discente__nome')
     list_filter = ('status', 'semestre_letivo',)
+
+admin.site.register(pUsuario)
+admin.site.register(SolicitacaoAgendamento)
 
