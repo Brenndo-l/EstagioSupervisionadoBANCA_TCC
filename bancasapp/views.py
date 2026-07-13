@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from .forms import SolicitacaoBancaForm
 
 # 1. Tela inicial do sistema (Dashboard com os botões principais)
 def dashboard(request):
@@ -10,4 +11,5 @@ def visualizar_bancas(request):
 
 # 3. Tela do formulário para o professor pedir a banca
 def solicitar_banca(request):
-    return render(request, 'solicitar_banca.html')
+    form = SolicitacaoBancaForm()
+    return render(request, 'solicitar_banca.html', {'form': form})

@@ -1,6 +1,16 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>Solicitar Banca</h1>
-    <p>O formulário de solicitação vai entrar aqui amanhã.</p>
+    <div class="form-container">
+        <h1>Solicitar Banca</h1>
+        <p>Preencha os dados abaixo para agendar a defesa do TCC.</p>
+
+        <form method="POST">
+            {% csrf_token %}
+            
+            {{ form.as_p }}
+
+            <button type="submit" class="btn-enviar">Solicitar Agendamento</button>
+        </form>
+    </div>
 {% endblock %}
