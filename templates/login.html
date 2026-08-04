@@ -1,0 +1,39 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'css/login.css' %}">
+    <title>login</title>
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <img src="{% static 'assets/logo_ufac.png' %}" alt="Minha Imagem">
+            <p>SGTCC</p>
+        </aside>
+
+        <main class="form-login">
+            <h1>Login</h1>
+            {% if erro %}
+                <p class="error">{{ erro }}</p>
+            {% endif %}
+            <form method="POST">
+                {% csrf_token %}
+                <input type="text" id="login" placeholder="e-mail" name ="email" required>
+                <input type="password" id="senha" placeholder="senha" name="senha" required>
+
+        
+                <button type="submit">Entrar</button>
+
+            </form>
+    
+        
+        </main>
+
+    </div>
+    
+</body>
+</html>
+
