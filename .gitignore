@@ -1,1 +1,20 @@
+
+# Ambientes Virtuais
 venv/
+env/
+
+# Arquivos compilados do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Banco de dados local
+db.sqlite3
+
+# Configurações de Editor / IDE
+.vscode/
+.idea/
+
+# Variáveis de ambiente (caso crie um arquivo .env no futuro)
+.env
