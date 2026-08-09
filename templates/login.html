@@ -16,24 +16,25 @@
 
         <main class="form-login">
             <h1>Login</h1>
-            {% if erro %}
-                <p class="error">{{ erro }}</p>
+            
+            {% if messages %}
+                <div class="mensagens-flutuantes">
+                    {% for message in messages %}
+                        <div class="alerta alerta-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
             {% endif %}
+            
             <form method="POST">
                 {% csrf_token %}
-                <input type="text" id="login" placeholder="e-mail" name ="email" required>
+                <input type="text" id="login" placeholder="e-mail" name="email" required>
                 <input type="password" id="senha" placeholder="senha" name="senha" required>
-
         
                 <button type="submit">Entrar</button>
-
             </form>
-    
-        
         </main>
-
     </div>
-    
 </body>
 </html>
-

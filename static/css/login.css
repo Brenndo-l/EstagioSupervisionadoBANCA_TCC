@@ -69,3 +69,35 @@ input:focus {
 .error{
     color: red;
 }
+
+.mensagens-flutuantes {
+    position: fixed; /* Fixa no topo da tela */
+    top: 20px;
+    left: 50%; /* Joga pro meio */
+    transform: translateX(-50%); /* Centraliza perfeitamente */
+    width: 100%;
+    max-width: 500px;
+    z-index: 1000; /* Garante que fique por cima de tudo */
+}
+
+.alerta {
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    color: white;
+    font-size: 15px;
+    font-weight: bold;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    animation: fadeIn 0.4s ease-in-out;
+}
+
+/* Cores do sistema */
+.alerta-success { background-color: #5cb85c; border-left: 6px solid #4cae4c; }
+.alerta-warning { background-color: #f0ad4e; border-left: 6px solid #eea236; }
+.alerta-error { background-color: #d9534f; border-left: 6px solid #d43f3a; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-15px); }
+    to { opacity: 1; transform: translateY(0); }
+}

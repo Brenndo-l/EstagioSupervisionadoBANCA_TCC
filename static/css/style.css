@@ -164,3 +164,40 @@ table tr:nth-child(even) {
     background-color: #2b3990; /* Azul da Instituição */
     color: white;
 }
+
+.mensagens-container {
+    margin-bottom: 20px;
+}
+
+.alerta {
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    color: white;
+    font-size: 15px;
+    font-weight: bold;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    /* Uma animação simples para a caixa surgir suavemente */
+    animation: fadeIn 0.4s ease-in-out;
+}
+
+/* Cores dinâmicas geradas pelo Django */
+.alerta-success {
+    background-color: #5cb85c;
+    border-left: 6px solid #4cae4c;
+}
+
+.alerta-warning {
+    background-color: #f0ad4e;
+    border-left: 6px solid #eea236;
+}
+
+.alerta-error {
+    background-color: #d9534f;
+    border-left: 6px solid #d43f3a;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}

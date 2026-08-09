@@ -24,6 +24,20 @@
     </div>
 
     <div class="content">
+        
+        <!-- INÍCIO DAS MENSAGENS FLUTUANTES -->
+        {% if messages %}
+            <div class="mensagens-container">
+                {% for message in messages %}
+                    <!-- A tag message.tags puxa se é success, warning ou error -->
+                    <div class="alerta alerta-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        <!-- FIM DAS MENSAGENS -->
+
         {% block content %}
         {% endblock %}
     </div>

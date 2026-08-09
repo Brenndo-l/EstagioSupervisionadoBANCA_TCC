@@ -3,6 +3,7 @@ from .forms import SolicitacaoBancaForm, DiscenteForm, ProjetoTCCForm
 from .models import pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 
 
 # 1. Tela inicial do sistema (Dashboard com os botões principais)
@@ -78,6 +79,14 @@ def solicitar_banca(request):
 
         solicitacao.usuario_solicitante = pUsuario.objects.first()
         solicitacao.save()
+        if form.is_valid():
+            solicitacao = form.save(commit=False)
+            solicitacao.status = 'EM_ANÁLISE'
+            solicitacao.usuario_solicitante = pUsuario.objects.first()
+            solicitacao.save()
+            # AVISO DE SOLICITAÇÃO ENVIADA
+            messages.success(request, 'Sua solicitação foi enviada para análise da coordenação!')
+            return redirect('dashboard')
         return redirect('dashboard')  # Redireciona para a página inicial após salvar
     else:
         form = SolicitacaoBancaForm()  # Se não for POST, cria um formulário vazio
@@ -111,25 +120,23 @@ def cadastrar_projeto(request):
     return render(request, 'cadastrar_dados.html', contexto)
 
 def login_view(request):
-    if(request.method == "POST"):
+    if request.method == "POST":
         email = request.POST.get("email")
         senha = request.POST.get("senha")
-        print(email, senha)
-
-        usuario = authenticate(
-            username=email,
-            password=senha
-        )
-
+        
+        usuario = authenticate(username=email, password=senha)
+        
         if usuario is not None:
             login(request, usuario)
-            return redirect("/dashboard")
+            # AVISO DE SUCESSO NO LOGIN
+            messages.success(request, f'Bem-vindo(a) ao sistema!')
+            return redirect("dashboard")
         else:
-            return render(request, "login.html", {
-                "erro": "Login ou senha incorretos."
-            })
-
-    return render(request=request, template_name= 'login.html')
+            # AVISO DE ERRO
+            messages.error(request, 'Login ou senha incorretos.')
+            return render(request, "login.html") # Tiramos aquele dicionário de erro daqui
+            
+    return render(request, 'login.html')
 
 @login_required(login_url='login')
 def avaliar_solicitacao(request, solicitacao_id, acao):
@@ -139,13 +146,12 @@ def avaliar_solicitacao(request, solicitacao_id, acao):
     
     # Busca o pedido específico no banco de dados
     solicitacao = get_object_or_404(SolicitacaoAgendamento, id=solicitacao_id)
-    
-    # Altera o status dependendo do botão que foi clicado
     if acao == 'aprovar':
         solicitacao.status = 'APROVADA'
+        messages.success(request, f'Banca "{solicitacao.projeto_tcc.titulo}" APROVADA com sucesso!')
     elif acao == 'recusar':
         solicitacao.status = 'RECUSADA'
+        messages.warning(request, f'Banca "{solicitacao.projeto_tcc.titulo}" RECUSADA.')
         
-    # Salva no banco de dados e recarrega o painel
     solicitacao.save()
     return redirect('dashboard')
