@@ -4,6 +4,7 @@ from .models import ProjetoTCC, pUsuario, SolicitacaoAgendamento, BancaTCC, Espa
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.db.models import Q
 
 
 # 1. Tela inicial do sistema (Dashboard com os botões principais)
@@ -167,3 +168,25 @@ def meus_tccs(request):
         'projetos': projetos
     }
     return render(request, 'meus_tccs.html', contexto)
+
+@login_required(login_url='login')
+def pesquisar(request):
+    termo = request.GET.get('q', '').strip()
+    resultados = SolicitacaoAgendamento.objects.none()
+
+    if termo:
+        resultados = SolicitacaoAgendamento.objects.select_related(
+            'projeto_tcc',
+            'projeto_tcc__discente',
+            'espaco'
+        ).filter(
+            Q(projeto_tcc__titulo__icontains=termo) |
+            Q(projeto_tcc__discente__nome__icontains=termo)
+        ).order_by('-id')
+
+    contexto = {
+        'termo': termo,
+        'resultados': resultados,
+    }
+
+    return render(request, 'pesquisa.html', contexto)

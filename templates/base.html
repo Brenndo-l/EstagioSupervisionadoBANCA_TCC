@@ -25,8 +25,6 @@
     </div>
 
     <div class="content">
-        
-        <!-- INÍCIO DAS MENSAGENS FLUTUANTES -->
         {% if messages %}
             <div class="mensagens-container">
                 {% for message in messages %}
@@ -37,7 +35,16 @@
                 {% endfor %}
             </div>
         {% endif %}
-        <!-- FIM DAS MENSAGENS -->
+
+            <form action="{% url 'pesquisar' %}" method="GET" class="barra-pesquisa">
+                <input
+                    type="text"
+                    name="q"
+                    placeholder="Pesquisar discente ou TCC..."
+                    value="{{ request.GET.q }}"
+                >
+                <button type="submit">Pesquisar</button>
+            </form>
 
         {% block content %}
         {% endblock %}

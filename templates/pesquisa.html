@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="dashboard-header">
+    <h1>Pesquisa</h1>
+
+    {% if termo %}
+        <p>Resultados encontrados para: <strong>{{ termo }}</strong></p>
+    {% else %}
+        <p>Pesquise pelo nome do discente ou pelo título do TCC.</p>
+    {% endif %}
+</div>
+
+{% if termo %}
+
+    {% if resultados %}
+
+        <div class="tabela-container">
+
+            <table class="tabela-bancas">
+
+                <thead>
+                    <tr>
+                        <th>Discente</th>
+                        <th>Título do TCC</th>
+                        <th>Local</th>
+                        <th>Data/Hora</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for resultado in resultados %}
+
+                        <tr>
+                            <td>{{ resultado.projeto_tcc.discente.nome }}</td>
+
+                            <td>{{ resultado.projeto_tcc.titulo }}</td>
+
+                            <td>{{ resultado.espaco.nome }}</td>
+
+                            <td>
+                                {{ resultado.opcao_data_inicio|date:"d/m/Y H:i" }}
+                            </td>
+
+                            <td>
+                                {% if resultado.status == 'APROVADA' %}
+                                    <span class="status-badge status-aprovada">Aprovada</span>
+
+                                {% elif resultado.status == 'RECUSADA' %}
+                                    <span class="status-badge status-recusada">Recusada</span>
+
+                                {% else %}
+                                    <span class="status-badge status-analise">Em Análise</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    {% else %}
+
+        <div class="sem-resultados">
+            <h3>Nenhum resultado encontrado</h3>
+            <p>
+                Não foi encontrado nenhum discente ou TCC correspondente a
+                "{{ termo }}".
+            </p>
+        </div>
+
+    {% endif %}
+
+{% endif %}
+
+{% endblock %}

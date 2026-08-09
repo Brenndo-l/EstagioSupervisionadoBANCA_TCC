@@ -13,4 +13,5 @@ urlpatterns = [
     path('cadastrar/projeto/', views.cadastrar_projeto, name='cadastrar_projeto'),
     path('avaliar/<int:solicitacao_id>/<str:acao>/', views.avaliar_solicitacao, name='avaliar_solicitacao'),
     path('meus-tccs/', views.meus_tccs, name='meus_tccs'),
+    path('pesquisar/', views.pesquisar, name='pesquisar'),
 ]
