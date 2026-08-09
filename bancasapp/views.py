@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import SolicitacaoBancaForm, DiscenteForm, ProjetoTCCForm
-from .models import pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico, ComposicaoBanca
+from .models import ProjetoTCC, pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico, ComposicaoBanca
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -158,3 +158,12 @@ def avaliar_solicitacao(request, solicitacao_id, acao):
         
     solicitacao.save()
     return redirect('dashboard')
+
+@login_required(login_url='login')
+def meus_tccs(request):
+    projetos = ProjetoTCC.objects.all()
+    
+    contexto = {
+        'projetos': projetos
+    }
+    return render(request, 'meus_tccs.html', contexto)

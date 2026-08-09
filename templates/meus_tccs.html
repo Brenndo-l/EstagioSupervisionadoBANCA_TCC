@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="dashboard-header">
+        <h1>Projetos de TCC Cadastrados</h1>
+        <p>Relação de todos os trabalhos de conclusão de curso registrados no sistema.</p>
+    </div>
+
+    <div class="cards-container" style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 20px;">
+        {% if projetos %}
+            {% for projeto in projetos %}
+                <div class="tcc-card" style="background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 400px; border-left: 5px solid #285296;">
+                    <h2 style="color: #333; margin-top: 0; font-size: 18px;">{{ projeto.titulo }}</h2>
+                    <hr style="border: 0; border-top: 1px solid #eee; margin: 15px 0;">
+                    
+                    <p style="margin: 5px 0; color: #555;"><strong> Discente:</strong> {{ projeto.discente.nome }}</p>
+                    <p style="margin: 5px 0; color: #555;"><strong> Curso:</strong> {{ projeto.discente.curso }}</p>
+                    
+                    <div style="margin-top: 20px; text-align: right;">
+                        <span style="background: #e9ecef; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; color: #495057;">Projeto Registrado</span>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div style="background: white; padding: 30px; border-radius: 8px; text-align: center; width: 100%; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
+                <h3 style="color: #666;">Nenhum TCC encontrado.</h3>
+                <p style="color: #999;">Procure seu orientador para realizar o cadastro do seu projeto no sistema.</p>
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}
