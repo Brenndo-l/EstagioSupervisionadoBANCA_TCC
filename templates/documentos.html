@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="dashboard-header">
+    <h1>Documentos</h1>
+    <p>
+        Modelos de documentos utilizados nas bancas de TCC.
+    </p>
+</div>
+
+
+{% if eh_coordenacao %}
+
+    <div class="form-container">
+
+        <h2>Adicionar modelo</h2>
+
+        <p>
+            Envie modelos em branco que serão utilizados
+            posteriormente nas bancas.
+        </p>
+
+        <form method="POST" enctype="multipart/form-data">
+
+            {% csrf_token %}
+
+            {{ form.as_p }}
+
+            <button type="submit" class="btn-enviar">
+                Enviar Documento
+            </button>
+
+        </form>
+
+    </div>
+
+{% endif %}
+
+
+<div class="table-container" style="margin-top: 30px;">
+
+    <h2>Modelos cadastrados</h2>
+
+    {% if modelos %}
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Documento</th>
+                    <th>Tipo</th>
+                    <th>Arquivo</th>
+                    <th>Data de envio</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for modelo in modelos %}
+
+                    <tr>
+
+                        <td>
+                            {{ modelo.nome }}
+                        </td>
+
+                        <td>
+                            {{ modelo.get_tipo_display }}
+                        </td>
+
+                        <td>
+                            {{ modelo.arquivo.name }}
+                        </td>
+
+                        <td>
+                            {{ modelo.data_upload|date:"d/m/Y H:i" }}
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    {% else %}
+
+        <p>
+            Nenhum modelo de documento foi cadastrado.
+        </p>
+
+    {% endif %}
+
+</div>
+
+{% endblock %}

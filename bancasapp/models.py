@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.validators import FileExtensionValidator
 
 #Quem e o usuario logado - coordenação ou docente
 #conectado ao sistema de login
@@ -87,6 +88,41 @@ class DocumentoEmitido(models.Model):
     banca = models.ForeignKey(BancaTCC, on_delete=models.CASCADE)
     data_emissao = models.DateTimeField(auto_now_add=True)
     tipo_documento = models.CharField(max_length=50)
+
+class ModeloDocumento(models.Model):
+    TIPOS_DOCUMENTO = (
+        ('ATA_DEFESA', 'Ata de Defesa'),
+        ('FICHA_AVALIACAO', 'Ficha de Avaliação'),
+        ('OUTRO', 'Outro'),
+    )
+
+    nome = models.CharField(max_length=150)
+
+    tipo = models.CharField(
+        max_length=30,
+        choices=TIPOS_DOCUMENTO
+    )
+
+    arquivo = models.FileField(
+        upload_to='documentos/modelos/',
+        validators=[
+            FileExtensionValidator(
+                allowed_extensions=['pdf', 'doc', 'docx', 'odt']
+            )
+        ]
+    )
+
+    enviado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
+
+    data_upload = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.nome
 
 # Relacionamento 1 para 1: Cada TCC tem apenas UMA banca
 class ComposicaoBanca(models.Model):

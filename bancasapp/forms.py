@@ -1,5 +1,5 @@
 from django import forms
-from .models import SolicitacaoAgendamento, Discente, ProjetoTCC, pUsuario
+from .models import SolicitacaoAgendamento, Discente, ProjetoTCC, pUsuario, ModeloDocumento
 
 class SolicitacaoBancaForm(forms.ModelForm):
     orientador = forms.ModelChoiceField(
@@ -55,3 +55,34 @@ class ProjetoTCCForm(forms.ModelForm):
     class Meta:
         model = ProjetoTCC
         fields = '__all__'
+
+class ModeloDocumentoForm(forms.ModelForm):
+    class Meta:
+        model = ModeloDocumento
+
+        fields = [
+            'nome',
+            'tipo',
+            'arquivo',
+        ]
+
+        widgets = {
+            'nome': forms.TextInput(attrs={
+                'class': 'form-input',
+                'placeholder': 'Ex: Modelo de Ata de Defesa'
+            }),
+
+            'tipo': forms.Select(attrs={
+                'class': 'form-input'
+            }),
+
+            'arquivo': forms.FileInput(attrs={
+                'class': 'form-input'
+            }),
+        }
+
+        labels = {
+            'nome': 'Nome do documento',
+            'tipo': 'Tipo do documento',
+            'arquivo': 'Arquivo',
+        }

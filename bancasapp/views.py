@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import SolicitacaoBancaForm, DiscenteForm, ProjetoTCCForm
-from .models import ProjetoTCC, pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico, ComposicaoBanca
+from .forms import SolicitacaoBancaForm, DiscenteForm, ProjetoTCCForm, ModeloDocumentoForm
+from .models import ProjetoTCC, pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico, ComposicaoBanca, ModeloDocumento
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -190,3 +190,61 @@ def pesquisar(request):
     }
 
     return render(request, 'pesquisa.html', contexto)
+
+@login_required(login_url='login')
+def documentos(request):
+
+    # Verifica se o usuário é da coordenação
+    eh_coordenacao = (
+        request.user.is_superuser or
+        pUsuario.objects.filter(
+            usuario=request.user,
+            perfil='COORDENACAO'
+        ).exists()
+    )
+
+    # Upload permitido apenas para a coordenação
+    if request.method == 'POST':
+
+        if not eh_coordenacao:
+            messages.error(
+                request,
+                'Apenas a coordenação pode enviar documentos.'
+            )
+            return redirect('documentos')
+
+        form = ModeloDocumentoForm(
+            request.POST,
+            request.FILES
+        )
+
+        if form.is_valid():
+            modelo = form.save(commit=False)
+
+            modelo.enviado_por = request.user
+
+            modelo.save()
+
+            messages.success(
+                request,
+                'Modelo de documento enviado com sucesso.'
+            )
+
+            return redirect('documentos')
+
+    else:
+        form = ModeloDocumentoForm()
+
+    modelos = ModeloDocumento.objects.all().order_by('-data_upload')
+
+    contexto = {
+        'form': form,
+        'modelos': modelos,
+        'eh_coordenacao': eh_coordenacao,
+    }
+
+    return render(
+        request,
+        'documentos.html',
+        contexto
+    )
