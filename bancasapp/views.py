@@ -12,31 +12,54 @@ from pathlib import Path
 # 1. Tela inicial do sistema (Dashboard com os botões principais)
 @login_required(login_url='login')
 def dashboard(request):
-    # O Django verifica se quem está logado é o administrador (Coordenação)
+    # Verifica se quem está logado é a Coordenação
     is_coordenacao = request.user.is_superuser
-    
+
     if is_coordenacao:
-        # Visão da Coordenação: Vê o total de TODOS
+        # Visão da Coordenação: vê os dados de todo o sistema
         total_bancas = BancaTCC.objects.count()
-        total_pendentes = SolicitacaoAgendamento.objects.filter(status='EM_ANÁLISE').count()
-        
-        # Pega as últimas 5 solicitações para mostrar na tela inicial da coordenação
-        ultimos_pedidos = SolicitacaoAgendamento.objects.filter(status='EM_ANÁLISE').order_by('-id')[:5]
+
+        total_pendentes = SolicitacaoAgendamento.objects.filter(
+            status='EM_ANÁLISE'
+        ).count()
+
+        # Últimas 5 solicitações pendentes mostradas no Dashboard
+        # select_related carrega os dados relacionados junto com a consulta
+        ultimos_pedidos = SolicitacaoAgendamento.objects.select_related(
+            'projeto_tcc',
+            'projeto_tcc__discente',
+            'espaco',
+            'usuario_solicitante',
+            'usuario_solicitante__usuario'
+        ).filter(
+            status='EM_ANÁLISE'
+        ).order_by('-id')[:5]
+
     else:
-        # Visão do Professor: Vê apenas os SEUS números
+        # Visão do Professor: vê apenas os próprios números
         try:
             perfil_logado = request.user.pusuario
-            total_bancas = SolicitacaoAgendamento.objects.filter(usuario_solicitante=perfil_logado, status='APROVADA').count()
-            total_pendentes = SolicitacaoAgendamento.objects.filter(usuario_solicitante=perfil_logado, status='EM_ANÁLISE').count()
+
+            total_bancas = SolicitacaoAgendamento.objects.filter(
+                usuario_solicitante=perfil_logado,
+                status='APROVADA'
+            ).count()
+
+            total_pendentes = SolicitacaoAgendamento.objects.filter(
+                usuario_solicitante=perfil_logado,
+                status='EM_ANÁLISE'
+            ).count()
+
         except:
             total_bancas = 0
             total_pendentes = 0
-            
-        ultimos_pedidos = None # Professor não precisa dessa lista no painel inicial
+
+        # Professor não recebe a lista de solicitações pendentes da Coordenação
+        ultimos_pedidos = None
 
     # Quantidade de salas é igual para todos
     total_salas = EspacoFisico.objects.count()
-    
+
     contexto = {
         'total_bancas': total_bancas,
         'total_pendentes': total_pendentes,
@@ -44,7 +67,7 @@ def dashboard(request):
         'is_coordenacao': is_coordenacao,
         'ultimos_pedidos': ultimos_pedidos,
     }
-    
+
     return render(request, 'dashboard.html', contexto)
 
 # 2. Tela onde aparecem as bancas já marcadas
@@ -52,24 +75,45 @@ def dashboard(request):
 def visualizar_bancas(request):
     try:
         perfil_logado = request.user.pusuario
-        minhas_solicitacoes = SolicitacaoAgendamento.objects.filter(usuario_solicitante=perfil_logado)
+
+        minhas_solicitacoes = SolicitacaoAgendamento.objects.select_related(
+            'projeto_tcc',
+            'projeto_tcc__discente',
+            'espaco',
+            'usuario_solicitante',
+            'usuario_solicitante__usuario'
+        ).filter(
+            usuario_solicitante=perfil_logado
+        )
+
     except:
-        minhas_solicitacoes = SolicitacaoAgendamento.objects.all()
+        minhas_solicitacoes = SolicitacaoAgendamento.objects.select_related(
+            'projeto_tcc',
+            'projeto_tcc__discente',
+            'espaco',
+            'usuario_solicitante',
+            'usuario_solicitante__usuario'
+        ).all()
 
-    # 1. Pega o status que o usuário clicou lá na URL
+    # Pega o status selecionado no filtro
     status_filtro = request.GET.get('status')
-    
-    # 2. Se tiver um status, filtra a tabela
-    if status_filtro:
-        minhas_solicitacoes = minhas_solicitacoes.filter(status=status_filtro)
 
-    # 3. O SEGREDO: Enviar o status_filtro com o nome 'status_atual' para o HTML
+    # Filtra as solicitações pelo status
+    if status_filtro:
+        minhas_solicitacoes = minhas_solicitacoes.filter(
+            status=status_filtro
+        )
+
     contexto = {
         'solicitacoes': minhas_solicitacoes,
-        'status_atual': status_filtro 
+        'status_atual': status_filtro
     }
-    
-    return render(request, 'visualizar_bancas.html', contexto)
+
+    return render(
+        request,
+        'visualizar_bancas.html',
+        contexto
+    )
 
 # 3. Tela do formulário para o professor pedir a banca
 @login_required(login_url='login')
@@ -164,8 +208,7 @@ def avaliar_solicitacao(request, solicitacao_id, acao):
 
 @login_required(login_url='login')
 def meus_tccs(request):
-    projetos = ProjetoTCC.objects.all()
-    
+    projetos = ProjetoTCC.objects.select_related('discente').all()
     contexto = {
         'projetos': projetos
     }
