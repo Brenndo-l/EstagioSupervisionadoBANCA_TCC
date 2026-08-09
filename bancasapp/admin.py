@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import EspacoFisico, Discente, ProjetoTCC, pUsuario, SolicitacaoAgendamento, BancaTCC, MembroBanca
+from .models import EspacoFisico, Discente, ProjetoTCC, pUsuario, SolicitacaoAgendamento, BancaTCC, MembroBanca, ComposicaoBanca
 
 #config tabela espaços fisicos
 @admin.register(EspacoFisico)
@@ -22,4 +22,4 @@ class ProjetoTCCAdmin(admin.ModelAdmin):
 
 admin.site.register(pUsuario)
 admin.site.register(SolicitacaoAgendamento)
-
+admin.site.register(ComposicaoBanca)

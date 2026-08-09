@@ -79,3 +79,14 @@ class DocumentoEmitido(models.Model):
     banca = models.ForeignKey(BancaTCC, on_delete=models.CASCADE)
     data_emissao = models.DateTimeField(auto_now_add=True)
     tipo_documento = models.CharField(max_length=50)
+
+# Relacionamento 1 para 1: Cada TCC tem apenas UMA banca
+class ComposicaoBanca(models.Model):
+    projeto_tcc = models.OneToOneField(ProjetoTCC, on_delete=models.CASCADE, verbose_name="Projeto de TCC")
+    orientador = models.ForeignKey(pUsuario, on_delete=models.PROTECT, related_name="bancas_orientador", verbose_name="Professor Orientador")
+    avaliador_interno = models.ForeignKey(pUsuario, on_delete=models.PROTECT, related_name="bancas_avaliador_interno", verbose_name="Avaliador Interno (UFAC)")
+    nome_avaliador_externo = models.CharField(max_length=150, verbose_name="Nome do Avaliador Externo", blank=True, null=True)
+    instituicao_avaliador_externo = models.CharField(max_length=100, verbose_name="Instituição Externa", blank=True, null=True)
+
+    def __str__(self):
+        return f"Banca: {self.projeto_tcc.titulo}"
