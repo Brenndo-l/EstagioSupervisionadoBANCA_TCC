@@ -5,6 +5,8 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
+from django.http import FileResponse
+from pathlib import Path
 
 
 # 1. Tela inicial do sistema (Dashboard com os botões principais)
@@ -247,4 +249,35 @@ def documentos(request):
         request,
         'documentos.html',
         contexto
+    )
+
+@login_required(login_url='login')
+def baixar_documento(request, modelo_id):
+
+    # Procura o documento pelo ID ou retorna erro 404
+    modelo = get_object_or_404(ModeloDocumento, id=modelo_id)
+
+    # Somente usuários internos do sistema podem baixar
+    usuario_permitido = (
+        request.user.is_superuser or
+        pUsuario.objects.filter(
+            usuario=request.user,
+            perfil__in=['DOCENTE', 'COORDENACAO']
+        ).exists()
+    )
+
+    if not usuario_permitido:
+        messages.error(
+            request,
+            'Você não possui permissão para baixar este documento.'
+        )
+        return redirect('dashboard')
+
+    # Nome original do arquivo, sem o caminho media/documentos/modelos/
+    nome_arquivo = Path(modelo.arquivo.name).name
+
+    return FileResponse(
+        modelo.arquivo.open('rb'),
+        as_attachment=True,
+        filename=nome_arquivo
     )

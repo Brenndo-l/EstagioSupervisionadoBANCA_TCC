@@ -15,4 +15,5 @@ urlpatterns = [
     path('meus-tccs/', views.meus_tccs, name='meus_tccs'),
     path('pesquisar/', views.pesquisar, name='pesquisar'),
     path('documentos/', views.documentos, name='documentos'),
+    path('documentos/<int:modelo_id>/download/', views.baixar_documento, name='baixar_documento'),
 ]

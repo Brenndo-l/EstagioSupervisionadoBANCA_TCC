@@ -52,6 +52,7 @@
                     <th>Tipo</th>
                     <th>Arquivo</th>
                     <th>Data de envio</th>
+                    <th>Ação</th>
                 </tr>
             </thead>
 
@@ -61,23 +62,36 @@
 
                     <tr>
 
-                        <td>
-                            {{ modelo.nome }}
-                        </td>
+                    <td>
+                        {{ modelo.nome }}
+                    </td>
 
-                        <td>
-                            {{ modelo.get_tipo_display }}
-                        </td>
+                    <td>
+                        {{ modelo.get_tipo_display }}
+                    </td>
 
-                        <td>
-                            {{ modelo.arquivo.name }}
-                        </td>
+                    <td>
+                        {{ modelo.arquivo.name }}
+                    </td>
 
-                        <td>
-                            {{ modelo.data_upload|date:"d/m/Y H:i" }}
-                        </td>
+                    <td>
+                        {{ modelo.data_upload|date:"d/m/Y H:i" }}
+                    </td>
 
-                    </tr>
+                    <td>
+                        {% if modelo.arquivo %}
+                            <a
+                                href="{% url 'baixar_documento' modelo.id %}"
+                                class="btn-download"
+                            >
+                                BAIXAR
+                            </a>
+                        {% else %}
+                            Arquivo indisponível
+                        {% endif %}
+                    </td>
+
+                </tr>
 
                 {% endfor %}
 
