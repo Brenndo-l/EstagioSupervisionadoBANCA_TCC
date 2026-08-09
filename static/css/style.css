@@ -333,3 +333,207 @@ select option[value=""] {
 .btn-download:hover {
     background-color: #1a2566;
 }
+
+/* AJUSTES GERAIS DE RESPONSIVIDADE */
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    min-height: 100vh;
+    height: auto;
+}
+
+.sidebar {
+    flex-shrink: 0;
+}
+
+.content {
+    min-width: 0;
+}
+
+/* Evita que tabelas estourem a tela */
+.table-container,
+.tabela-container {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* Formulários nunca ultrapassam a tela */
+.form-container {
+    width: 100%;
+}
+
+/* Imagens do sistema não ultrapassam o container */
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* TABLETS*/
+
+@media (max-width: 1024px) {
+
+    .sidebar {
+        width: 210px;
+        padding: 18px 15px;
+    }
+
+    .sidebar h2 {
+        font-size: 22px;
+        margin-bottom: 30px;
+    }
+
+    .sidebar a {
+        font-size: 14px;
+        margin-bottom: 16px;
+    }
+
+    .content {
+        padding: 25px;
+    }
+
+    .dashboard-cards {
+        flex-wrap: wrap;
+    }
+
+    .card {
+        min-width: 200px;
+    }
+
+    .form-container {
+        max-width: 100%;
+    }
+
+    .barra-pesquisa input {
+        max-width: none;
+    }
+
+    table th,
+    table td {
+        padding: 10px;
+        white-space: nowrap;
+    }
+}
+
+/*CELULARES */
+
+@media (max-width: 768px) {
+
+    body {
+        display: block;
+    }
+
+    /* O menu deixa de ficar na lateral */
+    .sidebar {
+        width: 100%;
+        min-height: auto;
+        padding: 15px;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+
+    .sidebar h2 {
+        grid-column: 1 / -1;
+        margin: 5px 0 15px 0;
+        text-align: center;
+        font-size: 22px;
+    }
+
+    .sidebar a {
+        margin: 0;
+        padding: 10px;
+        text-align: center;
+        font-size: 13px;
+        border-radius: 4px;
+    }
+
+    .sidebar a:hover {
+        background-color: #1a2566;
+    }
+
+    .footer-menu {
+        grid-column: 1 / -1;
+        margin-top: 5px;
+    }
+
+    .footer-menu a {
+        text-align: center;
+    }
+
+    /* Conteúdo ocupa toda a largura */
+    .content {
+        width: 100%;
+        padding: 20px 15px;
+    }
+
+    /* Pesquisa vira duas linhas se necessário */
+    .barra-pesquisa {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .barra-pesquisa input {
+        width: 100%;
+        max-width: none;
+        flex: 1 1 100%;
+    }
+
+    .barra-pesquisa button {
+        width: 100%;
+    }
+
+    /* Cards ficam um embaixo do outro */
+    .dashboard-cards {
+        display: block;
+    }
+
+    .card {
+        width: 100%;
+        margin-bottom: 15px;
+    }
+
+    /* Formulários */
+    .form-container {
+        width: 100%;
+        max-width: none;
+        padding: 20px;
+    }
+
+    /* Containers das tabelas */
+    .table-container,
+    .tabela-container {
+        width: 100%;
+        overflow-x: auto;
+        padding: 20px;
+    }
+
+    table {
+        min-width: 650px;
+    }
+
+    table th,
+    table td {
+        padding: 10px;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    /* Botões de filtro podem quebrar linha */
+    .filter-menu {
+        flex-wrap: wrap;
+    }
+
+    .btn-filter {
+        flex: 1;
+        text-align: center;
+        min-width: 110px;
+    }
+
+    /* Mensagens não extrapolam a tela */
+    .mensagens-container {
+        width: 100%;
+    }
+}
