@@ -18,3 +18,4 @@ db.sqlite3
 
 # Variáveis de ambiente (caso crie um arquivo .env no futuro)
 .env
+media/
