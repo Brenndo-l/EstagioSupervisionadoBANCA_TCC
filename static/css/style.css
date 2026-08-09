@@ -92,3 +92,75 @@ body {
 .btn-enviar:hover {
     background-color: #1a2566; /* Azul mais escuro quando passa o mouse */
 }
+
+
+.table-container {
+    background-color: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+table th, table td {
+    border: 1px solid #ddd;
+    padding: 15px;
+    text-align: left;
+}
+
+/* Cor do cabeçalho da tabela (Azul UFAC) */
+table th {
+    background-color: #2b3990;
+    color: white;
+}
+
+/* Deixa as linhas da tabela zebradas para facilitar a leitura */
+table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+/* Estilo das etiquetas de Status */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: bold;
+    color: white;
+    text-align: center;
+    display: inline-block;
+}
+
+.status-analise { background-color: #f0ad4e; } /* Laranja */
+.status-aprovada { background-color: #5cb85c; } /* Verde */
+.status-recusada { background-color: #d9534f; } /* Vermelho */
+
+.filter-menu {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.btn-filter {
+    padding: 8px 16px;
+    text-decoration: none;
+    color: #333;
+    background-color: #e9ecef; /* Cinza claro padrão */
+    border-radius: 4px;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+.btn-filter:hover {
+    background-color: #d3d9df;
+}
+
+/* A classe active indica em qual filtro o usuário clicou */
+.btn-filter.active {
+    background-color: #2b3990; /* Azul da Instituição */
+    color: white;
+}

@@ -2,9 +2,11 @@ from django.shortcuts import render, redirect
 from .forms import SolicitacaoBancaForm
 from .models import pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico
 from django.contrib.auth import authenticate, login
+from django.contrib.auth.decorators import login_required
 
 
 # 1. Tela inicial do sistema (Dashboard com os botões principais)
+@login_required(login_url='login')
 def dashboard(request):
     qtd_solicitacoes = SolicitacaoAgendamento.objects.filter(status='EM_ANÁLISE').count()
     qtd_bancas = BancaTCC.objects.count()
@@ -19,10 +21,30 @@ def dashboard(request):
     return render(request, 'dashboard.html', contexto)
 
 # 2. Tela onde aparecem as bancas já marcadas
+@login_required(login_url='login')
 def visualizar_bancas(request):
-    return render(request, 'visualizar_bancas.html')
+    try:
+        # Descobre qual é o perfil (pUsuario) da pessoa logada
+        perfil_logado = request.user.pusuario
+        # Filtra no banco de dados apenas as bancas solicitadas por esse perfil
+        minhas_solicitacoes = SolicitacaoAgendamento.objects.filter(usuario_solicitante=perfil_logado)
+    except:
+        # Se for a coordenação/admin, mostra tudo
+        minhas_solicitacoes = SolicitacaoAgendamento.objects.all()
+
+    status_filtro = request.GET.get('status')
+    if status_filtro:
+        minhas_solicitacoes = minhas_solicitacoes.filter(status=status_filtro)
+    contexto = {
+        'solicitacoes': minhas_solicitacoes,
+        'status_filtro': status_filtro,
+    }
+
+    # Envia essa lista filtrada para o HTML através do contexto 'solicitacoes'
+    return render(request, 'visualizar_bancas.html', contexto)
 
 # 3. Tela do formulário para o professor pedir a banca
+@login_required(login_url='login')
 def solicitar_banca(request):
     form = SolicitacaoBancaForm(request.POST)
 

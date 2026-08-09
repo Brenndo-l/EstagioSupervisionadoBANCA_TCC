@@ -1,6 +1,60 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>Visualizar Bancas</h1>
-    <p>Aqui vai aparecer a lista de bancas agendadas.</p>
+    <div class="table-container">
+        <h1>Minhas Solicitações de Bancas</h1>
+        <p>Acompanhe o andamento dos seus pedidos de agendamento junto à coordenação.</p>
+
+        <div class="filter-menu">
+            <!-- Se não tiver status_atual na URL, o botão "Todas" ganha a classe 'active' -->
+            <a href="{% url 'visualizar_bancas' %}" class="btn-filter {% if not status_atual %}active{% endif %}">Todas</a>
+            
+            <a href="{% url 'visualizar_bancas' %}?status=EM_ANÁLISE" class="btn-filter {% if status_atual == 'EM_ANÁLISE' %}active{% endif %}">Em Análise</a>
+            
+            <a href="{% url 'visualizar_bancas' %}?status=APROVADA" class="btn-filter {% if status_atual == 'APROVADA' %}active{% endif %}">Aprovadas</a>
+            
+            <a href="{% url 'visualizar_bancas' %}?status=RECUSADA" class="btn-filter {% if status_atual == 'RECUSADA' %}active{% endif %}">Recusadas</a>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Projeto (TCC)</th>
+                    <th>Local</th>
+                    <th>Data/Hora Início</th>
+                    <th>Data/Hora Término</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- O for percorre cada linha que veio lá da views.py -->
+                {% for solicitacao in solicitacoes %}
+                    <tr>
+                        <td>{{ solicitacao.projeto_tcc.titulo }}</td>
+                        <td>{{ solicitacao.espaco.nome }}</td>
+                        <!-- O filtro |date:"" formata a data para o padrão brasileiro -->
+                        <td>{{ solicitacao.opcao_data_inicio|date:"d/m/Y H:i" }}</td>
+                        <td>{{ solicitacao.opcao_data_fim|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <!-- Muda a cor da etiqueta dependendo de como está o status -->
+                            {% if solicitacao.status == 'EM_ANÁLISE' %}
+                                <span class="status-badge status-analise">Em Análise</span>
+                            {% elif solicitacao.status == 'APROVADA' %}
+                                <span class="status-badge status-aprovada">Aprovada</span>
+                            {% else %}
+                                <span class="status-badge status-recusada">Recusada</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <!-- Caso o professor seja novo e não tenha pedido nada ainda -->
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 20px;">
+                            Nenhuma solicitação encontrada. Use o menu "Solicitar Banca" para iniciar.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 {% endblock %}
