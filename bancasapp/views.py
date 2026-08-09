@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from .forms import SolicitacaoBancaForm, DiscenteForm, ProjetoTCCForm
-from .models import pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico
+from .models import pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico, ComposicaoBanca
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -71,25 +71,28 @@ def visualizar_bancas(request):
 # 3. Tela do formulário para o professor pedir a banca
 @login_required(login_url='login')
 def solicitar_banca(request):
-    form = SolicitacaoBancaForm(request.POST)
-
-    if form.is_valid():
-        solicitacao = form.save(commit=False)
-        solicitacao.status = 'EM_ANÁLISE'
-
-        solicitacao.usuario_solicitante = pUsuario.objects.first()
-        solicitacao.save()
+    if request.method == 'POST':
+        form = SolicitacaoBancaForm(request.POST)
         if form.is_valid():
             solicitacao = form.save(commit=False)
             solicitacao.status = 'EM_ANÁLISE'
-            solicitacao.usuario_solicitante = pUsuario.objects.first()
+            solicitacao.usuario_solicitante = request.user.pusuario 
             solicitacao.save()
-            # AVISO DE SOLICITAÇÃO ENVIADA
-            messages.success(request, 'Sua solicitação foi enviada para análise da coordenação!')
+            
+            ComposicaoBanca.objects.update_or_create(
+                projeto_tcc=solicitacao.projeto_tcc,
+                defaults={
+                    'orientador': form.cleaned_data['orientador'],
+                    'avaliador_interno': form.cleaned_data['avaliador_interno'],
+                    'nome_avaliador_externo': form.cleaned_data['nome_avaliador_externo'],
+                    'instituicao_avaliador_externo': form.cleaned_data['instituicao_avaliador_externo']
+                }
+            )
+            messages.success(request, 'Sua solicitação e a composição da banca foram enviadas com sucesso!')
             return redirect('dashboard')
-        return redirect('dashboard')  # Redireciona para a página inicial após salvar
     else:
-        form = SolicitacaoBancaForm()  # Se não for POST, cria um formulário vazio
+        form = SolicitacaoBancaForm()
+        
     return render(request, 'solicitar_banca.html', {'form': form})
 
 @login_required(login_url='login')

@@ -1,7 +1,27 @@
 from django import forms
-from .models import SolicitacaoAgendamento, Discente, ProjetoTCC
+from .models import SolicitacaoAgendamento, Discente, ProjetoTCC, pUsuario
 
 class SolicitacaoBancaForm(forms.ModelForm):
+    orientador = forms.ModelChoiceField(
+        queryset=pUsuario.objects.all(), 
+        label="Professor Orientador",
+        empty_label="Selecione o Orientador"
+    )
+    avaliador_interno = forms.ModelChoiceField(
+        queryset=pUsuario.objects.all(), 
+        label="Avaliador Interno (UFAC)",
+        empty_label="Selecione o Avaliador"
+    )
+    nome_avaliador_externo = forms.CharField(
+        max_length=150, 
+        required=False, 
+        label="Nome do Avaliador Externo (Opcional)"
+    )
+    instituicao_avaliador_externo = forms.CharField(
+        max_length=100, 
+        required=False, 
+        label="Instituição do Avaliador Externo (Opcional)"
+    )
     class Meta:
         # 1. de qual tabela puxa os dados
         model = SolicitacaoAgendamento

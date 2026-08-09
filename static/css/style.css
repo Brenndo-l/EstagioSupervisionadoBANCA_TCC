@@ -201,3 +201,8 @@ table tr:nth-child(even) {
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* Esconde a opção vazia (placeholder) de todas as listas suspensas do sistema */
+select option[value=""] {
+    display: none;
+}

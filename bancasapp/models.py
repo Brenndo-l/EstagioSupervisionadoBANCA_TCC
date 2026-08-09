@@ -10,8 +10,16 @@ class pUsuario(models.Model):
     )
     usuario = models.OneToOneField(User, on_delete=models.CASCADE)
     perfil = models.CharField(max_length=15, choices=Tipos_Perfil)
+    
     def __str__(self):
-        return f"{self.usuario.first_name} - {self.perfil}"
+        # Tenta pegar o nome completo (first_name + last_name)
+        nome_exibicao = self.usuario.get_full_name()
+        
+        # Se o nome completo estiver vazio, usa o e-mail/username
+        if not nome_exibicao:
+            nome_exibicao = self.usuario.username
+            
+        return f"{nome_exibicao} ({self.get_perfil_display()})"
 
 #Cadasttro basico das salas
 class EspacoFisico(models.Model):
