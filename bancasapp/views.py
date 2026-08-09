@@ -5,8 +5,10 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
-from django.http import FileResponse
+from django.http import FileResponse, HttpResponse
 from pathlib import Path
+from django.template.loader import get_template
+from xhtml2pdf import pisa
 
 
 # 1. Tela inicial do sistema (Dashboard com os botões principais)
@@ -324,3 +326,43 @@ def baixar_documento(request, modelo_id):
         as_attachment=True,
         filename=nome_arquivo
     )
+
+@login_required(login_url='login')
+def gerar_pdf_teste(request):
+    # Carrega o HTML usado para montar o PDF
+    template = get_template('pdf/pdf_teste.html')
+
+    nome_usuario = (
+        request.user.get_full_name()
+        or request.user.username
+    )
+
+    contexto = {
+        'usuario': nome_usuario,
+    }
+
+    html = template.render(contexto)
+
+    # Cria a resposta que será enviada como PDF
+    response = HttpResponse(
+        content_type='application/pdf'
+    )
+
+    response['Content-Disposition'] = (
+        'attachment; filename="sgtcc_teste_pdf.pdf"'
+    )
+
+    # Converte o HTML em PDF
+    resultado = pisa.CreatePDF(
+        html,
+        dest=response,
+        encoding='UTF-8'
+    )
+
+    if resultado.err:
+        return HttpResponse(
+            'Erro ao gerar o arquivo PDF.',
+            status=500
+        )
+
+    return response

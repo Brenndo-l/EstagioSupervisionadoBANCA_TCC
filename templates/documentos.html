@@ -4,6 +4,7 @@
 
 <div class="dashboard-header">
     <h1>Documentos</h1>
+
     <p>
         Modelos de documentos utilizados nas bancas de TCC.
     </p>
@@ -12,7 +13,14 @@
 
 {% if eh_coordenacao %}
 
-    <div class="form-container">
+    <a
+        href="{% url 'gerar_pdf_teste' %}"
+        class="btn-download"
+    >
+        TESTAR GERAÇÃO DE PDF
+    </a>
+
+    <div class="form-container" style="margin-top: 20px;">
 
         <h2>Adicionar modelo</h2>
 
@@ -62,36 +70,36 @@
 
                     <tr>
 
-                    <td>
-                        {{ modelo.nome }}
-                    </td>
+                        <td>
+                            {{ modelo.nome }}
+                        </td>
 
-                    <td>
-                        {{ modelo.get_tipo_display }}
-                    </td>
+                        <td>
+                            {{ modelo.get_tipo_display }}
+                        </td>
 
-                    <td>
-                        {{ modelo.arquivo.name }}
-                    </td>
+                        <td>
+                            {{ modelo.arquivo.name }}
+                        </td>
 
-                    <td>
-                        {{ modelo.data_upload|date:"d/m/Y H:i" }}
-                    </td>
+                        <td>
+                            {{ modelo.data_upload|date:"d/m/Y H:i" }}
+                        </td>
 
-                    <td>
-                        {% if modelo.arquivo %}
-                            <a
-                                href="{% url 'baixar_documento' modelo.id %}"
-                                class="btn-download"
-                            >
-                                BAIXAR
-                            </a>
-                        {% else %}
-                            Arquivo indisponível
-                        {% endif %}
-                    </td>
+                        <td>
+                            {% if modelo.arquivo %}
+                                <a
+                                    href="{% url 'baixar_documento' modelo.id %}"
+                                    class="btn-download"
+                                >
+                                    BAIXAR
+                                </a>
+                            {% else %}
+                                Arquivo indisponível
+                            {% endif %}
+                        </td>
 
-                </tr>
+                    </tr>
 
                 {% endfor %}
 
