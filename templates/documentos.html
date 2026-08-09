@@ -45,6 +45,78 @@
 
 {% endif %}
 
+<div class="table-container" style="margin-top: 30px;">
+
+    <h2>Bancas aprovadas</h2>
+
+    <p>
+        Selecione uma banca aprovada para testar
+        a geração automática dos dados em PDF.
+    </p>
+
+    {% if solicitacoes_aprovadas %}
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Discente</th>
+                    <th>Título do TCC</th>
+                    <th>Local</th>
+                    <th>Data/Hora</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for solicitacao in solicitacoes_aprovadas %}
+
+                    <tr>
+
+                        <td>
+                            {{ solicitacao.projeto_tcc.discente.nome }}
+                        </td>
+
+                        <td>
+                            {{ solicitacao.projeto_tcc.titulo }}
+                        </td>
+
+                        <td>
+                            {{ solicitacao.espaco.nome }}
+                        </td>
+
+                        <td>
+                            {{ solicitacao.opcao_data_inicio|date:"d/m/Y H:i" }}
+                        </td>
+
+                        <td>
+                            <a
+                                href="{% url 'gerar_pdf_banca' solicitacao.id %}"
+                                class="btn-download"
+                            >
+                                GERAR PDF
+                            </a>
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    {% else %}
+
+        <p>
+            Nenhuma banca aprovada disponível.
+        </p>
+
+    {% endif %}
+
+</div>
+
 
 <div class="table-container" style="margin-top: 30px;">
 

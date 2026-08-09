@@ -17,4 +17,5 @@ urlpatterns = [
     path('documentos/', views.documentos, name='documentos'),
     path('documentos/<int:modelo_id>/download/', views.baixar_documento, name='baixar_documento'),
     path('documentos/teste-pdf/', views.gerar_pdf_teste, name='gerar_pdf_teste'),
+    path('documentos/banca/<int:solicitacao_id>/pdf/', views.gerar_pdf_banca, name='gerar_pdf_banca'),
 ]

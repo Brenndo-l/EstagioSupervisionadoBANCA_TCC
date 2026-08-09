@@ -3,14 +3,14 @@ from .models import SolicitacaoAgendamento, Discente, ProjetoTCC, pUsuario, Mode
 
 class SolicitacaoBancaForm(forms.ModelForm):
     orientador = forms.ModelChoiceField(
-        queryset=pUsuario.objects.all(), 
-        label="Professor Orientador",
-        empty_label="Selecione o Orientador"
+    queryset=pUsuario.objects.filter(perfil='DOCENTE'),
+    label="Professor Orientador",
+    empty_label="Selecione o Orientador"
     )
     avaliador_interno = forms.ModelChoiceField(
-        queryset=pUsuario.objects.all(), 
-        label="Avaliador Interno (UFAC)",
-        empty_label="Selecione o Avaliador"
+    queryset=pUsuario.objects.filter(perfil='DOCENTE'),
+    label="Avaliador Interno (UFAC)",
+    empty_label="Selecione o Avaliador"
     )
     nome_avaliador_externo = forms.CharField(
         max_length=150, 

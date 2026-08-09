@@ -120,29 +120,67 @@ def visualizar_bancas(request):
 # 3. Tela do formulário para o professor pedir a banca
 @login_required(login_url='login')
 def solicitar_banca(request):
+
+    # Só docentes cadastrados podem solicitar uma banca
+    perfil_logado = pUsuario.objects.filter(
+        usuario=request.user,
+        perfil='DOCENTE'
+    ).first()
+
+    if not perfil_logado:
+        messages.error(
+            request,
+            'Apenas docentes cadastrados podem solicitar uma banca.'
+        )
+        return redirect('dashboard')
+
     if request.method == 'POST':
         form = SolicitacaoBancaForm(request.POST)
+
         if form.is_valid():
+
+            # Salva a solicitação
             solicitacao = form.save(commit=False)
+
             solicitacao.status = 'EM_ANÁLISE'
-            solicitacao.usuario_solicitante = request.user.pusuario 
+
+            # Usa o perfil docente realmente ligado ao usuário logado
+            solicitacao.usuario_solicitante = perfil_logado
+
             solicitacao.save()
-            
+
+            # Salva quem fará parte da banca
             ComposicaoBanca.objects.update_or_create(
                 projeto_tcc=solicitacao.projeto_tcc,
                 defaults={
                     'orientador': form.cleaned_data['orientador'],
                     'avaliador_interno': form.cleaned_data['avaliador_interno'],
-                    'nome_avaliador_externo': form.cleaned_data['nome_avaliador_externo'],
-                    'instituicao_avaliador_externo': form.cleaned_data['instituicao_avaliador_externo']
+                    'nome_avaliador_externo': form.cleaned_data[
+                        'nome_avaliador_externo'
+                    ],
+                    'instituicao_avaliador_externo': form.cleaned_data[
+                        'instituicao_avaliador_externo'
+                    ],
                 }
             )
-            messages.success(request, 'Sua solicitação e a composição da banca foram enviadas com sucesso!')
+
+            messages.success(
+                request,
+                'Solicitação de banca enviada com sucesso.'
+            )
+
             return redirect('dashboard')
+
     else:
         form = SolicitacaoBancaForm()
-        
-    return render(request, 'solicitar_banca.html', {'form': form})
+
+    return render(
+        request,
+        'solicitar_banca.html',
+        {
+            'form': form
+        }
+    )
 
 @login_required(login_url='login')
 def cadastrar_aluno(request):
@@ -241,7 +279,6 @@ def pesquisar(request):
 @login_required(login_url='login')
 def documentos(request):
 
-    # Verifica se o usuário é da coordenação
     eh_coordenacao = (
         request.user.is_superuser or
         pUsuario.objects.filter(
@@ -250,7 +287,6 @@ def documentos(request):
         ).exists()
     )
 
-    # Upload permitido apenas para a coordenação
     if request.method == 'POST':
 
         if not eh_coordenacao:
@@ -267,9 +303,7 @@ def documentos(request):
 
         if form.is_valid():
             modelo = form.save(commit=False)
-
             modelo.enviado_por = request.user
-
             modelo.save()
 
             messages.success(
@@ -284,10 +318,22 @@ def documentos(request):
 
     modelos = ModeloDocumento.objects.all().order_by('-data_upload')
 
+    # Bancas aprovadas que podem ser usadas na geração de documentos
+    solicitacoes_aprovadas = SolicitacaoAgendamento.objects.select_related(
+        'projeto_tcc',
+        'projeto_tcc__discente',
+        'espaco',
+        'usuario_solicitante',
+        'usuario_solicitante__usuario'
+    ).filter(
+        status='APROVADA'
+    ).order_by('-opcao_data_inicio')
+
     contexto = {
         'form': form,
         'modelos': modelos,
         'eh_coordenacao': eh_coordenacao,
+        'solicitacoes_aprovadas': solicitacoes_aprovadas,
     }
 
     return render(
@@ -353,6 +399,88 @@ def gerar_pdf_teste(request):
     )
 
     # Converte o HTML em PDF
+    resultado = pisa.CreatePDF(
+        html,
+        dest=response,
+        encoding='UTF-8'
+    )
+
+    if resultado.err:
+        return HttpResponse(
+            'Erro ao gerar o arquivo PDF.',
+            status=500
+        )
+
+    return response
+
+@login_required(login_url='login')
+def gerar_pdf_banca(request, solicitacao_id):
+
+    # Só aceita uma solicitação que esteja aprovada
+    solicitacao = get_object_or_404(
+        SolicitacaoAgendamento.objects.select_related(
+            'projeto_tcc',
+            'projeto_tcc__discente',
+            'espaco'
+        ),
+        id=solicitacao_id,
+        status='APROVADA'
+    )
+
+    # Busca a composição cadastrada para esse TCC
+    composicao = ComposicaoBanca.objects.select_related(
+        'orientador__usuario',
+        'avaliador_interno__usuario'
+    ).filter(
+        projeto_tcc=solicitacao.projeto_tcc
+    ).first()
+
+    # Se a composição não existir, não gera um documento incompleto
+    if not composicao:
+        messages.error(
+            request,
+            'Não foi encontrada uma composição de banca para este TCC.'
+        )
+        return redirect('documentos')
+
+    # Nome do orientador
+    nome_orientador = (
+        composicao.orientador.usuario.get_full_name()
+        or composicao.orientador.usuario.username
+    )
+
+    # Nome do avaliador interno
+    nome_avaliador_interno = (
+        composicao.avaliador_interno.usuario.get_full_name()
+        or composicao.avaliador_interno.usuario.username
+    )
+
+    contexto = {
+        'titulo_tcc': solicitacao.projeto_tcc.titulo,
+        'discente': solicitacao.projeto_tcc.discente.nome,
+        'orientador': nome_orientador,
+        'avaliador_interno': nome_avaliador_interno,
+        'avaliador_externo': composicao.nome_avaliador_externo,
+        'instituicao_externa': composicao.instituicao_avaliador_externo,
+        'espaco': solicitacao.espaco.nome,
+        'data_inicio': solicitacao.opcao_data_inicio,
+        'data_fim': solicitacao.opcao_data_fim,
+    }
+
+    template = get_template(
+        'pdf/dados_banca_aprovada.html'
+    )
+
+    html = template.render(contexto)
+
+    response = HttpResponse(
+        content_type='application/pdf'
+    )
+
+    response['Content-Disposition'] = (
+        'attachment; filename="dados_banca_aprovada.pdf"'
+    )
+
     resultado = pisa.CreatePDF(
         html,
         dest=response,
