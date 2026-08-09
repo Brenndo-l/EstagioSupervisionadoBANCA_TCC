@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from .forms import SolicitacaoBancaForm, DiscenteForm, ProjetoTCCForm
 from .models import pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico
 from django.contrib.auth import authenticate, login
@@ -8,16 +8,39 @@ from django.contrib.auth.decorators import login_required
 # 1. Tela inicial do sistema (Dashboard com os botões principais)
 @login_required(login_url='login')
 def dashboard(request):
-    qtd_solicitacoes = SolicitacaoAgendamento.objects.filter(status='EM_ANÁLISE').count()
-    qtd_bancas = BancaTCC.objects.count()
-    qtd_salas = EspacoFisico.objects.count()
+    # O Django verifica se quem está logado é o administrador (Coordenação)
+    is_coordenacao = request.user.is_superuser
     
-    # Empacota esses números para enviar para o HTML
+    if is_coordenacao:
+        # Visão da Coordenação: Vê o total de TODOS
+        total_bancas = BancaTCC.objects.count()
+        total_pendentes = SolicitacaoAgendamento.objects.filter(status='EM_ANÁLISE').count()
+        
+        # Pega as últimas 5 solicitações para mostrar na tela inicial da coordenação
+        ultimos_pedidos = SolicitacaoAgendamento.objects.filter(status='EM_ANÁLISE').order_by('-id')[:5]
+    else:
+        # Visão do Professor: Vê apenas os SEUS números
+        try:
+            perfil_logado = request.user.pusuario
+            total_bancas = SolicitacaoAgendamento.objects.filter(usuario_solicitante=perfil_logado, status='APROVADA').count()
+            total_pendentes = SolicitacaoAgendamento.objects.filter(usuario_solicitante=perfil_logado, status='EM_ANÁLISE').count()
+        except:
+            total_bancas = 0
+            total_pendentes = 0
+            
+        ultimos_pedidos = None # Professor não precisa dessa lista no painel inicial
+
+    # Quantidade de salas é igual para todos
+    total_salas = EspacoFisico.objects.count()
+    
     contexto = {
-        'qtd_solicitacoes': qtd_solicitacoes,
-        'qtd_bancas': qtd_bancas,
-        'qtd_salas': qtd_salas,
+        'total_bancas': total_bancas,
+        'total_pendentes': total_pendentes,
+        'total_salas': total_salas,
+        'is_coordenacao': is_coordenacao,
+        'ultimos_pedidos': ultimos_pedidos,
     }
+    
     return render(request, 'dashboard.html', contexto)
 
 # 2. Tela onde aparecem as bancas já marcadas
@@ -107,3 +130,22 @@ def login_view(request):
             })
 
     return render(request=request, template_name= 'login.html')
+
+@login_required(login_url='login')
+def avaliar_solicitacao(request, solicitacao_id, acao):
+    # Trava de segurança: Se não for a coordenação tentando acessar esse link, devolve pro painel
+    if not request.user.is_superuser:
+        return redirect('dashboard')
+    
+    # Busca o pedido específico no banco de dados
+    solicitacao = get_object_or_404(SolicitacaoAgendamento, id=solicitacao_id)
+    
+    # Altera o status dependendo do botão que foi clicado
+    if acao == 'aprovar':
+        solicitacao.status = 'APROVADA'
+    elif acao == 'recusar':
+        solicitacao.status = 'RECUSADA'
+        
+    # Salva no banco de dados e recarrega o painel
+    solicitacao.save()
+    return redirect('dashboard')

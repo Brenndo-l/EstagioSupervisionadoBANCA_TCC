@@ -11,4 +11,5 @@ urlpatterns = [
     path('solicitar/', views.solicitar_banca, name='solicitar_banca'),
     path('cadastrar/aluno/', views.cadastrar_aluno, name='cadastrar_aluno'),
     path('cadastrar/projeto/', views.cadastrar_projeto, name='cadastrar_projeto'),
+    path('avaliar/<int:solicitacao_id>/<str:acao>/', views.avaliar_solicitacao, name='avaliar_solicitacao'),
 ]
