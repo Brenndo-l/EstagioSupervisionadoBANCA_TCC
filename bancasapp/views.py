@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from .forms import SolicitacaoBancaForm
+from .forms import SolicitacaoBancaForm, DiscenteForm, ProjetoTCCForm
 from .models import pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
@@ -24,23 +24,24 @@ def dashboard(request):
 @login_required(login_url='login')
 def visualizar_bancas(request):
     try:
-        # Descobre qual é o perfil (pUsuario) da pessoa logada
         perfil_logado = request.user.pusuario
-        # Filtra no banco de dados apenas as bancas solicitadas por esse perfil
         minhas_solicitacoes = SolicitacaoAgendamento.objects.filter(usuario_solicitante=perfil_logado)
     except:
-        # Se for a coordenação/admin, mostra tudo
         minhas_solicitacoes = SolicitacaoAgendamento.objects.all()
 
+    # 1. Pega o status que o usuário clicou lá na URL
     status_filtro = request.GET.get('status')
+    
+    # 2. Se tiver um status, filtra a tabela
     if status_filtro:
         minhas_solicitacoes = minhas_solicitacoes.filter(status=status_filtro)
+
+    # 3. O SEGREDO: Enviar o status_filtro com o nome 'status_atual' para o HTML
     contexto = {
         'solicitacoes': minhas_solicitacoes,
-        'status_filtro': status_filtro,
+        'status_atual': status_filtro 
     }
-
-    # Envia essa lista filtrada para o HTML através do contexto 'solicitacoes'
+    
     return render(request, 'visualizar_bancas.html', contexto)
 
 # 3. Tela do formulário para o professor pedir a banca
@@ -58,6 +59,33 @@ def solicitar_banca(request):
     else:
         form = SolicitacaoBancaForm()  # Se não for POST, cria um formulário vazio
     return render(request, 'solicitar_banca.html', {'form': form})
+
+@login_required(login_url='login')
+def cadastrar_aluno(request):
+    if request.method == 'POST':
+        form = DiscenteForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('dashboard') # Salva e volta pro início
+    else:
+        form = DiscenteForm()
+    
+    # Enviamos o form e um título dinâmico para reaproveitarmos o HTML
+    contexto = {'form': form, 'titulo': 'Cadastrar Novo Aluno'}
+    return render(request, 'cadastrar_dados.html', contexto)
+
+@login_required(login_url='login')
+def cadastrar_projeto(request):
+    if request.method == 'POST':
+        form = ProjetoTCCForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('dashboard')
+    else:
+        form = ProjetoTCCForm()
+    
+    contexto = {'form': form, 'titulo': 'Cadastrar Projeto de TCC'}
+    return render(request, 'cadastrar_dados.html', contexto)
 
 def login_view(request):
     if(request.method == "POST"):

@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="form-container">
+        <!-- O título muda dependendo de qual view chamou a tela -->
+        <h1>{{ titulo }}</h1>
+        <p>Preencha os dados abaixo para registrar no sistema.</p>
+
+        <form method="POST">
+            {% csrf_token %}
+            
+            {{ form.as_p }}
+
+            <button type="submit" class="btn-enviar">Salvar Cadastro</button>
+        </form>
+    </div>
+{% endblock %}

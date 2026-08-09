@@ -1,5 +1,5 @@
 from django import forms
-from .models import SolicitacaoAgendamento
+from .models import SolicitacaoAgendamento, Discente, ProjetoTCC
 
 class SolicitacaoBancaForm(forms.ModelForm):
     class Meta:
@@ -25,3 +25,13 @@ class SolicitacaoBancaForm(forms.ModelForm):
             'opcao_data_inicio': forms.DateTimeInput(attrs={'class': 'form-input', 'type': 'datetime-local'}),
             'opcao_data_fim': forms.DateTimeInput(attrs={'class': 'form-input', 'type': 'datetime-local'}),
         }
+
+class DiscenteForm(forms.ModelForm):
+    class Meta:
+        model = Discente
+        fields = '__all__'
+
+class ProjetoTCCForm(forms.ModelForm):
+    class Meta:
+        model = ProjetoTCC
+        fields = '__all__'

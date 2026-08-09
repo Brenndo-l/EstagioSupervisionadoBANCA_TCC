@@ -10,8 +10,12 @@
     
     <div class="sidebar">
         <h2>UFAC<br>SGTCC</h2>
-        <a href="{% url 'dashboard' %}">VISUALIZAR BANCAS</a>
+        <!-- Menu corrigido e sem duplicatas -->
+        <a href="{% url 'dashboard' %}">INÍCIO / PAINEL</a>
+        <a href="{% url 'visualizar_bancas' %}">VISUALIZAR BANCAS</a>
         <a href="{% url 'solicitar_banca' %}">SOLICITAR BANCA</a>
+        <a href="{% url 'cadastrar_aluno' %}">CADASTRAR ALUNO</a>
+        <a href="{% url 'cadastrar_projeto' %}">CADASTRAR PROJETO</a>
         <a href="#">DOCUMENTOS</a>
         
         <div class="footer-menu">
