@@ -48,37 +48,59 @@ class SolicitacaoBancaForm(forms.ModelForm):
         }
 
     def clean(self):
-            # Puxa os dados que o professor digitou na tela
-            cleaned_data = super().clean()
-            espaco = cleaned_data.get('espaco')
-            data_inicio = cleaned_data.get('opcao_data_inicio')
-            data_fim = cleaned_data.get('opcao_data_fim')
+        # Puxa todos os dados preenchidos
+        cleaned_data = super().clean()
+        espaco = cleaned_data.get('espaco')
+        data_inicio = cleaned_data.get('opcao_data_inicio')
+        data_fim = cleaned_data.get('opcao_data_fim')
+        
+        # Puxa os professores escolhidos no form
+        orientador = cleaned_data.get('orientador')
+        avaliador_interno = cleaned_data.get('avaliador_interno')
 
-            # Só faz a verificação se o professor preencheu todos os três campos
-            if espaco and data_inicio and data_fim:
+        if espaco and data_inicio and data_fim:
+            
+            # VALIDAÇÃO 1: Impede viagem no tempo
+            if data_fim <= data_inicio:
+                self.add_error('opcao_data_fim', "A data e hora de término devem ser posteriores ao horário de início.")
+
+            # Filtro base para verificar se os horários se cruzam (Início < Fim Antigo E Fim > Início Antigo)
+            filtro_horario = Q(opcao_data_inicio__lt=data_fim) & Q(opcao_data_fim__gt=data_inicio)
+            
+            # Filtro base de bancas (ignora recusadas e ignora a própria banca se estiver sendo editada futuramente)
+            agendamentos_ativos = SolicitacaoAgendamento.objects.exclude(status='RECUSADA').exclude(pk=self.instance.pk)
+
+            # --- TRAVA 1: CHOQUE DE SALAS ---
+            if agendamentos_ativos.filter(filtro_horario, espaco=espaco).exists():
+                self.add_error('espaco', f"O {espaco.nome} já possui uma banca agendada ou em análise para este mesmo horário.")
+
+            # --- TRAVA 2: CLONAGEM DE PROFESSOR ---
+            if orientador and avaliador_interno and orientador == avaliador_interno:
+                self.add_error('avaliador_interno', "O professor orientador não pode ser também o avaliador interno desta banca.")
+
+            # --- TRAVA 3: CHOQUE DO ORIENTADOR ---
+            if orientador:
+                # Verifica se ele já está como orientador OU como avaliador em outra banca no mesmo horário
+                orientador_ocupado = agendamentos_ativos.filter(filtro_horario).filter(
+                    Q(projeto_tcc__composicaobanca__orientador=orientador) |
+                    Q(projeto_tcc__composicaobanca__avaliador_interno=orientador)
+                ).exists()
                 
-                # VALIDAÇÃO BÔNUS: Impede viagem no tempo (fim antes do início)
-                if data_fim <= data_inicio:
-                    self.add_error('opcao_data_fim', "A data e hora de término devem ser posteriores ao horário de início.")
+                if orientador_ocupado:
+                    self.add_error('orientador', "Este professor já está alocado em outra banca (como orientador ou avaliador) neste mesmo horário.")
 
-                # ALGORITMO DE CHOQUE DE SALAS (Q Objects)
-                # 1. Filtra pelo espaço escolhido
-                # 2. Ignora bancas que a coordenação já recusou
-                # 3. Cruza os horários: (Início Novo < Fim Antigo) E (Fim Novo > Início Antigo)
-                conflitos = SolicitacaoAgendamento.objects.filter(
-                    espaco=espaco
-                ).exclude(
-                    status='RECUSADA' 
-                ).filter(
-                    Q(opcao_data_inicio__lt=data_fim) & 
-                    Q(opcao_data_fim__gt=data_inicio)
-                )
+            # --- TRAVA 4: CHOQUE DO AVALIADOR INTERNO ---
+            if avaliador_interno:
+                # Verifica se ele já está como orientador OU como avaliador em outra banca no mesmo horário
+                avaliador_ocupado = agendamentos_ativos.filter(filtro_horario).filter(
+                    Q(projeto_tcc__composicaobanca__orientador=avaliador_interno) |
+                    Q(projeto_tcc__composicaobanca__avaliador_interno=avaliador_interno)
+                ).exists()
 
-                # Se a busca no banco retornar algum resultado, a sala está ocupada!
-                if conflitos.exists():
-                    self.add_error('espaco', f"O {espaco.nome} já possui uma banca agendada ou em análise para este mesmo horário.")
+                if avaliador_ocupado:
+                    self.add_error('avaliador_interno', "Este professor já está alocado em outra banca (como orientador ou avaliador) neste mesmo horário.")
 
-            return cleaned_data       
+        return cleaned_data       
 
 class DiscenteForm(forms.ModelForm):
     class Meta:
