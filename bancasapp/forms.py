@@ -1,5 +1,6 @@
 from django import forms
 from .models import SolicitacaoAgendamento, Discente, ProjetoTCC, pUsuario, ModeloDocumento
+from django.db.models import Q
 
 class SolicitacaoBancaForm(forms.ModelForm):
     orientador = forms.ModelChoiceField(
@@ -45,6 +46,39 @@ class SolicitacaoBancaForm(forms.ModelForm):
             'opcao_data_inicio': forms.DateTimeInput(attrs={'class': 'form-input', 'type': 'datetime-local'}),
             'opcao_data_fim': forms.DateTimeInput(attrs={'class': 'form-input', 'type': 'datetime-local'}),
         }
+
+    def clean(self):
+            # Puxa os dados que o professor digitou na tela
+            cleaned_data = super().clean()
+            espaco = cleaned_data.get('espaco')
+            data_inicio = cleaned_data.get('opcao_data_inicio')
+            data_fim = cleaned_data.get('opcao_data_fim')
+
+            # Só faz a verificação se o professor preencheu todos os três campos
+            if espaco and data_inicio and data_fim:
+                
+                # VALIDAÇÃO BÔNUS: Impede viagem no tempo (fim antes do início)
+                if data_fim <= data_inicio:
+                    self.add_error('opcao_data_fim', "A data e hora de término devem ser posteriores ao horário de início.")
+
+                # ALGORITMO DE CHOQUE DE SALAS (Q Objects)
+                # 1. Filtra pelo espaço escolhido
+                # 2. Ignora bancas que a coordenação já recusou
+                # 3. Cruza os horários: (Início Novo < Fim Antigo) E (Fim Novo > Início Antigo)
+                conflitos = SolicitacaoAgendamento.objects.filter(
+                    espaco=espaco
+                ).exclude(
+                    status='RECUSADA' 
+                ).filter(
+                    Q(opcao_data_inicio__lt=data_fim) & 
+                    Q(opcao_data_fim__gt=data_inicio)
+                )
+
+                # Se a busca no banco retornar algum resultado, a sala está ocupada!
+                if conflitos.exists():
+                    self.add_error('espaco', f"O {espaco.nome} já possui uma banca agendada ou em análise para este mesmo horário.")
+
+            return cleaned_data       
 
 class DiscenteForm(forms.ModelForm):
     class Meta:

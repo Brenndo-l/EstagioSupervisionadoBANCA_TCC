@@ -170,6 +170,12 @@ def solicitar_banca(request):
             )
 
             return redirect('dashboard')
+            
+        else:
+            # Transforma os erros de validação (como o choque de salas) em notificações no topo
+            for campo, erros in form.errors.items():
+                for erro in erros:
+                    messages.error(request, erro)
 
     else:
         form = SolicitacaoBancaForm()
