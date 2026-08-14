@@ -538,5 +538,8 @@ img {
     }
 }
 
-
+/* Bloqueia absolutamente qualquer erro nativo gerado pelo {{ form.as_p }} */
+.errorlist {
+    display: none !important;
+}
 
