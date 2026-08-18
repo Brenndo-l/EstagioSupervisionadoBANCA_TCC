@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import FileExtensionValidator
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 
 #Quem e o usuario logado - coordenação ou docente
 #conectado ao sistema de login
@@ -23,11 +24,148 @@ class pUsuario(models.Model):
             
         return f"{nome_exibicao} ({self.get_perfil_display()})"
 
-#Cadasttro basico das salas
+# Salas e laboratórios que podem receber bancas
 class EspacoFisico(models.Model):
-    nome = models.CharField(max_length=255)
+
+    nome = models.CharField(
+        max_length=255
+    )
+
+    ativo = models.BooleanField(
+        default=True
+    )
+
+    class Meta:
+        ordering = ['nome']
+        verbose_name = 'Espaço físico'
+        verbose_name_plural = 'Espaços físicos'
+
     def __str__(self):
         return self.nome
+
+# Períodos em que uma sala ou laboratório está disponível
+class DisponibilidadeEspaco(models.Model):
+
+    espaco = models.ForeignKey(
+        EspacoFisico,
+        on_delete=models.CASCADE,
+        related_name='disponibilidades'
+    )
+
+    data_hora_inicio = models.DateTimeField(
+        verbose_name='Data e hora de início'
+    )
+
+    data_hora_fim = models.DateTimeField(
+        verbose_name='Data e hora de término'
+    )
+
+    ativo = models.BooleanField(
+        default=True
+    )
+
+    observacao = models.CharField(
+        max_length=255,
+        blank=True
+    )
+
+    criada_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='disponibilidades_criadas',
+        editable=False
+    )
+
+    data_cadastro = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    class Meta:
+        ordering = [
+            'data_hora_inicio',
+            'espaco__nome',
+        ]
+
+        verbose_name = 'Disponibilidade de espaço'
+        verbose_name_plural = 'Disponibilidades de espaços'
+
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(
+                    data_hora_fim__gt=models.F(
+                        'data_hora_inicio'
+                    )
+                ),
+                name='disponibilidade_fim_apos_inicio'
+            ),
+        ]
+
+        indexes = [
+            models.Index(
+                fields=[
+                    'espaco',
+                    'data_hora_inicio',
+                    'data_hora_fim',
+                ],
+                name='disp_espaco_periodo_idx'
+            ),
+        ]
+
+    def clean(self):
+
+        super().clean()
+
+        erros = {}
+
+        if (
+            self.data_hora_inicio
+            and self.data_hora_fim
+            and self.data_hora_fim <= self.data_hora_inicio
+        ):
+            erros['data_hora_fim'] = (
+                'O término deve ser posterior ao início.'
+            )
+
+        # Uma sala não pode possuir duas disponibilidades
+        # ativas que se cruzem.
+        if (
+            self.ativo
+            and self.espaco_id
+            and self.data_hora_inicio
+            and self.data_hora_fim
+            and self.data_hora_fim > self.data_hora_inicio
+        ):
+
+            conflitos = (
+                DisponibilidadeEspaco.objects
+                .filter(
+                    espaco_id=self.espaco_id,
+                    ativo=True,
+                    data_hora_inicio__lt=self.data_hora_fim,
+                    data_hora_fim__gt=self.data_hora_inicio,
+                )
+                .exclude(
+                    pk=self.pk
+                )
+            )
+
+            if conflitos.exists():
+                erros['__all__'] = (
+                    'Já existe uma disponibilidade ativa para '
+                    'este espaço que coincide com o período informado.'
+                )
+
+        if erros:
+            raise ValidationError(erros)
+
+    def __str__(self):
+        return (
+            f'{self.espaco.nome} — '
+            f'{self.data_hora_inicio:%d/%m/%Y %H:%M} até '
+            f'{self.data_hora_fim:%d/%m/%Y %H:%M}'
+        )
 
 #Dados dos alunos que defendem a banca
 class Discente(models.Model):
@@ -92,7 +230,7 @@ class SolicitacaoAgendamento(models.Model):
 
     espaco = models.ForeignKey(
         EspacoFisico,
-        on_delete=models.CASCADE
+        on_delete=models.PROTECT
     )
 
     opcao_data_inicio = models.DateTimeField()
