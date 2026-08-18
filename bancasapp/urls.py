@@ -19,4 +19,8 @@ urlpatterns = [
     path('documentos/teste-pdf/', views.gerar_pdf_teste, name='gerar_pdf_teste'),
     path('documentos/banca/<int:solicitacao_id>/pdf/', views.gerar_pdf_banca, name='gerar_pdf_banca'),
     path('espacos/', views.gerenciar_espacos, name='gerenciar_espacos'),
+    path('espacos/<int:espaco_id>/editar/', views.editar_espaco, name='editar_espaco'),
+    path('espacos/<int:espaco_id>/status/',views.alternar_status_espaco,name='alternar_status_espaco'),
+    path('disponibilidades/<int:disponibilidade_id>/editar/',views.editar_disponibilidade,name='editar_disponibilidade'),
+    path('disponibilidades/<int:disponibilidade_id>/status/', views.alternar_status_disponibilidade, name='alternar_status_disponibilidade'),
 ]

@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="dashboard-header">
+    <h1>{{ titulo }}</h1>
+    <p>{{ descricao }}</p>
+</div>
+
+<div class="form-container">
+
+    <form method="POST">
+
+        {% csrf_token %}
+
+        {{ form.as_p }}
+
+        <button
+            type="submit"
+            class="btn-enviar"
+        >
+            {{ texto_botao }}
+        </button>
+
+    </form>
+
+    <p style="margin-top: 20px;">
+        <a href="{% url 'gerenciar_espacos' %}">
+            Voltar ao gerenciamento de salas
+        </a>
+    </p>
+
+</div>
+
+{% endblock %}

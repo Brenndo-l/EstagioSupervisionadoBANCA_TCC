@@ -18,6 +18,8 @@ from .permissions import (
 from django.db import transaction
 from django.utils import timezone
 from django.core.paginator import Paginator
+from django.views.decorators.http import require_POST
+from django.core.exceptions import ValidationError
 
 
 
@@ -879,4 +881,349 @@ def gerenciar_espacos(request):
         request,
         'gerenciar_espacos.html',
         contexto
+    )
+
+def _disponibilidade_possui_compromisso(
+    disponibilidade
+):
+    """
+    Verifica se existem solicitações ou bancas futuras
+    que utilizam o período da disponibilidade.
+    """
+
+    agora = timezone.now()
+
+    solicitacao_existente = (
+        SolicitacaoAgendamento.objects
+        .filter(
+            espaco=disponibilidade.espaco,
+            status__in=[
+                'EM_ANÁLISE',
+                'APROVADA',
+            ],
+            opcao_data_inicio__lt=(
+                disponibilidade.data_hora_fim
+            ),
+            opcao_data_fim__gt=(
+                disponibilidade.data_hora_inicio
+            ),
+            opcao_data_fim__gte=agora,
+        )
+        .exists()
+    )
+
+    banca_existente = (
+        BancaTCC.objects
+        .filter(
+            espaco=disponibilidade.espaco,
+            data_horario_inicio__lt=(
+                disponibilidade.data_hora_fim
+            ),
+            data_horario_fim__gt=(
+                disponibilidade.data_hora_inicio
+            ),
+            data_horario_fim__gte=agora,
+        )
+        .exists()
+    )
+
+    return (
+        solicitacao_existente
+        or banca_existente
+    )
+
+
+@coordenacao_required
+def editar_espaco(request, espaco_id):
+
+    espaco = get_object_or_404(
+        EspacoFisico,
+        pk=espaco_id
+    )
+
+    if request.method == 'POST':
+
+        form = EspacoFisicoForm(
+            request.POST,
+            instance=espaco
+        )
+
+        if form.is_valid():
+
+            form.save()
+
+            messages.success(
+                request,
+                'Espaço atualizado com sucesso.'
+            )
+
+            return redirect(
+                'gerenciar_espacos'
+            )
+
+        for erros in form.errors.values():
+            for erro in erros:
+                messages.error(
+                    request,
+                    erro
+                )
+
+    else:
+        form = EspacoFisicoForm(
+            instance=espaco
+        )
+
+    contexto = {
+        'titulo': 'Editar sala ou laboratório',
+        'descricao': (
+            'Altere o nome do espaço físico selecionado.'
+        ),
+        'form': form,
+        'texto_botao': 'SALVAR ALTERAÇÕES',
+    }
+
+    return render(
+        request,
+        'editar_gerenciamento.html',
+        contexto
+    )
+
+
+@coordenacao_required
+@require_POST
+def alternar_status_espaco(
+    request,
+    espaco_id
+):
+
+    espaco = get_object_or_404(
+        EspacoFisico,
+        pk=espaco_id
+    )
+
+    # Se estiver ativo, a operação tentará desativá-lo.
+    if espaco.ativo:
+
+        agora = timezone.now()
+
+        possui_solicitacao = (
+            SolicitacaoAgendamento.objects
+            .filter(
+                espaco=espaco,
+                status__in=[
+                    'EM_ANÁLISE',
+                    'APROVADA',
+                ],
+                opcao_data_fim__gte=agora,
+            )
+            .exists()
+        )
+
+        possui_banca = (
+            BancaTCC.objects
+            .filter(
+                espaco=espaco,
+                data_horario_fim__gte=agora,
+            )
+            .exists()
+        )
+
+        if possui_solicitacao or possui_banca:
+
+            messages.error(
+                request,
+                'Este espaço possui solicitações ou bancas futuras '
+                'e não pode ser desativado.'
+            )
+
+            return redirect(
+                'gerenciar_espacos'
+            )
+
+        espaco.ativo = False
+
+        messages.warning(
+            request,
+            f'O espaço "{espaco.nome}" foi desativado.'
+        )
+
+    else:
+
+        espaco.ativo = True
+
+        messages.success(
+            request,
+            f'O espaço "{espaco.nome}" foi ativado.'
+        )
+
+    espaco.save(
+        update_fields=['ativo']
+    )
+
+    return redirect(
+        'gerenciar_espacos'
+    )
+
+
+@coordenacao_required
+def editar_disponibilidade(
+    request,
+    disponibilidade_id
+):
+
+    disponibilidade = get_object_or_404(
+        DisponibilidadeEspaco.objects
+        .select_related('espaco'),
+        pk=disponibilidade_id
+    )
+
+    if request.method == 'POST':
+
+        # Não permite modificar um período já utilizado.
+        if _disponibilidade_possui_compromisso(
+            disponibilidade
+        ):
+
+            messages.error(
+                request,
+                'Esta disponibilidade possui uma solicitação '
+                'ou banca futura vinculada ao período e não '
+                'pode ser editada.'
+            )
+
+            return redirect(
+                'gerenciar_espacos'
+            )
+
+        form = DisponibilidadeEspacoForm(
+            request.POST,
+            instance=disponibilidade
+        )
+
+        if form.is_valid():
+
+            form.save()
+
+            messages.success(
+                request,
+                'Disponibilidade atualizada com sucesso.'
+            )
+
+            return redirect(
+                'gerenciar_espacos'
+            )
+
+        for erros in form.errors.values():
+            for erro in erros:
+                messages.error(
+                    request,
+                    erro
+                )
+
+    else:
+        form = DisponibilidadeEspacoForm(
+            instance=disponibilidade
+        )
+
+    contexto = {
+        'titulo': 'Editar disponibilidade',
+        'descricao': (
+            'Altere o espaço, o período ou a observação.'
+        ),
+        'form': form,
+        'texto_botao': 'SALVAR ALTERAÇÕES',
+    }
+
+    return render(
+        request,
+        'editar_gerenciamento.html',
+        contexto
+    )
+
+
+@coordenacao_required
+@require_POST
+def alternar_status_disponibilidade(
+    request,
+    disponibilidade_id
+):
+
+    disponibilidade = get_object_or_404(
+        DisponibilidadeEspaco.objects
+        .select_related('espaco'),
+        pk=disponibilidade_id
+    )
+
+    # Desativação
+    if disponibilidade.ativo:
+
+        if _disponibilidade_possui_compromisso(
+            disponibilidade
+        ):
+
+            messages.error(
+                request,
+                'Esta disponibilidade possui uma solicitação '
+                'ou banca futura e não pode ser desativada.'
+            )
+
+            return redirect(
+                'gerenciar_espacos'
+            )
+
+        disponibilidade.ativo = False
+
+        disponibilidade.save(
+            update_fields=['ativo']
+        )
+
+        messages.warning(
+            request,
+            'A disponibilidade foi desativada.'
+        )
+
+    # Ativação
+    else:
+
+        if not disponibilidade.espaco.ativo:
+
+            messages.error(
+                request,
+                'Não é possível ativar a disponibilidade '
+                'porque o espaço está inativo.'
+            )
+
+            return redirect(
+                'gerenciar_espacos'
+            )
+
+        disponibilidade.ativo = True
+
+        # Verifica novamente possíveis choques antes de ativar.
+        try:
+            disponibilidade.full_clean()
+
+        except ValidationError as erro:
+
+            for mensagem in erro.messages:
+                messages.error(
+                    request,
+                    mensagem
+                )
+
+            return redirect(
+                'gerenciar_espacos'
+            )
+
+        disponibilidade.save(
+            update_fields=['ativo']
+        )
+
+        messages.success(
+            request,
+            'A disponibilidade foi ativada.'
+        )
+
+    return redirect(
+        'gerenciar_espacos'
     )
