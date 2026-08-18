@@ -9,57 +9,84 @@ from django.http import FileResponse, HttpResponse
 from pathlib import Path
 from django.template.loader import get_template
 from xhtml2pdf import pisa
+from .permissions import (
+    docente_required,
+    usuario_e_coordenacao,
+    usuario_interno_required,
+)
 
 
 # 1. Tela inicial do sistema (Dashboard com os botões principais)
-@login_required(login_url='login')
+@usuario_interno_required
 def dashboard(request):
-    # Verifica se quem está logado é a Coordenação
-    is_coordenacao = request.user.is_superuser
+
+    # Usa a mesma regra para identificar a Coordenação
+    # em todo o sistema.
+    is_coordenacao = usuario_e_coordenacao(
+        request.user
+    )
 
     if is_coordenacao:
-        # Visão da Coordenação: vê os dados de todo o sistema
-        total_bancas = BancaTCC.objects.count()
 
-        total_pendentes = SolicitacaoAgendamento.objects.filter(
-            status='EM_ANÁLISE'
-        ).count()
+        # Enquanto a criação da BancaTCC oficial ainda não foi
+        # implementada, consideramos como bancas agendadas as
+        # solicitações que foram aprovadas.
+        total_bancas = (
+            SolicitacaoAgendamento.objects.filter(
+                status='APROVADA'
+            ).count()
+        )
 
-        # Últimas 5 solicitações pendentes mostradas no Dashboard
-        # select_related carrega os dados relacionados junto com a consulta
-        ultimos_pedidos = SolicitacaoAgendamento.objects.select_related(
-            'projeto_tcc',
-            'projeto_tcc__discente',
-            'espaco',
-            'usuario_solicitante',
-            'usuario_solicitante__usuario'
-        ).filter(
-            status='EM_ANÁLISE'
-        ).order_by('-id')[:5]
+        total_pendentes = (
+            SolicitacaoAgendamento.objects.filter(
+                status='EM_ANÁLISE'
+            ).count()
+        )
+
+        # A Coordenação visualiza as últimas cinco
+        # solicitações pendentes de todo o sistema.
+        ultimos_pedidos = (
+            SolicitacaoAgendamento.objects
+            .select_related(
+                'projeto_tcc',
+                'projeto_tcc__discente',
+                'espaco',
+                'usuario_solicitante',
+                'usuario_solicitante__usuario'
+            )
+            .filter(
+                status='EM_ANÁLISE'
+            )
+            .order_by('-id')[:5]
+        )
 
     else:
-        # Visão do Professor: vê apenas os próprios números
-        try:
-            perfil_logado = request.user.pusuario
 
-            total_bancas = SolicitacaoAgendamento.objects.filter(
+        # Como o decorator já verificou que o usuário é docente,
+        # podemos buscar o perfil com segurança.
+        perfil_logado = pUsuario.objects.get(
+            usuario=request.user,
+            perfil='DOCENTE'
+        )
+
+        total_bancas = (
+            SolicitacaoAgendamento.objects.filter(
                 usuario_solicitante=perfil_logado,
                 status='APROVADA'
             ).count()
+        )
 
-            total_pendentes = SolicitacaoAgendamento.objects.filter(
+        total_pendentes = (
+            SolicitacaoAgendamento.objects.filter(
                 usuario_solicitante=perfil_logado,
                 status='EM_ANÁLISE'
             ).count()
+        )
 
-        except:
-            total_bancas = 0
-            total_pendentes = 0
-
-        # Professor não recebe a lista de solicitações pendentes da Coordenação
+        # Docentes não recebem a relação administrativa
+        # das solicitações pendentes.
         ultimos_pedidos = None
 
-    # Quantidade de salas é igual para todos
     total_salas = EspacoFisico.objects.count()
 
     contexto = {
@@ -70,45 +97,67 @@ def dashboard(request):
         'ultimos_pedidos': ultimos_pedidos,
     }
 
-    return render(request, 'dashboard.html', contexto)
+    return render(
+        request,
+        'dashboard.html',
+        contexto
+    )
 
 # 2. Tela onde aparecem as bancas já marcadas
-@login_required(login_url='login')
+@usuario_interno_required
 def visualizar_bancas(request):
-    try:
-        perfil_logado = request.user.pusuario
 
-        minhas_solicitacoes = SolicitacaoAgendamento.objects.select_related(
+    consulta = (
+        SolicitacaoAgendamento.objects
+        .select_related(
             'projeto_tcc',
             'projeto_tcc__discente',
             'espaco',
             'usuario_solicitante',
             'usuario_solicitante__usuario'
-        ).filter(
+        )
+    )
+
+    if usuario_e_coordenacao(request.user):
+
+        # A Coordenação visualiza todas as solicitações.
+        solicitacoes = consulta.all()
+
+    else:
+
+        # O docente visualiza apenas as próprias solicitações.
+        perfil_logado = pUsuario.objects.get(
+            usuario=request.user,
+            perfil='DOCENTE'
+        )
+
+        solicitacoes = consulta.filter(
             usuario_solicitante=perfil_logado
         )
 
-    except:
-        minhas_solicitacoes = SolicitacaoAgendamento.objects.select_related(
-            'projeto_tcc',
-            'projeto_tcc__discente',
-            'espaco',
-            'usuario_solicitante',
-            'usuario_solicitante__usuario'
-        ).all()
-
-    # Pega o status selecionado no filtro
     status_filtro = request.GET.get('status')
 
-    # Filtra as solicitações pelo status
-    if status_filtro:
-        minhas_solicitacoes = minhas_solicitacoes.filter(
+    status_validos = {
+        valor
+        for valor, nome
+        in SolicitacaoAgendamento.STATUS_SOLICITACAO
+    }
+
+    if status_filtro in status_validos:
+
+        solicitacoes = solicitacoes.filter(
             status=status_filtro
         )
 
+    else:
+
+        # Impede valores inexistentes passados manualmente
+        # pela URL.
+        status_filtro = None
+
     contexto = {
-        'solicitacoes': minhas_solicitacoes,
-        'status_atual': status_filtro
+        'solicitacoes': solicitacoes,
+        'status_atual': status_filtro,
     }
 
     return render(
@@ -118,49 +167,55 @@ def visualizar_bancas(request):
     )
 
 # 3. Tela do formulário para o professor pedir a banca
-@login_required(login_url='login')
+@docente_required
 def solicitar_banca(request):
 
-    # Só docentes cadastrados podem solicitar uma banca
-    perfil_logado = pUsuario.objects.filter(
+    perfil_logado = pUsuario.objects.get(
         usuario=request.user,
         perfil='DOCENTE'
-    ).first()
-
-    if not perfil_logado:
-        messages.error(
-            request,
-            'Apenas docentes cadastrados podem solicitar uma banca.'
-        )
-        return redirect('dashboard')
+    )
 
     if request.method == 'POST':
-        form = SolicitacaoBancaForm(request.POST)
+
+        form = SolicitacaoBancaForm(
+            request.POST
+        )
 
         if form.is_valid():
 
-            # Salva a solicitação
-            solicitacao = form.save(commit=False)
+            solicitacao = form.save(
+                commit=False
+            )
 
             solicitacao.status = 'EM_ANÁLISE'
 
-            # Usa o perfil docente realmente ligado ao usuário logado
-            solicitacao.usuario_solicitante = perfil_logado
+            solicitacao.usuario_solicitante = (
+                perfil_logado
+            )
 
             solicitacao.save()
 
-            # Salva quem fará parte da banca
+            # Registra os integrantes escolhidos para o TCC.
             ComposicaoBanca.objects.update_or_create(
                 projeto_tcc=solicitacao.projeto_tcc,
                 defaults={
-                    'orientador': form.cleaned_data['orientador'],
-                    'avaliador_interno': form.cleaned_data['avaliador_interno'],
-                    'nome_avaliador_externo': form.cleaned_data[
-                        'nome_avaliador_externo'
-                    ],
-                    'instituicao_avaliador_externo': form.cleaned_data[
-                        'instituicao_avaliador_externo'
-                    ],
+                    'orientador':
+                        form.cleaned_data['orientador'],
+
+                    'avaliador_interno':
+                        form.cleaned_data[
+                            'avaliador_interno'
+                        ],
+
+                    'nome_avaliador_externo':
+                        form.cleaned_data[
+                            'nome_avaliador_externo'
+                        ],
+
+                    'instituicao_avaliador_externo':
+                        form.cleaned_data[
+                            'instituicao_avaliador_externo'
+                        ],
                 }
             )
 
@@ -170,22 +225,32 @@ def solicitar_banca(request):
             )
 
             return redirect('dashboard')
-            
+
         else:
-            # Transforma os erros de validação (como o choque de salas) em notificações no topo
+
+            # Mantém as mensagens dos bloqueios de horário,
+            # sala, orientador e avaliador.
             for campo, erros in form.errors.items():
+
                 for erro in erros:
-                    messages.error(request, erro)
+
+                    messages.error(
+                        request,
+                        erro
+                    )
 
     else:
+
         form = SolicitacaoBancaForm()
+
+    contexto = {
+        'form': form,
+    }
 
     return render(
         request,
         'solicitar_banca.html',
-        {
-            'form': form
-        }
+        contexto
     )
 
 @login_required(login_url='login')
