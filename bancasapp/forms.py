@@ -100,7 +100,28 @@ class SolicitacaoBancaForm(forms.ModelForm):
                 if avaliador_ocupado:
                     self.add_error('avaliador_interno', "Este professor já está alocado em outra banca (como orientador ou avaliador) neste mesmo horário.")
 
-        return cleaned_data       
+        return cleaned_data
+      
+class AvaliacaoSolicitacaoForm(forms.Form):
+
+    motivo_decisao = forms.CharField(
+        label='Justificativa da decisão',
+        required=True,
+        widget=forms.Textarea(
+            attrs={
+                'class': 'form-input',
+                'rows': 5,
+                'placeholder': (
+                    'Informe o motivo da aprovação ou da recusa.'
+                ),
+            }
+        ),
+        error_messages={
+            'required': (
+                'Informe uma justificativa antes de concluir a avaliação.'
+            ),
+        }
+    )     
 
 class DiscenteForm(forms.ModelForm):
     class Meta:

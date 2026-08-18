@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import FileExtensionValidator
+from django.utils import timezone
 
 #Quem e o usuario logado - coordenação ou docente
 #conectado ao sistema de login
@@ -69,19 +70,74 @@ class MembroBanca(models.Model):
     docente = models.ForeignKey(pUsuario, on_delete=models.CASCADE)
     papel = models.CharField(max_length=15, choices=PAPEIS)
 
-#Formulario de aguardo na coordenação que e enviado pelo professor.
+# Solicitação enviada pelo docente e avaliada pela coordenação
 class SolicitacaoAgendamento(models.Model):
+
     STATUS_SOLICITACAO = (
         ('EM_ANÁLISE', 'Em Análise'),
         ('APROVADA', 'Aprovada'),
         ('RECUSADA', 'Recusada'),
     )
-    usuario_solicitante = models.ForeignKey(pUsuario, on_delete=models.CASCADE)
-    projeto_tcc = models.ForeignKey(ProjetoTCC, on_delete=models.CASCADE)
-    espaco = models.ForeignKey(EspacoFisico, on_delete=models.CASCADE)
+
+    usuario_solicitante = models.ForeignKey(
+        pUsuario,
+        on_delete=models.CASCADE,
+        related_name='solicitacoes_enviadas'
+    )
+
+    projeto_tcc = models.ForeignKey(
+        ProjetoTCC,
+        on_delete=models.CASCADE
+    )
+
+    espaco = models.ForeignKey(
+        EspacoFisico,
+        on_delete=models.CASCADE
+    )
+
     opcao_data_inicio = models.DateTimeField()
+
     opcao_data_fim = models.DateTimeField()
-    status = models.CharField(max_length=15, choices=STATUS_SOLICITACAO, default='EM_ANÁLISE')
+
+    status = models.CharField(
+        max_length=15,
+        choices=STATUS_SOLICITACAO,
+        default='EM_ANÁLISE'
+    )
+
+    # Data em que o docente enviou a solicitação
+    data_solicitacao = models.DateTimeField(
+        default=timezone.now,
+        editable=False
+    )
+
+    # Preenchida somente quando a coordenação avaliar
+    data_decisao = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False
+    )
+
+    # Usuário da coordenação que aprovou ou recusou
+    decidida_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='solicitacoes_decididas',
+        editable=False
+    )
+
+    # Justificativa informada pela coordenação
+    motivo_decisao = models.TextField(
+        blank=True
+    )
+
+    def __str__(self):
+        return (
+            f'{self.projeto_tcc.titulo} - '
+            f'{self.get_status_display()}'
+        )
 
 #Documentos que a coordenação gera tanto para o docente como para o SEI
 class DocumentoEmitido(models.Model):

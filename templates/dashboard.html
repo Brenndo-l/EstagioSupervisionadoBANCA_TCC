@@ -1,58 +1,150 @@
 {% extends 'base.html' %}
 
 {% block content %}
+
     <div class="dashboard-header">
         <h1>Painel de Controle</h1>
-        
-        <!-- Mensagem de boas-vindas dinâmica -->
+
         {% if is_coordenacao %}
-            <p><strong>Modo Coordenação:</strong> Resumo global do Sistema de Gerenciamento de Bancas de TCC.</p>
+            <p>
+                <strong>Modo Coordenação:</strong>
+                Resumo global do Sistema de Gerenciamento de Bancas de TCC.
+            </p>
         {% else %}
-            <p>Resumo dos seus agendamentos de Bancas de TCC.</p>
+            <p>
+                Resumo dos seus agendamentos de Bancas de TCC.
+            </p>
         {% endif %}
     </div>
 
-    <!-- Os cards de números continuam iguais -->
     <div class="dashboard-cards">
+
         <div class="card">
             <h3>Bancas Agendadas</h3>
-            <p>{{ total_bancas }}</p> 
+            <p>{{ total_bancas }}</p>
         </div>
+
         <div class="card">
             <h3>Solicitações Pendentes</h3>
             <p>{{ total_pendentes }}</p>
         </div>
+
         <div class="card">
             <h3>Salas Disponíveis</h3>
             <p>{{ total_salas }}</p>
         </div>
+
     </div>
 
     {% if is_coordenacao %}
-        <div class="coordenacao-panel" style="margin-top: 40px; background-color: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-            <h2 style="color: #d9534f; margin-bottom: 15px;">Atenção Coordenação: Pendentes de Análise</h2>
-            
+
+        <div
+            class="coordenacao-panel"
+            style="
+                margin-top: 40px;
+                background-color: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            "
+        >
+
+            <h2
+                style="
+                    color: #d9534f;
+                    margin-bottom: 15px;
+                "
+            >
+                Atenção Coordenação: Pendentes de Análise
+            </h2>
+
             {% if ultimos_pedidos %}
-                <ul style="list-style: none; padding: 0;">
+
+                <ul
+                    style="
+                        list-style: none;
+                        padding: 0;
+                    "
+                >
+
                     {% for pedido in ultimos_pedidos %}
-                        <li style="padding: 10px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-                            <span><strong>{{ pedido.projeto_tcc.titulo }}</strong> - Solicitado para: {{ pedido.opcao_data_inicio|date:"d/m/Y H:i" }} no <strong>{{ pedido.espaco }}</strong></span>
-                            
-                            <!-- Grupo de botões e status -->
-                            <div>
-                                <span class="status-badge status-analise" style="background-color: #f0ad4e; padding: 4px 8px; border-radius: 12px; color: white; font-size: 12px; margin-right: 15px;">Pendente</span>
-                                
-                                <!-- Botões que chamam a URL dinâmica que criamos -->
-                                <a href="{% url 'avaliar_solicitacao' pedido.id 'aprovar' %}" style="text-decoration: none; background-color: #5cb85c; color: white; padding: 6px 12px; border-radius: 5px; font-size: 12px; font-weight: bold; margin-right: 5px;">Aprovar</a>
-                                
-                                <a href="{% url 'avaliar_solicitacao' pedido.id 'recusar' %}" style="text-decoration: none; background-color: #d9534f; color: white; padding: 6px 12px; border-radius: 5px; font-size: 12px; font-weight: bold;">Recusar</a>
+
+                        <li
+                            style="
+                                padding: 12px 10px;
+                                border-bottom: 1px solid #eee;
+                                display: flex;
+                                justify-content: space-between;
+                                align-items: center;
+                                gap: 15px;
+                                flex-wrap: wrap;
+                            "
+                        >
+
+                            <span>
+                                <strong>
+                                    {{ pedido.projeto_tcc.titulo }}
+                                </strong>
+
+                                — Solicitado para:
+
+                                {{ pedido.opcao_data_inicio|date:"d/m/Y H:i" }}
+
+                                no
+
+                                <strong>
+                                    {{ pedido.espaco }}
+                                </strong>
+                            </span>
+
+                            <div
+                                style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                "
+                            >
+
+                                <span
+                                    class="status-badge status-analise"
+                                >
+                                    Pendente
+                                </span>
+
+                                <a
+                                    href="{% url 'avaliar_solicitacao' pedido.id %}"
+                                    style="
+                                        text-decoration: none;
+                                        background-color: #2b3990;
+                                        color: white;
+                                        padding: 8px 14px;
+                                        border-radius: 5px;
+                                        font-size: 12px;
+                                        font-weight: bold;
+                                    "
+                                >
+                                    AVALIAR
+                                </a>
+
                             </div>
+
                         </li>
+
                     {% endfor %}
+
                 </ul>
+
             {% else %}
-                <p>Nenhuma solicitação aguardando análise no momento. Ótimo trabalho!</p>
+
+                <p>
+                    Nenhuma solicitação aguardando análise no momento.
+                    Ótimo trabalho!
+                </p>
+
             {% endif %}
+
         </div>
+
     {% endif %}
+
 {% endblock %}

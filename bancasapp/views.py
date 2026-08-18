@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import SolicitacaoBancaForm, DiscenteForm, ProjetoTCCForm, ModeloDocumentoForm
+from .forms import SolicitacaoBancaForm, DiscenteForm, ProjetoTCCForm, ModeloDocumentoForm, AvaliacaoSolicitacaoForm
 from .models import ProjetoTCC, pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico, ComposicaoBanca, ModeloDocumento
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
@@ -10,10 +10,14 @@ from pathlib import Path
 from django.template.loader import get_template
 from xhtml2pdf import pisa
 from .permissions import (
-    docente_required,
     usuario_e_coordenacao,
     usuario_interno_required,
+    docente_required,
+    coordenacao_required,
 )
+from django.db import transaction
+from django.utils import timezone
+
 
 
 # 1. Tela inicial do sistema (Dashboard com os botões principais)
@@ -299,23 +303,155 @@ def login_view(request):
             
     return render(request, 'login.html')
 
-@login_required(login_url='login')
-def avaliar_solicitacao(request, solicitacao_id, acao):
-    # Trava de segurança: Se não for a coordenação tentando acessar esse link, devolve pro painel
-    if not request.user.is_superuser:
+@coordenacao_required
+def avaliar_solicitacao(request, solicitacao_id):
+
+    # Carrega a solicitação e seus dados relacionados
+    solicitacao = get_object_or_404(
+        SolicitacaoAgendamento.objects.select_related(
+            'projeto_tcc',
+            'projeto_tcc__discente',
+            'espaco',
+            'usuario_solicitante',
+            'usuario_solicitante__usuario',
+        ),
+        pk=solicitacao_id
+    )
+
+    # Busca os membros cadastrados para a banca
+    composicao = ComposicaoBanca.objects.select_related(
+        'orientador__usuario',
+        'avaliador_interno__usuario',
+    ).filter(
+        projeto_tcc=solicitacao.projeto_tcc
+    ).first()
+
+    # Uma solicitação já decidida não pode ser avaliada novamente
+    if solicitacao.status != 'EM_ANÁLISE':
+        messages.warning(
+            request,
+            'Esta solicitação já foi avaliada pela coordenação.'
+        )
         return redirect('dashboard')
-    
-    # Busca o pedido específico no banco de dados
-    solicitacao = get_object_or_404(SolicitacaoAgendamento, id=solicitacao_id)
-    if acao == 'aprovar':
-        solicitacao.status = 'APROVADA'
-        messages.success(request, f'Banca "{solicitacao.projeto_tcc.titulo}" APROVADA com sucesso!')
-    elif acao == 'recusar':
-        solicitacao.status = 'RECUSADA'
-        messages.warning(request, f'Banca "{solicitacao.projeto_tcc.titulo}" RECUSADA.')
-        
-    solicitacao.save()
-    return redirect('dashboard')
+
+    if request.method == 'POST':
+
+        form = AvaliacaoSolicitacaoForm(request.POST)
+        acao = request.POST.get('acao')
+
+        # Protege contra valores inválidos enviados manualmente
+        if acao not in ['aprovar', 'recusar']:
+            messages.error(
+                request,
+                'Ação de avaliação inválida.'
+            )
+
+        # Não permite aprovar uma banca sem membros cadastrados
+        elif acao == 'aprovar' and composicao is None:
+            messages.error(
+                request,
+                'Não é possível aprovar: a composição da banca não foi encontrada.'
+            )
+
+        elif form.is_valid():
+
+            # A transação garante que todas as mudanças aconteçam juntas
+            with transaction.atomic():
+
+                # Bloqueia temporariamente o registro durante a decisão
+                solicitacao_bloqueada = get_object_or_404(
+                    SolicitacaoAgendamento.objects.select_for_update().select_related(
+                        'projeto_tcc'
+                    ),
+                    pk=solicitacao_id
+                )
+
+                # Segunda verificação contra envios duplicados
+                if solicitacao_bloqueada.status != 'EM_ANÁLISE':
+                    messages.warning(
+                        request,
+                        'Esta solicitação já foi avaliada.'
+                    )
+                    return redirect('dashboard')
+
+                motivo = form.cleaned_data['motivo_decisao']
+
+                solicitacao_bloqueada.motivo_decisao = motivo
+                solicitacao_bloqueada.data_decisao = timezone.now()
+                solicitacao_bloqueada.decidida_por = request.user
+
+                projeto = solicitacao_bloqueada.projeto_tcc
+
+                if acao == 'aprovar':
+
+                    solicitacao_bloqueada.status = 'APROVADA'
+                    projeto.status = 'APROVADO'
+
+                    # Cria o agendamento definitivo da banca
+                    BancaTCC.objects.create(
+                        projeto_tcc=projeto,
+                        espaco=solicitacao_bloqueada.espaco,
+                        data_horario_inicio=(
+                            solicitacao_bloqueada.opcao_data_inicio
+                        ),
+                        data_horario_fim=(
+                            solicitacao_bloqueada.opcao_data_fim
+                        ),
+                    )
+
+                    mensagem_final = (
+                        f'A banca "{projeto.titulo}" foi aprovada com sucesso.'
+                    )
+
+                else:
+
+                    solicitacao_bloqueada.status = 'RECUSADA'
+                    projeto.status = 'RECUSADA'
+
+                    mensagem_final = (
+                        f'A banca "{projeto.titulo}" foi recusada.'
+                    )
+
+                projeto.save(
+                    update_fields=['status']
+                )
+
+                solicitacao_bloqueada.save(
+                    update_fields=[
+                        'status',
+                        'motivo_decisao',
+                        'data_decisao',
+                        'decidida_por',
+                    ]
+                )
+
+            if acao == 'aprovar':
+                messages.success(
+                    request,
+                    mensagem_final
+                )
+            else:
+                messages.warning(
+                    request,
+                    mensagem_final
+                )
+
+            return redirect('dashboard')
+
+    else:
+        form = AvaliacaoSolicitacaoForm()
+
+    contexto = {
+        'solicitacao': solicitacao,
+        'composicao': composicao,
+        'form': form,
+    }
+
+    return render(
+        request,
+        'avaliar_solicitacao.html',
+        contexto
+    )
 
 @login_required(login_url='login')
 def meus_tccs(request):
