@@ -17,29 +17,27 @@ from .permissions import (
 )
 from django.db import transaction
 from django.utils import timezone
+from django.core.paginator import Paginator
 
 
 
 # 1. Tela inicial do sistema (Dashboard com os botões principais)
+# 1. Tela inicial do sistema
 @usuario_interno_required
 def dashboard(request):
 
-    # Usa a mesma regra para identificar a Coordenação
-    # em todo o sistema.
     is_coordenacao = usuario_e_coordenacao(
         request.user
     )
 
+    # Valores usados somente pela Coordenação.
+    historico_decisoes = None
+    status_historico = ''
+
     if is_coordenacao:
 
-        # Enquanto a criação da BancaTCC oficial ainda não foi
-        # implementada, consideramos como bancas agendadas as
-        # solicitações que foram aprovadas.
-        total_bancas = (
-            SolicitacaoAgendamento.objects.filter(
-                status='APROVADA'
-            ).count()
-        )
+        # Agora a aprovação cria uma BancaTCC oficial.
+        total_bancas = BancaTCC.objects.count()
 
         total_pendentes = (
             SolicitacaoAgendamento.objects.filter(
@@ -47,8 +45,7 @@ def dashboard(request):
             ).count()
         )
 
-        # A Coordenação visualiza as últimas cinco
-        # solicitações pendentes de todo o sistema.
+        # Últimas cinco solicitações aguardando avaliação.
         ultimos_pedidos = (
             SolicitacaoAgendamento.objects
             .select_related(
@@ -61,13 +58,63 @@ def dashboard(request):
             .filter(
                 status='EM_ANÁLISE'
             )
-            .order_by('-id')[:5]
+            .order_by('-data_solicitacao', '-id')[:5]
+        )
+
+        # Lê o filtro selecionado na tela.
+        status_historico = (
+            request.GET.get('historico', '').strip()
+        )
+
+        # Aceita somente os dois estados possíveis no histórico.
+        if status_historico not in [
+            'APROVADA',
+            'RECUSADA'
+        ]:
+            status_historico = ''
+
+        # Consulta base do histórico administrativo.
+        historico_queryset = (
+            SolicitacaoAgendamento.objects
+            .select_related(
+                'projeto_tcc',
+                'projeto_tcc__discente',
+                'espaco',
+                'usuario_solicitante',
+                'usuario_solicitante__usuario',
+                'decidida_por',
+            )
+            .exclude(
+                status='EM_ANÁLISE'
+            )
+            .order_by(
+                '-data_decisao',
+                '-id'
+            )
+        )
+
+        # Aplica o filtro, caso a Coordenação tenha escolhido um.
+        if status_historico:
+            historico_queryset = (
+                historico_queryset.filter(
+                    status=status_historico
+                )
+            )
+
+        # Exibe dez decisões por página.
+        paginador = Paginator(
+            historico_queryset,
+            10
+        )
+
+        numero_pagina = request.GET.get('pagina')
+
+        historico_decisoes = paginador.get_page(
+            numero_pagina
         )
 
     else:
 
-        # Como o decorator já verificou que o usuário é docente,
-        # podemos buscar o perfil com segurança.
         perfil_logado = pUsuario.objects.get(
             usuario=request.user,
             perfil='DOCENTE'
@@ -87,9 +134,9 @@ def dashboard(request):
             ).count()
         )
 
-        # Docentes não recebem a relação administrativa
-        # das solicitações pendentes.
+        # Docentes não recebem informações administrativas.
         ultimos_pedidos = None
+        historico_decisoes = None
 
     total_salas = EspacoFisico.objects.count()
 
@@ -99,6 +146,8 @@ def dashboard(request):
         'total_salas': total_salas,
         'is_coordenacao': is_coordenacao,
         'ultimos_pedidos': ultimos_pedidos,
+        'historico_decisoes': historico_decisoes,
+        'status_historico': status_historico,
     }
 
     return render(
