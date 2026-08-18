@@ -11,12 +11,12 @@ urlpatterns = [
     path('solicitar/', views.solicitar_banca, name='solicitar_banca'),
     path('cadastrar/aluno/', views.cadastrar_aluno, name='cadastrar_aluno'),
     path('cadastrar/projeto/', views.cadastrar_projeto, name='cadastrar_projeto'),
-    path(
-    'avaliar/<int:solicitacao_id>/', views.avaliar_solicitacao, name='avaliar_solicitacao'),
+    path('avaliar/<int:solicitacao_id>/', views.avaliar_solicitacao, name='avaliar_solicitacao'),
     path('meus-tccs/', views.meus_tccs, name='meus_tccs'),
     path('pesquisar/', views.pesquisar, name='pesquisar'),
     path('documentos/', views.documentos, name='documentos'),
     path('documentos/<int:modelo_id>/download/', views.baixar_documento, name='baixar_documento'),
     path('documentos/teste-pdf/', views.gerar_pdf_teste, name='gerar_pdf_teste'),
     path('documentos/banca/<int:solicitacao_id>/pdf/', views.gerar_pdf_banca, name='gerar_pdf_banca'),
+    path('espacos/', views.gerenciar_espacos, name='gerenciar_espacos'),
 ]

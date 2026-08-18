@@ -1,0 +1,334 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="dashboard-header">
+
+    <h1>Gerenciamento de Salas</h1>
+
+    <p>
+        Cadastre os espaços físicos e defina os períodos
+        disponíveis para realização das bancas.
+    </p>
+
+</div>
+
+
+<div
+    style="
+        display: flex;
+        align-items: flex-start;
+        gap: 25px;
+        flex-wrap: wrap;
+    "
+>
+
+    <!-- Cadastro de sala -->
+
+    <div
+        class="form-container"
+        style="
+            flex: 1;
+            min-width: 300px;
+        "
+    >
+
+        <h2>Cadastrar sala ou laboratório</h2>
+
+        <form method="POST">
+
+            {% csrf_token %}
+
+            <input
+                type="hidden"
+                name="tipo_formulario"
+                value="espaco"
+            >
+
+            {{ form_espaco.as_p }}
+
+            <button
+                type="submit"
+                class="btn-enviar"
+            >
+                CADASTRAR ESPAÇO
+            </button>
+
+        </form>
+
+    </div>
+
+
+    <!-- Cadastro de disponibilidade -->
+
+    <div
+        class="form-container"
+        style="
+            flex: 1;
+            min-width: 300px;
+        "
+    >
+
+        <h2>Cadastrar disponibilidade</h2>
+
+        <p>
+            Defina um período em que a sala estará
+            disponível para solicitações.
+        </p>
+
+        <form method="POST">
+
+            {% csrf_token %}
+
+            <input
+                type="hidden"
+                name="tipo_formulario"
+                value="disponibilidade"
+            >
+
+            {{ form_disponibilidade.as_p }}
+
+            <button
+                type="submit"
+                class="btn-enviar"
+            >
+                CADASTRAR DISPONIBILIDADE
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+<!-- Relação de espaços -->
+
+<div
+    class="table-container"
+    style="margin-top: 30px;"
+>
+
+    <h2>Salas e laboratórios cadastrados</h2>
+
+    {% if espacos %}
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Espaço</th>
+                    <th>Situação</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for espaco in espacos %}
+
+                    <tr>
+
+                        <td>
+                            {{ espaco.nome }}
+                        </td>
+
+                        <td>
+
+                            {% if espaco.ativo %}
+
+                                <span
+                                    class="status-badge status-aprovada"
+                                >
+                                    Ativo
+                                </span>
+
+                            {% else %}
+
+                                <span
+                                    class="status-badge status-recusada"
+                                >
+                                    Inativo
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    {% else %}
+
+        <p>
+            Nenhuma sala ou laboratório cadastrado.
+        </p>
+
+    {% endif %}
+
+</div>
+
+
+<!-- Relação de disponibilidades -->
+
+<div
+    class="table-container"
+    style="margin-top: 30px;"
+>
+
+    <h2>Disponibilidades cadastradas</h2>
+
+    {% if disponibilidades %}
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Espaço</th>
+                    <th>Início</th>
+                    <th>Término</th>
+                    <th>Observação</th>
+                    <th>Situação</th>
+                    <th>Cadastrada por</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for disponibilidade in disponibilidades %}
+
+                    <tr>
+
+                        <td>
+                            {{ disponibilidade.espaco.nome }}
+                        </td>
+
+                        <td>
+                            {{ disponibilidade.data_hora_inicio|date:"d/m/Y H:i" }}
+                        </td>
+
+                        <td>
+                            {{ disponibilidade.data_hora_fim|date:"d/m/Y H:i" }}
+                        </td>
+
+                        <td>
+                            {% if disponibilidade.observacao %}
+                                {{ disponibilidade.observacao }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+
+                        <td>
+
+                            {% if disponibilidade.ativo and disponibilidade.espaco.ativo %}
+
+                                <span
+                                    class="status-badge status-aprovada"
+                                >
+                                    Disponível
+                                </span>
+
+                            {% elif not disponibilidade.espaco.ativo %}
+
+                                <span
+                                    class="status-badge status-recusada"
+                                >
+                                    Sala inativa
+                                </span>
+
+                            {% else %}
+
+                                <span
+                                    class="status-badge status-recusada"
+                                >
+                                    Inativa
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+                        <td>
+
+                            {% if disponibilidade.criada_por %}
+
+                                {{ disponibilidade.criada_por.get_full_name|default:disponibilidade.criada_por.username }}
+
+                            {% else %}
+
+                                Não registrado
+
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+
+        {% if disponibilidades.has_other_pages %}
+
+            <div
+                style="
+                    margin-top: 20px;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    gap: 15px;
+                "
+            >
+
+                {% if disponibilidades.has_previous %}
+
+                    <a
+                        class="btn-filter"
+                        href="?pagina={{ disponibilidades.previous_page_number }}"
+                    >
+                        Anterior
+                    </a>
+
+                {% endif %}
+
+                <span>
+                    Página
+                    {{ disponibilidades.number }}
+                    de
+                    {{ disponibilidades.paginator.num_pages }}
+                </span>
+
+                {% if disponibilidades.has_next %}
+
+                    <a
+                        class="btn-filter"
+                        href="?pagina={{ disponibilidades.next_page_number }}"
+                    >
+                        Próxima
+                    </a>
+
+                {% endif %}
+
+            </div>
+
+        {% endif %}
+
+    {% else %}
+
+        <p>
+            Nenhuma disponibilidade cadastrada.
+        </p>
+
+    {% endif %}
+
+</div>
+
+{% endblock %}

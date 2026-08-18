@@ -1,5 +1,5 @@
 from django import forms
-from .models import SolicitacaoAgendamento, Discente, ProjetoTCC, pUsuario, ModeloDocumento
+from .models import SolicitacaoAgendamento, Discente, ProjetoTCC, pUsuario, ModeloDocumento, EspacoFisico, DisponibilidadeEspaco
 from django.db.models import Q
 
 class SolicitacaoBancaForm(forms.ModelForm):
@@ -121,7 +121,146 @@ class AvaliacaoSolicitacaoForm(forms.Form):
                 'Informe uma justificativa antes de concluir a avaliação.'
             ),
         }
-    )     
+    )
+
+class EspacoFisicoForm(forms.ModelForm):
+
+    class Meta:
+        model = EspacoFisico
+
+        fields = [
+            'nome',
+        ]
+
+        widgets = {
+            'nome': forms.TextInput(
+                attrs={
+                    'class': 'form-input',
+                    'placeholder': (
+                        'Ex.: Laboratório de Informática 1'
+                    ),
+                }
+            ),
+        }
+
+        labels = {
+            'nome': 'Nome da sala ou laboratório',
+        }
+
+    def clean_nome(self):
+
+        nome = self.cleaned_data['nome'].strip()
+
+        # Impede nomes repetidos mesmo com diferença
+        # entre letras maiúsculas e minúsculas.
+        nome_duplicado = (
+            EspacoFisico.objects
+            .filter(
+                nome__iexact=nome
+            )
+            .exclude(
+                pk=self.instance.pk
+            )
+            .exists()
+        )
+
+        if nome_duplicado:
+            raise forms.ValidationError(
+                'Já existe uma sala ou laboratório com este nome.'
+            )
+
+        return nome
+
+
+class DisponibilidadeEspacoForm(forms.ModelForm):
+
+    class Meta:
+        model = DisponibilidadeEspaco
+
+        fields = [
+            'espaco',
+            'data_hora_inicio',
+            'data_hora_fim',
+            'observacao',
+        ]
+
+        widgets = {
+            'espaco': forms.Select(
+                attrs={
+                    'class': 'form-input',
+                }
+            ),
+
+            'data_hora_inicio': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
+                attrs={
+                    'class': 'form-input',
+                    'type': 'datetime-local',
+                }
+            ),
+
+            'data_hora_fim': forms.DateTimeInput(
+                format='%Y-%m-%dT%H:%M',
+                attrs={
+                    'class': 'form-input',
+                    'type': 'datetime-local',
+                }
+            ),
+
+            'observacao': forms.TextInput(
+                attrs={
+                    'class': 'form-input',
+                    'placeholder': (
+                        'Informação opcional sobre o período'
+                    ),
+                }
+            ),
+        }
+
+        labels = {
+            'espaco': 'Sala ou laboratório',
+            'data_hora_inicio': 'Data e hora de início',
+            'data_hora_fim': 'Data e hora de término',
+            'observacao': 'Observação',
+        }
+
+    def __init__(self, *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
+
+        # Somente espaços ativos podem receber
+        # novas disponibilidades.
+        queryset_espacos = EspacoFisico.objects.filter(
+            ativo=True
+        )
+
+        # Quando futuramente editarmos uma disponibilidade,
+        # o espaço atual continuará aparecendo no formulário.
+        if (
+            self.instance
+            and self.instance.pk
+            and self.instance.espaco_id
+        ):
+            queryset_espacos = EspacoFisico.objects.filter(
+                Q(ativo=True)
+                | Q(pk=self.instance.espaco_id)
+            )
+
+        self.fields['espaco'].queryset = (
+            queryset_espacos.order_by('nome')
+        )
+
+        self.fields[
+            'data_hora_inicio'
+        ].input_formats = [
+            '%Y-%m-%dT%H:%M'
+        ]
+
+        self.fields[
+            'data_hora_fim'
+        ].input_formats = [
+            '%Y-%m-%dT%H:%M'
+        ]     
 
 class DiscenteForm(forms.ModelForm):
     class Meta:

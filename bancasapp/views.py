@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import SolicitacaoBancaForm, DiscenteForm, ProjetoTCCForm, ModeloDocumentoForm, AvaliacaoSolicitacaoForm
-from .models import ProjetoTCC, pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico, ComposicaoBanca, ModeloDocumento
+from .forms import SolicitacaoBancaForm, DiscenteForm, ProjetoTCCForm, ModeloDocumentoForm, AvaliacaoSolicitacaoForm, EspacoFisicoForm, DisponibilidadeEspacoForm
+from .models import ProjetoTCC, pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico, ComposicaoBanca, ModeloDocumento, DisponibilidadeEspaco
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -750,3 +750,133 @@ def gerar_pdf_banca(request, solicitacao_id):
         )
 
     return response
+
+@coordenacao_required
+def gerenciar_espacos(request):
+
+    # Prefixos impedem conflito entre os dois formulários.
+    form_espaco = EspacoFisicoForm(
+        prefix='espaco'
+    )
+
+    form_disponibilidade = DisponibilidadeEspacoForm(
+        prefix='disponibilidade'
+    )
+
+    if request.method == 'POST':
+
+        tipo_formulario = request.POST.get(
+            'tipo_formulario'
+        )
+
+        # Cadastro de uma nova sala
+        if tipo_formulario == 'espaco':
+
+            form_espaco = EspacoFisicoForm(
+                request.POST,
+                prefix='espaco'
+            )
+
+            if form_espaco.is_valid():
+
+                form_espaco.save()
+
+                messages.success(
+                    request,
+                    'Sala ou laboratório cadastrado com sucesso.'
+                )
+
+                return redirect(
+                    'gerenciar_espacos'
+                )
+
+            for erros in form_espaco.errors.values():
+                for erro in erros:
+                    messages.error(
+                        request,
+                        erro
+                    )
+
+        # Cadastro de uma disponibilidade
+        elif tipo_formulario == 'disponibilidade':
+
+            form_disponibilidade = (
+                DisponibilidadeEspacoForm(
+                    request.POST,
+                    prefix='disponibilidade'
+                )
+            )
+
+            if form_disponibilidade.is_valid():
+
+                disponibilidade = (
+                    form_disponibilidade.save(
+                        commit=False
+                    )
+                )
+
+                disponibilidade.criada_por = (
+                    request.user
+                )
+
+                disponibilidade.save()
+
+                messages.success(
+                    request,
+                    'Disponibilidade cadastrada com sucesso.'
+                )
+
+                return redirect(
+                    'gerenciar_espacos'
+                )
+
+            for erros in (
+                form_disponibilidade.errors.values()
+            ):
+                for erro in erros:
+                    messages.error(
+                        request,
+                        erro
+                    )
+
+        else:
+            messages.error(
+                request,
+                'Formulário enviado de maneira inválida.'
+            )
+
+    espacos = EspacoFisico.objects.all()
+
+    disponibilidades_queryset = (
+        DisponibilidadeEspaco.objects
+        .select_related(
+            'espaco',
+            'criada_por'
+        )
+        .order_by(
+            '-ativo',
+            'data_hora_inicio'
+        )
+    )
+
+    paginador = Paginator(
+        disponibilidades_queryset,
+        10
+    )
+
+    disponibilidades = paginador.get_page(
+        request.GET.get('pagina')
+    )
+
+    contexto = {
+        'form_espaco': form_espaco,
+        'form_disponibilidade': form_disponibilidade,
+        'espacos': espacos,
+        'disponibilidades': disponibilidades,
+    }
+
+    return render(
+        request,
+        'gerenciar_espacos.html',
+        contexto
+    )
