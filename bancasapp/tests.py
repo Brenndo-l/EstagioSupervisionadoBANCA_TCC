@@ -11,6 +11,7 @@ from .models import (
     ProjetoTCC,
     SolicitacaoAgendamento,
     ComposicaoBanca,
+    BancaTCC,
 )
 
 
@@ -233,4 +234,392 @@ class AgendamentoTests(TestCase):
         self.assertEqual(
             composicao.avaliador_interno,
             self.avaliador
+        )
+
+        # Testes da avaliação realizada pela Coordenação
+class AvaliacaoSolicitacaoTests(TestCase):
+
+    def setUp(self):
+
+        # Usuário da Coordenação
+        self.usuario_coordenacao = User.objects.create_user(
+            username='coordenacao@ufac.br',
+            password='Senha123!'
+        )
+
+        self.coordenacao = pUsuario.objects.create(
+            usuario=self.usuario_coordenacao,
+            perfil='COORDENACAO'
+        )
+
+        # Docente solicitante
+        self.usuario_docente = User.objects.create_user(
+            username='docente_avaliacao@ufac.br',
+            password='Senha123!'
+        )
+
+        self.docente = pUsuario.objects.create(
+            usuario=self.usuario_docente,
+            perfil='DOCENTE'
+        )
+
+        # Avaliador interno
+        self.usuario_avaliador = User.objects.create_user(
+            username='avaliador_avaliacao@ufac.br',
+            password='Senha123!'
+        )
+
+        self.avaliador = pUsuario.objects.create(
+            usuario=self.usuario_avaliador,
+            perfil='DOCENTE'
+        )
+
+        self.discente = Discente.objects.create(
+            nome='Discente Avaliação',
+            matricula='20260000002'
+        )
+
+        self.projeto = ProjetoTCC.objects.create(
+            titulo='Projeto para Avaliação',
+            resumo='Projeto utilizado nos testes da Coordenação.',
+            semestre_letivo='2026.1',
+            discente=self.discente
+        )
+
+        self.espaco = EspacoFisico.objects.create(
+            nome='Laboratório de Avaliação'
+        )
+
+        inicio = timezone.now() + timedelta(days=30)
+        fim = inicio + timedelta(hours=2)
+
+        self.solicitacao = SolicitacaoAgendamento.objects.create(
+            usuario_solicitante=self.docente,
+            projeto_tcc=self.projeto,
+            espaco=self.espaco,
+            opcao_data_inicio=inicio,
+            opcao_data_fim=fim,
+            status='EM_ANÁLISE'
+        )
+
+        self.composicao = ComposicaoBanca.objects.create(
+            projeto_tcc=self.projeto,
+            orientador=self.docente,
+            avaliador_interno=self.avaliador,
+            nome_avaliador_externo='Avaliador Externo',
+            instituicao_avaliador_externo='Instituição Externa'
+        )
+
+        self.url_avaliacao = reverse(
+            'avaliar_solicitacao',
+            args=[self.solicitacao.id]
+        )
+
+    def test_docente_nao_pode_acessar_avaliacao(self):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.get(
+            self.url_avaliacao
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+        self.solicitacao.refresh_from_db()
+
+        self.assertEqual(
+            self.solicitacao.status,
+            'EM_ANÁLISE'
+        )
+
+    def test_abrir_pagina_nao_altera_solicitacao(self):
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.get(
+            self.url_avaliacao
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertTemplateUsed(
+            response,
+            'avaliar_solicitacao.html'
+        )
+
+        self.solicitacao.refresh_from_db()
+
+        self.assertEqual(
+            self.solicitacao.status,
+            'EM_ANÁLISE'
+        )
+
+        self.assertEqual(
+            BancaTCC.objects.count(),
+            0
+        )
+
+    def test_justificativa_e_obrigatoria(self):
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.post(
+            self.url_avaliacao,
+            {
+                'acao': 'aprovar',
+                'motivo_decisao': '',
+            }
+        )
+
+        # Formulário inválido continua na página
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.solicitacao.refresh_from_db()
+
+        self.assertEqual(
+            self.solicitacao.status,
+            'EM_ANÁLISE'
+        )
+
+        self.assertIsNone(
+            self.solicitacao.data_decisao
+        )
+
+        self.assertEqual(
+            BancaTCC.objects.count(),
+            0
+        )
+
+    def test_coordenacao_consegue_aprovar(self):
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.post(
+            self.url_avaliacao,
+            {
+                'acao': 'aprovar',
+                'motivo_decisao': (
+                    'Dados conferidos e horário disponível.'
+                ),
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+        self.solicitacao.refresh_from_db()
+        self.projeto.refresh_from_db()
+
+        self.assertEqual(
+            self.solicitacao.status,
+            'APROVADA'
+        )
+
+        self.assertEqual(
+            self.solicitacao.motivo_decisao,
+            'Dados conferidos e horário disponível.'
+        )
+
+        self.assertEqual(
+            self.solicitacao.decidida_por,
+            self.usuario_coordenacao
+        )
+
+        self.assertIsNotNone(
+            self.solicitacao.data_decisao
+        )
+
+        self.assertEqual(
+            self.projeto.status,
+            'APROVADO'
+        )
+
+        banca = BancaTCC.objects.get(
+            projeto_tcc=self.projeto
+        )
+
+        self.assertEqual(
+            banca.espaco,
+            self.espaco
+        )
+
+        self.assertEqual(
+            banca.data_horario_inicio,
+            self.solicitacao.opcao_data_inicio
+        )
+
+        self.assertEqual(
+            banca.data_horario_fim,
+            self.solicitacao.opcao_data_fim
+        )
+
+    def test_recusa_nao_cria_banca(self):
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.post(
+            self.url_avaliacao,
+            {
+                'acao': 'recusar',
+                'motivo_decisao': (
+                    'Horário indisponível para a defesa.'
+                ),
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+        self.solicitacao.refresh_from_db()
+        self.projeto.refresh_from_db()
+
+        self.assertEqual(
+            self.solicitacao.status,
+            'RECUSADA'
+        )
+
+        self.assertEqual(
+            self.projeto.status,
+            'RECUSADA'
+        )
+
+        self.assertEqual(
+            self.solicitacao.motivo_decisao,
+            'Horário indisponível para a defesa.'
+        )
+
+        self.assertEqual(
+            self.solicitacao.decidida_por,
+            self.usuario_coordenacao
+        )
+
+        self.assertIsNotNone(
+            self.solicitacao.data_decisao
+        )
+
+        self.assertFalse(
+            BancaTCC.objects.filter(
+                projeto_tcc=self.projeto
+            ).exists()
+        )
+
+    def test_solicitacao_nao_pode_ser_decidida_duas_vezes(self):
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        self.client.post(
+            self.url_avaliacao,
+            {
+                'acao': 'aprovar',
+                'motivo_decisao': 'Primeira decisão.',
+            }
+        )
+
+        segunda_resposta = self.client.post(
+            self.url_avaliacao,
+            {
+                'acao': 'recusar',
+                'motivo_decisao': 'Tentativa de segunda decisão.',
+            }
+        )
+
+        self.assertRedirects(
+            segunda_resposta,
+            reverse('dashboard')
+        )
+
+        self.solicitacao.refresh_from_db()
+
+        self.assertEqual(
+            self.solicitacao.status,
+            'APROVADA'
+        )
+
+        self.assertEqual(
+            self.solicitacao.motivo_decisao,
+            'Primeira decisão.'
+        )
+
+        self.assertEqual(
+            BancaTCC.objects.filter(
+                projeto_tcc=self.projeto
+            ).count(),
+            1
+        )
+
+    def test_historico_e_privado_da_coordenacao(self):
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        motivo_privado = (
+            'Justificativa administrativa privada.'
+        )
+
+        self.client.post(
+            self.url_avaliacao,
+            {
+                'acao': 'recusar',
+                'motivo_decisao': motivo_privado,
+            }
+        )
+
+        # A Coordenação consegue visualizar o histórico.
+        response_coordenacao = self.client.get(
+            reverse('dashboard')
+        )
+
+        self.assertContains(
+            response_coordenacao,
+            'Histórico de Decisões'
+        )
+
+        self.assertContains(
+            response_coordenacao,
+            motivo_privado
+        )
+
+        # O docente não recebe o histórico administrativo.
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response_docente = self.client.get(
+            reverse('dashboard')
+        )
+
+        self.assertNotContains(
+            response_docente,
+            'Histórico de Decisões'
+        )
+
+        self.assertNotContains(
+            response_docente,
+            motivo_privado
         )
