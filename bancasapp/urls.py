@@ -24,4 +24,5 @@ urlpatterns = [
     path('disponibilidades/<int:disponibilidade_id>/editar/',views.editar_disponibilidade,name='editar_disponibilidade'),
     path('disponibilidades/<int:disponibilidade_id>/status/', views.alternar_status_disponibilidade, name='alternar_status_disponibilidade'),
     path('coordenacao/solicitacoes/', views.solicitacoes_coordenacao, name='solicitacoes_coordenacao'),
+    path('solicitacoes/<int:solicitacao_id>/arquivo-tcc/',views.baixar_tcc_solicitacao,name='baixar_tcc_solicitacao'),
 ]

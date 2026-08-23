@@ -397,6 +397,149 @@ class AgendamentoTests(TestCase):
             0
         )
 
+    def test_docente_nao_pode_ocupar_duas_funcoes(self):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.post(
+            reverse('solicitar_banca'),
+            {
+                'projeto_tcc': self.projeto.id,
+                'espaco': self.espaco.id,
+
+                'opcao_data_inicio': (
+                    self.inicio_agendamento.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+
+                'opcao_data_fim': (
+                    self.fim_agendamento.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+
+                'orientador': self.docente.id,
+
+                # Mesmo docente escolhido novamente.
+                'coorientador': self.docente.id,
+
+                'avaliador_interno': self.avaliador.id,
+
+                'segundo_avaliador_interno': '',
+
+                'nome_avaliador_externo': '',
+
+                'instituicao_avaliador_externo': '',
+
+                'arquivo_tcc': criar_pdf_teste(),
+            }
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
+            response,
+            'já foi selecionado como orientador'
+        )
+
+        self.assertEqual(
+            SolicitacaoAgendamento.objects.count(),
+            0
+        )
+
+    def test_participantes_opcionais_sao_salvos(self):
+
+        usuario_coorientador = User.objects.create(
+            username='coorientador@ufac.br'
+        )
+
+        coorientador = pUsuario.objects.create(
+            usuario=usuario_coorientador,
+            perfil='DOCENTE'
+        )
+
+        usuario_segundo_avaliador = User.objects.create(
+            username='segundo.avaliador@ufac.br'
+        )
+
+        segundo_avaliador = pUsuario.objects.create(
+            usuario=usuario_segundo_avaliador,
+            perfil='DOCENTE'
+        )
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.post(
+            reverse('solicitar_banca'),
+            {
+                'projeto_tcc': self.projeto.id,
+                'espaco': self.espaco.id,
+
+                'opcao_data_inicio': (
+                    self.inicio_agendamento.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+
+                'opcao_data_fim': (
+                    self.fim_agendamento.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+
+                'orientador': self.docente.id,
+
+                'coorientador': coorientador.id,
+
+                'avaliador_interno': self.avaliador.id,
+
+                'segundo_avaliador_interno':
+                    segundo_avaliador.id,
+
+                'nome_avaliador_externo': '',
+
+                'instituicao_avaliador_externo': '',
+
+                'arquivo_tcc': criar_pdf_teste(),
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+        solicitacao = (
+            SolicitacaoAgendamento.objects.get()
+        )
+
+        self.addCleanup(
+            solicitacao.arquivo_tcc.delete,
+            save=False
+        )
+
+        composicao = ComposicaoBanca.objects.get(
+            solicitacao=solicitacao
+        )
+
+        self.assertEqual(
+            composicao.coorientador,
+            coorientador
+        )
+
+        self.assertEqual(
+            composicao.segundo_avaliador_interno,
+            segundo_avaliador
+        )
+
     def test_docente_consegue_solicitar_banca(self):
 
         self.client.force_login(
@@ -506,6 +649,14 @@ class AgendamentoTests(TestCase):
         self.assertEqual(
             composicao.avaliador_interno,
             self.avaliador
+        )
+        # Os participantes adicionais são opcionais.
+        self.assertIsNone(
+            composicao.coorientador
+        )
+
+        self.assertIsNone(
+            composicao.segundo_avaliador_interno
         )
 
         # Após salvar, deve voltar ao Dashboard
@@ -944,4 +1095,180 @@ class AvaliacaoSolicitacaoTests(TestCase):
         self.assertNotContains(
             response_docente,
             motivo_privado
+        )
+
+# Testes do acesso protegido ao arquivo do TCC
+class DownloadTCCPermissionsTests(TestCase):
+
+    def setUp(self):
+
+        self.usuario_coordenacao = User.objects.create(
+            username='coordenacao.download@ufac.br'
+        )
+
+        self.coordenacao = pUsuario.objects.create(
+            usuario=self.usuario_coordenacao,
+            perfil='COORDENACAO'
+        )
+
+        self.usuario_solicitante = User.objects.create(
+            username='solicitante.download@ufac.br'
+        )
+
+        self.solicitante = pUsuario.objects.create(
+            usuario=self.usuario_solicitante,
+            perfil='DOCENTE'
+        )
+
+        self.usuario_orientador = User.objects.create(
+            username='orientador.download@ufac.br'
+        )
+
+        self.orientador = pUsuario.objects.create(
+            usuario=self.usuario_orientador,
+            perfil='DOCENTE'
+        )
+
+        self.usuario_avaliador = User.objects.create(
+            username='avaliador.download@ufac.br'
+        )
+
+        self.avaliador = pUsuario.objects.create(
+            usuario=self.usuario_avaliador,
+            perfil='DOCENTE'
+        )
+
+        self.usuario_sem_relacao = User.objects.create(
+            username='sem.relacao@ufac.br'
+        )
+
+        self.docente_sem_relacao = pUsuario.objects.create(
+            usuario=self.usuario_sem_relacao,
+            perfil='DOCENTE'
+        )
+
+        self.discente = Discente.objects.create(
+            nome='Discente Download',
+            matricula='20269999999'
+        )
+
+        self.projeto = ProjetoTCC.objects.create(
+            titulo='TCC para Teste de Download',
+            resumo='Teste do acesso protegido ao PDF.',
+            semestre_letivo='2026.1',
+            discente=self.discente
+        )
+
+        self.espaco = EspacoFisico.objects.create(
+            nome='Sala Download'
+        )
+
+        inicio = (
+            timezone.now()
+            + timedelta(days=30)
+        )
+
+        fim = (
+            inicio
+            + timedelta(hours=2)
+        )
+
+        self.solicitacao = (
+            SolicitacaoAgendamento.objects.create(
+                usuario_solicitante=self.solicitante,
+                projeto_tcc=self.projeto,
+                espaco=self.espaco,
+                opcao_data_inicio=inicio,
+                opcao_data_fim=fim,
+                status='EM_ANÁLISE',
+                arquivo_tcc=criar_pdf_teste(),
+            )
+        )
+
+        self.addCleanup(
+            self.solicitacao.arquivo_tcc.delete,
+            save=False
+        )
+
+        self.composicao = ComposicaoBanca.objects.create(
+            projeto_tcc=self.projeto,
+            solicitacao=self.solicitacao,
+            orientador=self.orientador,
+            avaliador_interno=self.avaliador,
+        )
+
+        self.url_download = reverse(
+            'baixar_tcc_solicitacao',
+            args=[self.solicitacao.id]
+        )
+
+    def test_coordenacao_consegue_baixar_tcc(self):
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.get(
+            self.url_download
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertEqual(
+            response['Content-Type'],
+            'application/pdf'
+        )
+
+        response.close()
+
+    def test_solicitante_consegue_baixar_tcc(self):
+
+        self.client.force_login(
+            self.usuario_solicitante
+        )
+
+        response = self.client.get(
+            self.url_download
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        response.close()
+
+    def test_membro_da_banca_consegue_baixar_tcc(self):
+
+        self.client.force_login(
+            self.usuario_avaliador
+        )
+
+        response = self.client.get(
+            self.url_download
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        response.close()
+
+    def test_docente_sem_relacao_nao_pode_baixar_tcc(self):
+
+        self.client.force_login(
+            self.usuario_sem_relacao
+        )
+
+        response = self.client.get(
+            self.url_download
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
         )

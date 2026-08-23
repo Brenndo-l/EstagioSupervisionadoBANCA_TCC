@@ -9,10 +9,26 @@ class SolicitacaoBancaForm(forms.ModelForm):
     label="Professor Orientador",
     empty_label="Selecione o Orientador"
     )
+    coorientador = forms.ModelChoiceField(
+        queryset=pUsuario.objects.filter(
+            perfil='DOCENTE'
+        ),
+        required=False,
+        label='Professor Coorientador (Opcional)',
+        empty_label='Sem coorientador'
+    )
     avaliador_interno = forms.ModelChoiceField(
     queryset=pUsuario.objects.filter(perfil='DOCENTE'),
     label="Avaliador Interno (UFAC)",
     empty_label="Selecione o Avaliador"
+    )
+    segundo_avaliador_interno = forms.ModelChoiceField(
+        queryset=pUsuario.objects.filter(
+            perfil='DOCENTE'
+        ),
+        required=False,
+        label='Segundo Avaliador Interno (Opcional)',
+        empty_label='Sem segundo avaliador'
     )
     nome_avaliador_externo = forms.CharField(
         max_length=150, 
@@ -78,7 +94,7 @@ class SolicitacaoBancaForm(forms.ModelForm):
             )
             .order_by('nome')
         )
-        
+
     def clean_arquivo_tcc(self):
 
         arquivo = self.cleaned_data.get(
@@ -121,23 +137,72 @@ class SolicitacaoBancaForm(forms.ModelForm):
             'opcao_data_fim'
         )
 
-        orientador = cleaned_data.get('orientador')
+        orientador = cleaned_data.get(
+            'orientador'
+        )
+
+        coorientador = cleaned_data.get(
+            'coorientador'
+        )
 
         avaliador_interno = cleaned_data.get(
             'avaliador_interno'
         )
 
-        # O orientador não pode ocupar os dois papéis.
-        if (
-            orientador
-            and avaliador_interno
-            and orientador == avaliador_interno
-        ):
-            self.add_error(
+        segundo_avaliador_interno = cleaned_data.get(
+            'segundo_avaliador_interno'
+        )
+
+        # Relação de todos os docentes internos escolhidos.
+        participantes_internos = [
+            (
+                'orientador',
+                'orientador',
+                orientador
+            ),
+            (
+                'coorientador',
+                'coorientador',
+                coorientador
+            ),
+            (
                 'avaliador_interno',
-                'O professor orientador não pode ser também '
-                'o avaliador interno desta banca.'
+                'avaliador interno',
+                avaliador_interno
+            ),
+            (
+                'segundo_avaliador_interno',
+                'segundo avaliador interno',
+                segundo_avaliador_interno
+            ),
+        ]
+
+        # Um mesmo docente não pode ocupar duas funções
+        # na mesma banca.
+        funcoes_por_docente = {}
+
+        for campo, funcao, docente in participantes_internos:
+
+            if not docente:
+                continue
+
+            funcao_anterior = funcoes_por_docente.get(
+                docente.pk
             )
+
+            if funcao_anterior:
+
+                self.add_error(
+                    campo,
+                    f'O docente escolhido como {funcao} já foi '
+                    f'selecionado como {funcao_anterior}.'
+                )
+
+            else:
+
+                funcoes_por_docente[
+                    docente.pk
+                ] = funcao
 
         if espaco and data_inicio and data_fim:
 
@@ -229,64 +294,54 @@ class SolicitacaoBancaForm(forms.ModelForm):
                         'neste horário.'
                     )
 
-                # Choque do orientador.
-                if orientador:
+                # Verifica o choque de horário de todos os
+                # participantes internos da nova banca.
+                for (
+                    campo,
+                    funcao,
+                    docente
+                ) in participantes_internos:
 
-                    orientador_ocupado = (
+                    if not docente:
+                        continue
+
+                    docente_ocupado = (
                         agendamentos_ativos
                         .filter(
                             filtro_horario
                         )
                         .filter(
                             Q(
-                                projeto_tcc__composicaobanca__orientador=(
-                                    orientador
+                                composicao_banca__orientador=(
+                                    docente
                                 )
                             )
                             | Q(
-                                projeto_tcc__composicaobanca__avaliador_interno=(
-                                    orientador
+                                composicao_banca__coorientador=(
+                                    docente
+                                )
+                            )
+                            | Q(
+                                composicao_banca__avaliador_interno=(
+                                    docente
+                                )
+                            )
+                            | Q(
+                                composicao_banca__segundo_avaliador_interno=(
+                                    docente
                                 )
                             )
                         )
                         .exists()
                     )
 
-                    if orientador_ocupado:
+                    if docente_ocupado:
+
                         self.add_error(
-                            'orientador',
-                            'Este professor já está alocado '
-                            'em outra banca neste horário.'
-                        )
-
-                # Choque do avaliador interno.
-                if avaliador_interno:
-
-                    avaliador_ocupado = (
-                        agendamentos_ativos
-                        .filter(
-                            filtro_horario
-                        )
-                        .filter(
-                            Q(
-                                projeto_tcc__composicaobanca__orientador=(
-                                    avaliador_interno
-                                )
-                            )
-                            | Q(
-                                projeto_tcc__composicaobanca__avaliador_interno=(
-                                    avaliador_interno
-                                )
-                            )
-                        )
-                        .exists()
-                    )
-
-                    if avaliador_ocupado:
-                        self.add_error(
-                            'avaliador_interno',
-                            'Este professor já está alocado '
-                            'em outra banca neste horário.'
+                            campo,
+                            'Este docente já está alocado em '
+                            'outra banca neste horário e não '
+                            f'pode atuar como {funcao}.'
                         )
 
         return cleaned_data

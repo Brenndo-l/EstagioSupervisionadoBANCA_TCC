@@ -65,6 +65,22 @@
                 </td>
             </tr>
 
+            <tr>
+                <th>Arquivo do TCC</th>
+                <td>
+                    {% if solicitacao.arquivo_tcc %}
+                        <a
+                            href="{% url 'baixar_tcc_solicitacao' solicitacao.id %}"
+                            class="btn-download"
+                        >
+                            BAIXAR PDF DO TCC
+                        </a>
+                    {% else %}
+                        Não anexado — registro antigo
+                    {% endif %}
+                </td>
+            </tr>
+
             {% if composicao %}
                 <tr>
                     <th>Professor orientador</th>
@@ -72,6 +88,14 @@
                         {{ composicao.orientador }}
                     </td>
                 </tr>
+                {% if composicao.coorientador %}
+                    <tr>
+                        <th>Professor coorientador</th>
+                        <td>
+                            {{ composicao.coorientador }}
+                        </td>
+                    </tr>
+                {% endif %}
 
                 <tr>
                     <th>Avaliador interno</th>
@@ -79,6 +103,15 @@
                         {{ composicao.avaliador_interno }}
                     </td>
                 </tr>
+
+                {% if composicao.segundo_avaliador_interno %}
+                    <tr>
+                        <th>Segundo avaliador interno</th>
+                        <td>
+                            {{ composicao.segundo_avaliador_interno }}
+                        </td>
+                    </tr>
+                {% endif %}
 
                 {% if composicao.nome_avaliador_externo %}
                     <tr>

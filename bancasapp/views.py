@@ -264,8 +264,34 @@ def visualizar_bancas(request):
             perfil='DOCENTE'
         )
 
-        solicitacoes = consulta.filter(
-            usuario_solicitante=perfil_logado
+        solicitacoes = (
+            consulta
+            .filter(
+                Q(
+                    usuario_solicitante=perfil_logado
+                )
+                | Q(
+                    composicao_banca__orientador=(
+                        perfil_logado
+                    )
+                )
+                | Q(
+                    composicao_banca__coorientador=(
+                        perfil_logado
+                    )
+                )
+                | Q(
+                    composicao_banca__avaliador_interno=(
+                        perfil_logado
+                    )
+                )
+                | Q(
+                    composicao_banca__segundo_avaliador_interno=(
+                        perfil_logado
+                    )
+                )
+            )
+            .distinct()
         )
 
     status_filtro = request.GET.get('status')
@@ -342,9 +368,21 @@ def solicitar_banca(request):
                         form.cleaned_data['orientador']
                     ),
 
+                    coorientador=(
+                        form.cleaned_data[
+                            'coorientador'
+                        ]
+                    ),
+
                     avaliador_interno=(
                         form.cleaned_data[
                             'avaliador_interno'
+                        ]
+                    ),
+
+                    segundo_avaliador_interno=(
+                        form.cleaned_data[
+                            'segundo_avaliador_interno'
                         ]
                     ),
 
@@ -412,6 +450,126 @@ def solicitar_banca(request):
         }
     )
 
+@usuario_interno_required
+def baixar_tcc_solicitacao(
+    request,
+    solicitacao_id
+):
+
+    solicitacao = get_object_or_404(
+        SolicitacaoAgendamento.objects.select_related(
+            'usuario_solicitante',
+            'projeto_tcc',
+        ),
+        pk=solicitacao_id
+    )
+
+    composicao = (
+        ComposicaoBanca.objects
+        .filter(
+            solicitacao=solicitacao
+        )
+        .first()
+    )
+
+    # A Coordenação pode acessar qualquer TCC.
+    acesso_permitido = usuario_e_coordenacao(
+        request.user
+    )
+
+    # Para docentes, verificamos se o usuário participa
+    # ou se foi responsável pela solicitação.
+    if not acesso_permitido:
+
+        perfil_logado = (
+            pUsuario.objects
+            .filter(
+                usuario=request.user,
+                perfil='DOCENTE'
+            )
+            .first()
+        )
+
+        participantes_ids = {
+            solicitacao.usuario_solicitante_id
+        }
+
+        if composicao:
+
+            participantes_ids.update(
+                {
+                    composicao.orientador_id,
+                    composicao.coorientador_id,
+                    composicao.avaliador_interno_id,
+                    (
+                        composicao
+                        .segundo_avaliador_interno_id
+                    ),
+                }
+            )
+
+        participantes_ids.discard(
+            None
+        )
+
+        acesso_permitido = (
+            perfil_logado is not None
+            and perfil_logado.id in participantes_ids
+        )
+
+    if not acesso_permitido:
+
+        messages.error(
+            request,
+            'Você não possui permissão para acessar '
+            'o arquivo deste TCC.'
+        )
+
+        return redirect(
+            'dashboard'
+        )
+
+    if not solicitacao.arquivo_tcc:
+
+        messages.warning(
+            request,
+            'Esta solicitação não possui um arquivo '
+            'de TCC anexado.'
+        )
+
+        return redirect(
+            'dashboard'
+        )
+
+    nome_arquivo = Path(
+        solicitacao.arquivo_tcc.name
+    ).name
+
+    try:
+
+        arquivo = solicitacao.arquivo_tcc.open(
+            'rb'
+        )
+
+    except (FileNotFoundError, OSError):
+
+        messages.error(
+            request,
+            'O arquivo do TCC não foi encontrado '
+            'no armazenamento do sistema.'
+        )
+
+        return redirect(
+            'dashboard'
+        )
+
+    return FileResponse(
+        arquivo,
+        as_attachment=True,
+        filename=nome_arquivo,
+        content_type='application/pdf'
+    )
+
 @login_required(login_url='login')
 def cadastrar_aluno(request):
     if request.method == 'POST':
@@ -476,7 +634,9 @@ def avaliar_solicitacao(request, solicitacao_id):
     # Busca os membros cadastrados para a banca
     composicao = ComposicaoBanca.objects.select_related(
         'orientador__usuario',
+        'coorientador__usuario',
         'avaliador_interno__usuario',
+        'segundo_avaliador_interno__usuario',
     ).filter(
         solicitacao=solicitacao
     ).first()
