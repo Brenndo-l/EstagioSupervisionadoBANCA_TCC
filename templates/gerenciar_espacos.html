@@ -309,6 +309,42 @@
 
                             </form>
 
+                            <form
+                                method="POST"
+                                style="display: inline;"
+                                onsubmit="return confirm('Deseja excluir permanentemente esta disponibilidade?');"
+                            >
+                                {% csrf_token %}
+
+                                <input
+                                    type="hidden"
+                                    name="tipo_formulario"
+                                    value="excluir_disponibilidade"
+                                >
+
+                                <input
+                                    type="hidden"
+                                    name="disponibilidade_id"
+                                    value="{{ disponibilidade.id }}"
+                                >
+
+                                <button
+                                    type="submit"
+                                    class="btn-excluir"
+                                    style="
+                                        border: none;
+                                        background-color: #7d2630;
+                                        color: white;
+                                        padding: 8px 14px;
+                                        border-radius: 4px;
+                                        font-weight: bold;
+                                        cursor: pointer;
+                                    "
+                                >
+                                    EXCLUIR
+                                </button>
+                            </form>
+
                         </td>
 
                     </tr>

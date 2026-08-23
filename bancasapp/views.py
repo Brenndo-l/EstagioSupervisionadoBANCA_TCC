@@ -158,6 +158,84 @@ def dashboard(request):
         contexto
     )
 
+@coordenacao_required
+def solicitacoes_coordenacao(request):
+
+    status_atual = request.GET.get(
+        'status',
+        'EM_ANÁLISE'
+    )
+
+    status_permitidos = {
+        'EM_ANÁLISE',
+        'APROVADA',
+        'RECUSADA',
+        'TODAS',
+    }
+
+    if status_atual not in status_permitidos:
+        status_atual = 'EM_ANÁLISE'
+
+    consulta = (
+        SolicitacaoAgendamento.objects
+        .select_related(
+            'projeto_tcc',
+            'projeto_tcc__discente',
+            'espaco',
+            'usuario_solicitante',
+            'usuario_solicitante__usuario',
+            'decidida_por',
+        )
+        .order_by(
+            '-data_solicitacao',
+            '-id'
+        )
+    )
+
+    if status_atual != 'TODAS':
+
+        consulta = consulta.filter(
+            status=status_atual
+        )
+
+    paginador = Paginator(
+        consulta,
+        10
+    )
+
+    solicitacoes = paginador.get_page(
+        request.GET.get('pagina')
+    )
+
+    contexto = {
+        'solicitacoes': solicitacoes,
+        'status_atual': status_atual,
+
+        'total_pendentes': (
+            SolicitacaoAgendamento.objects.filter(
+                status='EM_ANÁLISE'
+            ).count()
+        ),
+
+        'total_aprovadas': (
+            SolicitacaoAgendamento.objects.filter(
+                status='APROVADA'
+            ).count()
+        ),
+
+        'total_recusadas': (
+            SolicitacaoAgendamento.objects.filter(
+                status='RECUSADA'
+            ).count()
+        ),
+    }
+
+    return render(
+        request,
+        'solicitacoes_coordenacao.html',
+        contexto
+    )
+
 # 2. Tela onde aparecem as bancas já marcadas
 @usuario_interno_required
 def visualizar_bancas(request):
@@ -302,10 +380,27 @@ def solicitar_banca(request):
         'form': form,
     }
 
+    disponibilidades = (
+        DisponibilidadeEspaco.objects
+        .select_related('espaco')
+        .filter(
+            ativo=True,
+            espaco__ativo=True,
+            data_hora_fim__gt=timezone.now(),
+        )
+        .order_by(
+            'data_hora_inicio',
+            'espaco__nome',
+        )
+    )
+
     return render(
         request,
         'solicitar_banca.html',
-        contexto
+        {
+            'form': form,
+            'disponibilidades': disponibilidades,
+        }
     )
 
 @login_required(login_url='login')
@@ -841,6 +936,59 @@ def gerenciar_espacos(request):
                         erro
                     )
 
+        elif tipo_formulario == 'excluir_disponibilidade':
+
+            disponibilidade_id = request.POST.get(
+                'disponibilidade_id'
+            )
+
+            if not disponibilidade_id:
+
+                messages.error(
+                    request,
+                    'A disponibilidade não foi informada.'
+                )
+
+                return redirect(
+                    'gerenciar_espacos'
+                )
+
+            disponibilidade = get_object_or_404(
+                DisponibilidadeEspaco.objects
+                .select_related('espaco'),
+                pk=disponibilidade_id
+            )
+
+            if _disponibilidade_possui_registro_vinculado(
+                disponibilidade
+            ):
+
+                messages.error(
+                    request,
+                    'Esta disponibilidade possui uma solicitação '
+                    'ou banca vinculada e não pode ser excluída. '
+                    'Utilize a opção de desativar para preservar '
+                    'o histórico.'
+                )
+
+                return redirect(
+                    'gerenciar_espacos'
+                )
+
+            nome_espaco = disponibilidade.espaco.nome
+
+            disponibilidade.delete()
+
+            messages.success(
+                request,
+                f'A disponibilidade de "{nome_espaco}" foi '
+                'excluída permanentemente.'
+            )
+
+            return redirect(
+                'gerenciar_espacos'
+            )
+
         else:
             messages.error(
                 request,
@@ -883,9 +1031,7 @@ def gerenciar_espacos(request):
         contexto
     )
 
-def _disponibilidade_possui_compromisso(
-    disponibilidade
-):
+def _disponibilidade_possui_compromisso(disponibilidade):
     """
     Verifica se existem solicitações ou bancas futuras
     que utilizam o período da disponibilidade.
@@ -932,6 +1078,48 @@ def _disponibilidade_possui_compromisso(
         or banca_existente
     )
 
+def _disponibilidade_possui_registro_vinculado(disponibilidade):
+    """
+    Verifica se a disponibilidade possui qualquer
+    solicitação ou banca no mesmo espaço e período.
+
+    Diferentemente da verificação de compromisso futuro,
+    esta função também considera registros antigos e
+    solicitações recusadas, protegendo o histórico.
+    """
+
+    possui_solicitacao = (
+        SolicitacaoAgendamento.objects
+        .filter(
+            espaco=disponibilidade.espaco,
+            opcao_data_inicio__lt=(
+                disponibilidade.data_hora_fim
+            ),
+            opcao_data_fim__gt=(
+                disponibilidade.data_hora_inicio
+            ),
+        )
+        .exists()
+    )
+
+    possui_banca = (
+        BancaTCC.objects
+        .filter(
+            espaco=disponibilidade.espaco,
+            data_horario_inicio__lt=(
+                disponibilidade.data_hora_fim
+            ),
+            data_horario_fim__gt=(
+                disponibilidade.data_hora_inicio
+            ),
+        )
+        .exists()
+    )
+
+    return (
+        possui_solicitacao
+        or possui_banca
+    )
 
 @coordenacao_required
 def editar_espaco(request, espaco_id):

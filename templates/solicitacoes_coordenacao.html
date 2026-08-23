@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="dashboard-header">
+
+    <h1>Analisar Solicitações de Bancas</h1>
+
+    <p>
+        Consulte as solicitações enviadas pelos docentes
+        e escolha qual deseja avaliar.
+    </p>
+
+</div>
+
+
+<div class="dashboard-cards">
+
+    <div class="card">
+        <h3>Em Análise</h3>
+        <p>{{ total_pendentes }}</p>
+    </div>
+
+    <div class="card">
+        <h3>Aprovadas</h3>
+        <p>{{ total_aprovadas }}</p>
+    </div>
+
+    <div class="card">
+        <h3>Recusadas</h3>
+        <p>{{ total_recusadas }}</p>
+    </div>
+
+</div>
+
+
+<div class="table-container" style="margin-top: 30px;">
+
+    <h2>Solicitações cadastradas</h2>
+
+    <div class="filter-menu">
+
+        <a
+            href="?status=EM_ANÁLISE"
+            class="btn-filter {% if status_atual == 'EM_ANÁLISE' %}active{% endif %}"
+        >
+            Em Análise
+        </a>
+
+        <a
+            href="?status=APROVADA"
+            class="btn-filter {% if status_atual == 'APROVADA' %}active{% endif %}"
+        >
+            Aprovadas
+        </a>
+
+        <a
+            href="?status=RECUSADA"
+            class="btn-filter {% if status_atual == 'RECUSADA' %}active{% endif %}"
+        >
+            Recusadas
+        </a>
+
+        <a
+            href="?status=TODAS"
+            class="btn-filter {% if status_atual == 'TODAS' %}active{% endif %}"
+        >
+            Todas
+        </a>
+
+    </div>
+
+
+    {% if solicitacoes %}
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Discente</th>
+                    <th>Título do TCC</th>
+                    <th>Solicitante</th>
+                    <th>Local</th>
+                    <th>Data da defesa</th>
+                    <th>Solicitada em</th>
+                    <th>Status</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for solicitacao in solicitacoes %}
+
+                    <tr>
+
+                        <td>
+                            {{ solicitacao.projeto_tcc.discente.nome }}
+                        </td>
+
+                        <td>
+                            {{ solicitacao.projeto_tcc.titulo }}
+                        </td>
+
+                        <td>
+                            {{ solicitacao.usuario_solicitante }}
+                        </td>
+
+                        <td>
+                            {{ solicitacao.espaco.nome }}
+                        </td>
+
+                        <td>
+                            {{ solicitacao.opcao_data_inicio|date:"d/m/Y H:i" }}
+                            até
+                            {{ solicitacao.opcao_data_fim|date:"H:i" }}
+                        </td>
+
+                        <td>
+                            {{ solicitacao.data_solicitacao|date:"d/m/Y H:i" }}
+                        </td>
+
+                        <td>
+
+                            {% if solicitacao.status == 'EM_ANÁLISE' %}
+
+                                <span class="status-badge status-analise">
+                                    Em Análise
+                                </span>
+
+                            {% elif solicitacao.status == 'APROVADA' %}
+
+                                <span class="status-badge status-aprovada">
+                                    Aprovada
+                                </span>
+
+                            {% else %}
+
+                                <span class="status-badge status-recusada">
+                                    Recusada
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+                        <td>
+
+                            {% if solicitacao.status == 'EM_ANÁLISE' %}
+
+                                <a
+                                    href="{% url 'avaliar_solicitacao' solicitacao.id %}"
+                                    class="btn-download"
+                                >
+                                    AVALIAR
+                                </a>
+
+                            {% else %}
+
+                                <span style="color: #666;">
+                                    Decisão finalizada
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+
+        {% if solicitacoes.has_other_pages %}
+
+            <div style="
+                margin-top: 20px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 15px;
+            ">
+
+                {% if solicitacoes.has_previous %}
+
+                    <a
+                        class="btn-filter"
+                        href="?status={{ status_atual }}&pagina={{ solicitacoes.previous_page_number }}"
+                    >
+                        Anterior
+                    </a>
+
+                {% endif %}
+
+                <span>
+                    Página {{ solicitacoes.number }}
+                    de {{ solicitacoes.paginator.num_pages }}
+                </span>
+
+                {% if solicitacoes.has_next %}
+
+                    <a
+                        class="btn-filter"
+                        href="?status={{ status_atual }}&pagina={{ solicitacoes.next_page_number }}"
+                    >
+                        Próxima
+                    </a>
+
+                {% endif %}
+
+            </div>
+
+        {% endif %}
+
+    {% else %}
+
+        <div class="sem-resultados">
+
+            <h3>Nenhuma solicitação encontrada</h3>
+
+            <p>
+                Não existem solicitações correspondentes
+                ao filtro selecionado.
+            </p>
+
+        </div>
+
+    {% endif %}
+
+</div>
+
+{% endblock %}

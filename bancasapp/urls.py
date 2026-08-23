@@ -23,4 +23,5 @@ urlpatterns = [
     path('espacos/<int:espaco_id>/status/',views.alternar_status_espaco,name='alternar_status_espaco'),
     path('disponibilidades/<int:disponibilidade_id>/editar/',views.editar_disponibilidade,name='editar_disponibilidade'),
     path('disponibilidades/<int:disponibilidade_id>/status/', views.alternar_status_disponibilidade, name='alternar_status_disponibilidade'),
+    path('coordenacao/solicitacoes/', views.solicitacoes_coordenacao, name='solicitacoes_coordenacao'),
 ]

@@ -12,6 +12,7 @@ from .models import (
     SolicitacaoAgendamento,
     ComposicaoBanca,
     BancaTCC,
+    DisponibilidadeEspaco,
 )
 
 
@@ -125,6 +126,147 @@ class AgendamentoTests(TestCase):
             nome='LAB TESTE'
         )
 
+        self.inicio_agendamento = (
+            timezone.localtime(
+                timezone.now()
+            )
+            + timedelta(days=30)
+        ).replace(
+            second=0,
+            microsecond=0
+        )
+
+        self.fim_agendamento = (
+            self.inicio_agendamento
+            + timedelta(hours=2)
+        )
+
+        self.disponibilidade = (
+            DisponibilidadeEspaco.objects.create(
+                espaco=self.espaco,
+                data_hora_inicio=(
+                    self.inicio_agendamento
+                    - timedelta(hours=1)
+                ),
+                data_hora_fim=(
+                    self.fim_agendamento
+                    + timedelta(hours=1)
+                ),
+                ativo=True,
+                criada_por=self.usuario_docente,
+            )
+        )
+    def test_horario_fora_da_disponibilidade_e_recusado(self):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        inicio_fora = (
+            self.disponibilidade.data_hora_fim
+            + timedelta(hours=1)
+        )
+
+        fim_fora = (
+            inicio_fora
+            + timedelta(hours=2)
+        )
+
+        response = self.client.post(
+            reverse('solicitar_banca'),
+            {
+                'projeto_tcc': self.projeto.id,
+                'espaco': self.espaco.id,
+
+                'opcao_data_inicio': (
+                    inicio_fora.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+
+                'opcao_data_fim': (
+                    fim_fora.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+
+                'orientador': self.docente.id,
+
+                'avaliador_interno': self.avaliador.id,
+
+                'nome_avaliador_externo': '',
+
+                'instituicao_avaliador_externo': '',
+            }
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
+            response,
+            'não está dentro de um horário disponibilizado'
+        )
+
+        self.assertEqual(
+            SolicitacaoAgendamento.objects.count(),
+            0
+        )
+
+
+    def test_disponibilidade_inativa_nao_pode_ser_usada(self):
+
+        self.disponibilidade.ativo = False
+
+        self.disponibilidade.save(
+            update_fields=['ativo']
+        )
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.post(
+            reverse('solicitar_banca'),
+            {
+                'projeto_tcc': self.projeto.id,
+                'espaco': self.espaco.id,
+
+                'opcao_data_inicio': (
+                    self.inicio_agendamento.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+
+                'opcao_data_fim': (
+                    self.fim_agendamento.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+
+                'orientador': self.docente.id,
+
+                'avaliador_interno': self.avaliador.id,
+
+                'nome_avaliador_externo': '',
+
+                'instituicao_avaliador_externo': '',
+            }
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertEqual(
+            SolicitacaoAgendamento.objects.count(),
+            0
+        )
+    
+
     def test_solicitar_banca_exige_login(self):
         response = self.client.get(
             reverse('solicitar_banca')
@@ -155,6 +297,34 @@ class AgendamentoTests(TestCase):
             'solicitar_banca.html'
         )
 
+    def test_espaco_ativo_sem_disponibilidade_aparece_no_formulario(self):
+
+        espaco_sem_disponibilidade = (
+            EspacoFisico.objects.create(
+                nome='Sala Ativa Sem Horário',
+                ativo=True
+            )
+        )
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.get(
+            reverse('solicitar_banca')
+        )
+
+        queryset_espacos = (
+            response.context['form']
+            .fields['espaco']
+            .queryset
+        )
+
+        self.assertIn(
+            espaco_sem_disponibilidade,
+            queryset_espacos
+        )
+
     def test_docente_consegue_solicitar_banca(self):
 
         self.client.force_login(
@@ -167,11 +337,17 @@ class AgendamentoTests(TestCase):
                 'projeto_tcc': self.projeto.id,
                 'espaco': self.espaco.id,
 
-                'opcao_data_inicio':
-                    '2026-08-20T14:00',
+                'opcao_data_inicio': (
+                    self.inicio_agendamento.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
 
-                'opcao_data_fim':
-                    '2026-08-20T16:00',
+                'opcao_data_fim': (
+                    self.fim_agendamento.strftime(
+                        '%Y-%m-%dT%H:%M'
+                     )
+                ),
 
                 'orientador':
                     self.docente.id,

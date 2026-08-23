@@ -19,7 +19,8 @@
         <a href="{% url 'meus_tccs' %}">BANCAS CADASTRADAS</a>
         <a href="{% url 'documentos' %}">DOCUMENTOS</a>
         {% if request.user.is_superuser or request.user.pusuario.perfil == 'COORDENACAO' %}
-            <a href="{% url 'gerenciar_espacos' %}">GERENCIAR SALAS</a>
+         <a href="{% url 'solicitacoes_coordenacao' %}">ANALISAR SOLICITAÇÕES</a>
+         <a href="{% url 'gerenciar_espacos' %}">GERENCIAR SALAS</a>
         {% endif %}
         
         <div class="footer-menu">

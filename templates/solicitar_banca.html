@@ -1,18 +1,86 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <div class="form-container">
-        <h1>Solicitar Banca</h1>
-        <p>Preencha os dados abaixo para agendar a defesa do TCC.</p>
 
-        
+<div class="dashboard-header">
+    <h1>Solicitar Banca</h1>
 
-        <form method="POST">
-            {% csrf_token %}
-            
-            {{ form.as_p }}
+    <p>
+        Escolha um dos períodos disponibilizados pela Coordenação.
+    </p>
+</div>
 
-            <button type="submit" class="btn-enviar">Solicitar Agendamento</button>
-        </form>
-    </div>
+<div class="table-container" style="margin-bottom: 30px;">
+
+    <h2>Horários disponíveis</h2>
+
+    {% if disponibilidades %}
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Espaço</th>
+                    <th>Data</th>
+                    <th>Início</th>
+                    <th>Término</th>
+                    <th>Observação</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for disponibilidade in disponibilidades %}
+
+                    <tr>
+                        <td>{{ disponibilidade.espaco.nome }}</td>
+
+                        <td>
+                            {{ disponibilidade.data_hora_inicio|date:"d/m/Y" }}
+                        </td>
+
+                        <td>
+                            {{ disponibilidade.data_hora_inicio|date:"H:i" }}
+                        </td>
+
+                        <td>
+                            {{ disponibilidade.data_hora_fim|date:"H:i" }}
+                        </td>
+
+                        <td>
+                            {{ disponibilidade.observacao|default:"—" }}
+                        </td>
+                    </tr>
+
+                {% endfor %}
+
+            </tbody>
+        </table>
+
+    {% else %}
+
+        <p>
+            A Coordenação ainda não disponibilizou horários
+            para novas bancas.
+        </p>
+
+    {% endif %}
+
+</div>
+
+<div class="form-container">
+
+    <h2>Dados da solicitação</h2>
+
+    <form method="POST">
+        {% csrf_token %}
+
+        {{ form.as_p }}
+
+        <button type="submit" class="btn-enviar">
+            Solicitar Agendamento
+        </button>
+    </form>
+
+</div>
+
 {% endblock %}
