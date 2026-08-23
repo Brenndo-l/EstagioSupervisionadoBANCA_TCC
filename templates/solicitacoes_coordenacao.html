@@ -149,6 +149,14 @@
                             {% if solicitacao.status == 'EM_ANÁLISE' %}
 
                                 <a
+                                    href="{% url 'editar_solicitacao_coordenacao' solicitacao.id %}"
+                                    class="btn-download"
+                                    style="margin-right: 6px;"
+                                >
+                                    EDITAR
+                                </a>
+
+                                <a
                                     href="{% url 'avaliar_solicitacao' solicitacao.id %}"
                                     class="btn-download"
                                 >

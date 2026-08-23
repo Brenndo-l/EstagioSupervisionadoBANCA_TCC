@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import SolicitacaoBancaForm, DiscenteForm, ProjetoTCCForm, ModeloDocumentoForm, AvaliacaoSolicitacaoForm, EspacoFisicoForm, DisponibilidadeEspacoForm
+from .forms import SolicitacaoBancaForm, EdicaoSolicitacaoCoordenacaoForm, DiscenteForm, ProjetoTCCForm, ModeloDocumentoForm, AvaliacaoSolicitacaoForm, EspacoFisicoForm, DisponibilidadeEspacoForm
 from .models import ProjetoTCC, pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico, ComposicaoBanca, ModeloDocumento, DisponibilidadeEspaco
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
@@ -234,6 +234,242 @@ def solicitacoes_coordenacao(request):
         request,
         'solicitacoes_coordenacao.html',
         contexto
+    )
+
+@coordenacao_required
+def editar_solicitacao_coordenacao(
+    request,
+    solicitacao_id
+):
+
+    solicitacao = get_object_or_404(
+        SolicitacaoAgendamento.objects.select_related(
+            'projeto_tcc',
+            'projeto_tcc__discente',
+            'espaco',
+            'usuario_solicitante',
+            'usuario_solicitante__usuario',
+        ),
+        pk=solicitacao_id
+    )
+
+    # Após uma decisão, os dados passam a fazer
+    # parte do histórico e não podem ser alterados.
+    if solicitacao.status != 'EM_ANÁLISE':
+
+        messages.warning(
+            request,
+            'Somente solicitações em análise '
+            'podem ser editadas.'
+        )
+
+        return redirect(
+            'solicitacoes_coordenacao'
+        )
+
+    composicao = (
+        ComposicaoBanca.objects
+        .select_related(
+            'orientador__usuario',
+            'coorientador__usuario',
+            'avaliador_interno__usuario',
+            'segundo_avaliador_interno__usuario',
+        )
+        .filter(
+            solicitacao=solicitacao
+        )
+        .first()
+    )
+
+    if composicao is None:
+
+        messages.error(
+            request,
+            'A composição desta solicitação '
+            'não foi encontrada.'
+        )
+
+        return redirect(
+            'avaliar_solicitacao',
+            solicitacao_id=solicitacao.id
+        )
+
+    dados_iniciais = {
+        'orientador': (
+            composicao.orientador
+        ),
+
+        'coorientador': (
+            composicao.coorientador
+        ),
+
+        'avaliador_interno': (
+            composicao.avaliador_interno
+        ),
+
+        'segundo_avaliador_interno': (
+            composicao.segundo_avaliador_interno
+        ),
+
+        'nome_avaliador_externo': (
+            composicao.nome_avaliador_externo
+        ),
+
+        'instituicao_avaliador_externo': (
+            composicao.instituicao_avaliador_externo
+        ),
+    }
+
+    if request.method == 'POST':
+
+        form = EdicaoSolicitacaoCoordenacaoForm(
+            request.POST,
+            instance=solicitacao,
+            initial=dados_iniciais
+        )
+
+        if form.is_valid():
+
+            with transaction.atomic():
+
+                # Impede que uma solicitação seja
+                # aprovada e editada simultaneamente.
+                solicitacao_bloqueada = (
+                    get_object_or_404(
+                        SolicitacaoAgendamento.objects
+                        .select_for_update(),
+                        pk=solicitacao.id
+                    )
+                )
+
+                if (
+                    solicitacao_bloqueada.status
+                    != 'EM_ANÁLISE'
+                ):
+
+                    messages.warning(
+                        request,
+                        'Esta solicitação acabou de ser '
+                        'avaliada e não pode mais ser editada.'
+                    )
+
+                    return redirect(
+                        'solicitacoes_coordenacao'
+                    )
+
+                composicao_bloqueada = (
+                    get_object_or_404(
+                        ComposicaoBanca.objects
+                        .select_for_update(),
+                        pk=composicao.id
+                    )
+                )
+
+                # Atualiza somente sala e horários.
+                # Projeto, solicitante e PDF permanecem
+                # exatamente como estavam.
+                solicitacao_bloqueada.espaco = (
+                    form.cleaned_data['espaco']
+                )
+
+                solicitacao_bloqueada.opcao_data_inicio = (
+                    form.cleaned_data[
+                        'opcao_data_inicio'
+                    ]
+                )
+
+                solicitacao_bloqueada.opcao_data_fim = (
+                    form.cleaned_data[
+                        'opcao_data_fim'
+                    ]
+                )
+
+                solicitacao_bloqueada.save(
+                    update_fields=[
+                        'espaco',
+                        'opcao_data_inicio',
+                        'opcao_data_fim',
+                    ]
+                )
+
+                composicao_bloqueada.orientador = (
+                    form.cleaned_data['orientador']
+                )
+
+                composicao_bloqueada.coorientador = (
+                    form.cleaned_data['coorientador']
+                )
+
+                composicao_bloqueada.avaliador_interno = (
+                    form.cleaned_data[
+                        'avaliador_interno'
+                    ]
+                )
+
+                composicao_bloqueada.segundo_avaliador_interno = (
+                    form.cleaned_data[
+                        'segundo_avaliador_interno'
+                    ]
+                )
+
+                composicao_bloqueada.nome_avaliador_externo = (
+                    form.cleaned_data[
+                        'nome_avaliador_externo'
+                    ]
+                )
+
+                composicao_bloqueada.instituicao_avaliador_externo = (
+                    form.cleaned_data[
+                        'instituicao_avaliador_externo'
+                    ]
+                )
+
+                composicao_bloqueada.save(
+                    update_fields=[
+                        'orientador',
+                        'coorientador',
+                        'avaliador_interno',
+                        'segundo_avaliador_interno',
+                        'nome_avaliador_externo',
+                        'instituicao_avaliador_externo',
+                    ]
+                )
+
+            messages.success(
+                request,
+                'Solicitação atualizada com sucesso.'
+            )
+
+            return redirect(
+                'avaliar_solicitacao',
+                solicitacao_id=solicitacao.id
+            )
+
+        # O CSS atual esconde as errorlists do Django.
+        # Por isso também mostramos os erros como mensagens.
+        for erros in form.errors.values():
+
+            for erro in erros:
+
+                messages.error(
+                    request,
+                    erro
+                )
+
+    else:
+
+        form = EdicaoSolicitacaoCoordenacaoForm(
+            instance=solicitacao,
+            initial=dados_iniciais
+        )
+
+    return render(
+        request,
+        'editar_solicitacao_coordenacao.html',
+        {
+            'solicitacao': solicitacao,
+            'form': form,
+        }
     )
 
 # 2. Tela onde aparecem as bancas já marcadas

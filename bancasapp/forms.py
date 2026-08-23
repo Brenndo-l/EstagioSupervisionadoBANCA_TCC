@@ -345,6 +345,37 @@ class SolicitacaoBancaForm(forms.ModelForm):
                         )
 
         return cleaned_data
+
+class EdicaoSolicitacaoCoordenacaoForm(
+    SolicitacaoBancaForm
+):
+
+    def __init__(self, *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
+
+        # O projeto e o PDF fazem parte do envio
+        # original e não podem ser substituídos
+        # pela Coordenação.
+        self.fields.pop(
+            'projeto_tcc',
+            None
+        )
+
+        self.fields.pop(
+            'arquivo_tcc',
+            None
+        )
+
+        # Garante que os valores atuais sejam
+        # apresentados nos campos datetime-local.
+        self.fields[
+            'opcao_data_inicio'
+        ].widget.format = '%Y-%m-%dT%H:%M'
+
+        self.fields[
+            'opcao_data_fim'
+        ].widget.format = '%Y-%m-%dT%H:%M'
       
 class AvaliacaoSolicitacaoForm(forms.Form):
 

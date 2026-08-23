@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="dashboard-header">
+
+    <h1>Editar Solicitação de Banca</h1>
+
+    <p>
+        Corrija o espaço, o horário ou a composição
+        enquanto a solicitação estiver em análise.
+    </p>
+
+</div>
+
+<div
+    class="table-container"
+    style="margin-bottom: 30px;"
+>
+
+    <h2>Dados preservados do envio</h2>
+
+    <p>
+        Estes dados pertencem ao envio original
+        e não podem ser modificados pela Coordenação.
+    </p>
+
+    <table>
+
+        <tbody>
+
+            <tr>
+                <th>Discente</th>
+                <td>
+                    {{ solicitacao.projeto_tcc.discente.nome }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>Título do TCC</th>
+                <td>
+                    {{ solicitacao.projeto_tcc.titulo }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>Docente solicitante</th>
+                <td>
+                    {{ solicitacao.usuario_solicitante }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>Arquivo original do TCC</th>
+
+                <td>
+
+                    {% if solicitacao.arquivo_tcc %}
+
+                        <a
+                            href="{% url 'baixar_tcc_solicitacao' solicitacao.id %}"
+                            class="btn-download"
+                        >
+                            BAIXAR PDF
+                        </a>
+
+                    {% else %}
+
+                        Não anexado — registro anterior
+                        à implantação do PDF obrigatório.
+
+                    {% endif %}
+
+                </td>
+            </tr>
+
+        </tbody>
+
+    </table>
+
+</div>
+
+<div class="form-container">
+
+    <h2>Dados que podem ser corrigidos</h2>
+
+    <form method="POST">
+
+        {% csrf_token %}
+
+        {{ form.as_p }}
+
+        <button
+            type="submit"
+            class="btn-enviar"
+        >
+            SALVAR ALTERAÇÕES
+        </button>
+
+    </form>
+
+    <p style="margin-top: 20px;">
+
+        <a
+            href="{% url 'avaliar_solicitacao' solicitacao.id %}"
+        >
+            Voltar para a avaliação
+        </a>
+
+    </p>
+
+</div>
+
+{% endblock %}

@@ -788,6 +788,220 @@ class AvaliacaoSolicitacaoTests(TestCase):
             args=[self.solicitacao.id]
         )
 
+    def test_coordenacao_consegue_editar_solicitacao_pendente(
+        self
+    ):
+
+        novo_espaco = EspacoFisico.objects.create(
+            nome='Laboratório Editado'
+        )
+
+        novo_inicio = (
+            timezone.localtime(
+                timezone.now()
+            )
+            + timedelta(days=40)
+        ).replace(
+            second=0,
+            microsecond=0
+        )
+
+        novo_fim = (
+            novo_inicio
+            + timedelta(hours=2)
+        )
+
+        DisponibilidadeEspaco.objects.create(
+            espaco=novo_espaco,
+            data_hora_inicio=(
+                novo_inicio
+                - timedelta(hours=1)
+            ),
+            data_hora_fim=(
+                novo_fim
+                + timedelta(hours=1)
+            ),
+            ativo=True,
+            criada_por=self.usuario_coordenacao,
+        )
+
+        url_edicao = reverse(
+            'editar_solicitacao_coordenacao',
+            args=[self.solicitacao.id]
+        )
+
+        projeto_original = (
+            self.solicitacao.projeto_tcc_id
+        )
+
+        arquivo_original = (
+            self.solicitacao.arquivo_tcc.name
+        )
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        resposta_get = self.client.get(
+            url_edicao
+        )
+
+        self.assertEqual(
+            resposta_get.status_code,
+            200
+        )
+
+        self.assertTemplateUsed(
+            resposta_get,
+            'editar_solicitacao_coordenacao.html'
+        )
+
+        campos_formulario = (
+            resposta_get.context['form'].fields
+        )
+
+        self.assertNotIn(
+            'projeto_tcc',
+            campos_formulario
+        )
+
+        self.assertNotIn(
+            'arquivo_tcc',
+            campos_formulario
+        )
+
+        response = self.client.post(
+            url_edicao,
+            {
+                'espaco': novo_espaco.id,
+
+                'opcao_data_inicio': (
+                    novo_inicio.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+
+                'opcao_data_fim': (
+                    novo_fim.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+
+                'orientador': self.docente.id,
+
+                'coorientador': '',
+
+                'avaliador_interno': (
+                    self.avaliador.id
+                ),
+
+                'segundo_avaliador_interno': '',
+
+                'nome_avaliador_externo': (
+                    'Nome Externo Corrigido'
+                ),
+
+                'instituicao_avaliador_externo': (
+                    'Instituição Corrigida'
+                ),
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                'avaliar_solicitacao',
+                args=[self.solicitacao.id]
+            )
+        )
+
+        self.solicitacao.refresh_from_db()
+        self.composicao.refresh_from_db()
+
+        self.assertEqual(
+            self.solicitacao.espaco,
+            novo_espaco
+        )
+
+        self.assertEqual(
+            self.solicitacao.opcao_data_inicio,
+            novo_inicio
+        )
+
+        self.assertEqual(
+            self.solicitacao.opcao_data_fim,
+            novo_fim
+        )
+
+        # Projeto e PDF original foram preservados.
+        self.assertEqual(
+            self.solicitacao.projeto_tcc_id,
+            projeto_original
+        )
+
+        self.assertEqual(
+            self.solicitacao.arquivo_tcc.name,
+            arquivo_original
+        )
+
+        self.assertEqual(
+            self.composicao.nome_avaliador_externo,
+            'Nome Externo Corrigido'
+        )
+
+        self.assertEqual(
+            self.composicao.instituicao_avaliador_externo,
+            'Instituição Corrigida'
+        )
+
+    def test_docente_nao_pode_editar_solicitacao(
+        self
+    ):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.get(
+            reverse(
+                'editar_solicitacao_coordenacao',
+                args=[self.solicitacao.id]
+            )
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+    def test_solicitacao_decidida_nao_pode_ser_editada(
+        self
+    ):
+
+        self.solicitacao.status = 'RECUSADA'
+
+        self.solicitacao.save(
+            update_fields=['status']
+        )
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.get(
+            reverse(
+                'editar_solicitacao_coordenacao',
+                args=[self.solicitacao.id]
+            )
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                'solicitacoes_coordenacao'
+            )
+        )
+
     def test_docente_nao_pode_acessar_avaliacao(self):
 
         self.client.force_login(
