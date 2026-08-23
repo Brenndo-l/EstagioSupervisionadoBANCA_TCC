@@ -237,6 +237,17 @@ class SolicitacaoAgendamento(models.Model):
 
     opcao_data_fim = models.DateTimeField()
 
+    arquivo_tcc = models.FileField(
+        upload_to='tcc/solicitacoes/%Y/%m/',
+        validators=[
+            FileExtensionValidator(
+                allowed_extensions=['pdf']
+            )
+        ],
+        blank=True,
+        verbose_name='Arquivo do TCC'
+    )        
+
     status = models.CharField(
         max_length=15,
         choices=STATUS_SOLICITACAO,
@@ -320,9 +331,12 @@ class ModeloDocumento(models.Model):
 
 # Relacionamento 1 para 1: Cada TCC tem apenas UMA banca
 class ComposicaoBanca(models.Model):
-    projeto_tcc = models.OneToOneField(ProjetoTCC, on_delete=models.CASCADE, verbose_name="Projeto de TCC")
+    projeto_tcc = models.ForeignKey(ProjetoTCC, on_delete=models.CASCADE, verbose_name='Projeto de TCC')
+    solicitacao = models.OneToOneField(SolicitacaoAgendamento,on_delete=models.CASCADE,related_name='composicao_banca',null=True,blank=True,verbose_name='Solicitação')
     orientador = models.ForeignKey(pUsuario, on_delete=models.PROTECT, related_name="bancas_orientador", verbose_name="Professor Orientador")
+    coorientador = models.ForeignKey(pUsuario,on_delete=models.PROTECT,related_name='bancas_coorientador',verbose_name='Professor Coorientador',null=True,blank=True)
     avaliador_interno = models.ForeignKey(pUsuario, on_delete=models.PROTECT, related_name="bancas_avaliador_interno", verbose_name="Avaliador Interno (UFAC)")
+    segundo_avaliador_interno = models.ForeignKey(pUsuario,on_delete=models.PROTECT,related_name='bancas_segundo_avaliador_interno',verbose_name='Segundo Avaliador Interno (UFAC)',null=True,blank=True)
     nome_avaliador_externo = models.CharField(max_length=150, verbose_name="Nome do Avaliador Externo", blank=True, null=True)
     instituicao_avaliador_externo = models.CharField(max_length=100, verbose_name="Instituição Externa", blank=True, null=True)
 

@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from datetime import timedelta
 from django.utils import timezone
-
+from django.core.files.uploadedfile import SimpleUploadedFile
 from .models import (
     pUsuario,
     EspacoFisico,
@@ -14,6 +14,14 @@ from .models import (
     BancaTCC,
     DisponibilidadeEspaco,
 )
+
+def criar_pdf_teste():
+
+    return SimpleUploadedFile(
+        'tcc_teste.pdf',
+        b'%PDF-1.4\n% Arquivo utilizado nos testes do SGTCC.',
+        content_type='application/pdf'
+    )
 
 
 # Testes da tela de login
@@ -325,6 +333,70 @@ class AgendamentoTests(TestCase):
             queryset_espacos
         )
 
+    def test_arquivo_tcc_precisa_ser_pdf_valido(self):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        arquivo_falso = SimpleUploadedFile(
+            'tcc_falso.pdf',
+            b'Este arquivo nao possui estrutura de PDF.',
+            content_type='application/pdf'
+        )
+
+        response = self.client.post(
+            reverse('solicitar_banca'),
+            {
+                'projeto_tcc': self.projeto.id,
+                'espaco': self.espaco.id,
+
+                'opcao_data_inicio': (
+                    self.inicio_agendamento.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+
+                'opcao_data_fim': (
+                    self.fim_agendamento.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+
+                'orientador':
+                    self.docente.id,
+
+                'avaliador_interno':
+                    self.avaliador.id,
+
+                'nome_avaliador_externo':
+                    '',
+
+                'instituicao_avaliador_externo':
+                    '',
+
+                'arquivo_tcc':
+                    arquivo_falso,
+            }
+        )
+
+        # Formulário inválido permanece na página.
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
+            response,
+            'não parece ser um PDF válido'
+        )
+
+        # Nenhuma solicitação deve ter sido criada.
+        self.assertEqual(
+            SolicitacaoAgendamento.objects.count(),
+            0
+        )
+
     def test_docente_consegue_solicitar_banca(self):
 
         self.client.force_login(
@@ -346,7 +418,7 @@ class AgendamentoTests(TestCase):
                 'opcao_data_fim': (
                     self.fim_agendamento.strftime(
                         '%Y-%m-%dT%H:%M'
-                     )
+                    )
                 ),
 
                 'orientador':
@@ -360,7 +432,80 @@ class AgendamentoTests(TestCase):
 
                 'instituicao_avaliador_externo':
                     '',
+
+                'arquivo_tcc':
+                    criar_pdf_teste(),
             }
+        )
+
+        # Após salvar, deve voltar ao Dashboard.
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+        # Deve existir exatamente uma solicitação.
+        self.assertEqual(
+            SolicitacaoAgendamento.objects.count(),
+            1
+        )
+
+        solicitacao = (
+            SolicitacaoAgendamento.objects.first()
+        )
+
+        # Garante que o arquivo físico seja removido
+        # depois que o teste terminar.
+        self.addCleanup(
+            solicitacao.arquivo_tcc.delete,
+            save=False
+        )
+
+        # O PDF deve ter sido armazenado.
+        self.assertTrue(
+            solicitacao.arquivo_tcc.name.endswith(
+                '.pdf'
+            )
+        )
+
+        # A solicitação deve começar Em Análise.
+        self.assertEqual(
+            solicitacao.status,
+            'EM_ANÁLISE'
+        )
+
+        # Deve pertencer ao docente logado.
+        self.assertEqual(
+            solicitacao.usuario_solicitante,
+            self.docente
+        )
+
+        # Deve estar ligada ao projeto correto.
+        self.assertEqual(
+            solicitacao.projeto_tcc,
+            self.projeto
+        )
+
+        # A composição da banca também deve ter sido criada.
+        composicao = ComposicaoBanca.objects.get(
+            projeto_tcc=self.projeto
+        )
+
+        # A composição deve pertencer exatamente
+        # à solicitação recém-criada.
+        self.assertEqual(
+            composicao.solicitacao,
+            solicitacao
+        )
+
+        self.assertEqual(
+            composicao.orientador,
+            self.docente
+        )
+
+        self.assertEqual(
+            composicao.avaliador_interno,
+            self.avaliador
         )
 
         # Após salvar, deve voltar ao Dashboard
@@ -480,6 +625,7 @@ class AvaliacaoSolicitacaoTests(TestCase):
 
         self.composicao = ComposicaoBanca.objects.create(
             projeto_tcc=self.projeto,
+            solicitacao=self.solicitacao,
             orientador=self.docente,
             avaliador_interno=self.avaliador,
             nome_avaliador_externo='Avaliador Externo',

@@ -311,46 +311,55 @@ def solicitar_banca(request):
     if request.method == 'POST':
 
         form = SolicitacaoBancaForm(
-            request.POST
+            request.POST,
+            request.FILES
         )
 
         if form.is_valid():
 
-            solicitacao = form.save(
-                commit=False
-            )
+            with transaction.atomic():
 
-            solicitacao.status = 'EM_ANÁLISE'
+                solicitacao = form.save(
+                    commit=False
+                )
 
-            solicitacao.usuario_solicitante = (
-                perfil_logado
-            )
+                solicitacao.status = 'EM_ANÁLISE'
 
-            solicitacao.save()
+                solicitacao.usuario_solicitante = (
+                    perfil_logado
+                )
 
-            # Registra os integrantes escolhidos para o TCC.
-            ComposicaoBanca.objects.update_or_create(
-                projeto_tcc=solicitacao.projeto_tcc,
-                defaults={
-                    'orientador':
-                        form.cleaned_data['orientador'],
+                solicitacao.save()
 
-                    'avaliador_interno':
+                # Cada solicitação recebe sua própria composição.
+                # Assim uma nova tentativa não altera o histórico
+                # de uma solicitação anterior.
+                ComposicaoBanca.objects.create(
+                    solicitacao=solicitacao,
+                    projeto_tcc=solicitacao.projeto_tcc,
+
+                    orientador=(
+                        form.cleaned_data['orientador']
+                    ),
+
+                    avaliador_interno=(
                         form.cleaned_data[
                             'avaliador_interno'
-                        ],
+                        ]
+                    ),
 
-                    'nome_avaliador_externo':
+                    nome_avaliador_externo=(
                         form.cleaned_data[
                             'nome_avaliador_externo'
-                        ],
+                        ]
+                    ),
 
-                    'instituicao_avaliador_externo':
+                    instituicao_avaliador_externo=(
                         form.cleaned_data[
                             'instituicao_avaliador_externo'
-                        ],
-                }
-            )
+                        ]
+                    ),
+                )
 
             messages.success(
                 request,
@@ -469,7 +478,7 @@ def avaliar_solicitacao(request, solicitacao_id):
         'orientador__usuario',
         'avaliador_interno__usuario',
     ).filter(
-        projeto_tcc=solicitacao.projeto_tcc
+        solicitacao=solicitacao
     ).first()
 
     # Uma solicitação já decidida não pode ser avaliada novamente
@@ -785,7 +794,7 @@ def gerar_pdf_banca(request, solicitacao_id):
         'orientador__usuario',
         'avaliador_interno__usuario'
     ).filter(
-        projeto_tcc=solicitacao.projeto_tcc
+        solicitacao=solicitacao
     ).first()
 
     # Se a composição não existir, não gera um documento incompleto

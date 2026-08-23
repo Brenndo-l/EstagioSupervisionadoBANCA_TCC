@@ -24,12 +24,29 @@ class SolicitacaoBancaForm(forms.ModelForm):
         required=False, 
         label="Instituição do Avaliador Externo (Opcional)"
     )
+    arquivo_tcc = forms.FileField(
+        required=True,
+        label='Arquivo do TCC em PDF',
+        help_text='Envie o trabalho em formato PDF, com no máximo 25 MB.',
+        widget=forms.FileInput(
+            attrs={
+                'class': 'form-input',
+                'accept': '.pdf,application/pdf',
+            }
+        ),
+        error_messages={
+            'required': (
+                'Anexe o arquivo PDF do TCC antes de enviar '
+                'a solicitação.'
+            ),
+        }
+    )
     class Meta:
         # 1. de qual tabela puxa os dados
         model = SolicitacaoAgendamento
         
         # 2. campos que o professor preenche
-        fields = ['projeto_tcc', 'espaco', 'opcao_data_inicio', 'opcao_data_fim']
+        fields = ['projeto_tcc', 'espaco', 'opcao_data_inicio', 'opcao_data_fim', 'arquivo_tcc']
         
         # 3. fica mais bonito pro caba ler
         labels = {
@@ -47,6 +64,7 @@ class SolicitacaoBancaForm(forms.ModelForm):
             'opcao_data_inicio': forms.DateTimeInput(attrs={'class': 'form-input', 'type': 'datetime-local'}),
             'opcao_data_fim': forms.DateTimeInput(attrs={'class': 'form-input', 'type': 'datetime-local'}),
         }
+
     def __init__(self, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
@@ -60,7 +78,36 @@ class SolicitacaoBancaForm(forms.ModelForm):
             )
             .order_by('nome')
         )
-    
+        
+    def clean_arquivo_tcc(self):
+
+        arquivo = self.cleaned_data.get(
+            'arquivo_tcc'
+        )
+
+        if not arquivo:
+            return arquivo
+
+        limite_bytes = 25 * 1024 * 1024
+
+        if arquivo.size > limite_bytes:
+            raise forms.ValidationError(
+                'O arquivo do TCC não pode ultrapassar 25 MB.'
+            )
+
+        # Não confia apenas na extensão informada pelo navegador.
+        arquivo.seek(0)
+
+        cabecalho = arquivo.read(5)
+
+        arquivo.seek(0)
+
+        if cabecalho != b'%PDF-':
+            raise forms.ValidationError(
+                'O arquivo enviado não parece ser um PDF válido.'
+            )
+
+        return arquivo 
 
     def clean(self):
 

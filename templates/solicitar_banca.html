@@ -71,7 +71,7 @@
 
     <h2>Dados da solicitação</h2>
 
-    <form method="POST">
+    <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
 
         {{ form.as_p }}
