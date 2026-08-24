@@ -191,6 +191,11 @@ table tr:nth-child(even) {
     background-color: #d9534f; /* Vermelho */
 }
 
+.status-badge.status-expirada {
+    background-color: #6c757d;
+    color: white;
+}
+
 
 /* Filtros da tela Visualizar Bancas */
 
