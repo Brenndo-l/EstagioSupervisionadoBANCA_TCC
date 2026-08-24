@@ -123,3 +123,15 @@ STATICFILES_DIRS = [
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Sessão persistente por 14 dias quando o usuário
+# selecionar a opção "Manter conectado".
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 14
+
+# Por padrão, a sessão termina ao fechar o navegador.
+# A tela de login poderá substituir essa configuração
+# individualmente quando "Manter conectado" for marcado.
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'

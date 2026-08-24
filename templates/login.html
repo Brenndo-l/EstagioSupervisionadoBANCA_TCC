@@ -54,16 +54,15 @@
             {% endif %}
 
             <form method="POST">
-
                 {% csrf_token %}
 
                 <input
-                    type="email"
+                    type="text"
                     id="login"
                     name="email"
-                    placeholder="e-mail institucional"
-                    value="{{ email_informado|default:'' }}"
-                    autocomplete="email"
+                    placeholder="E-mail institucional ou usuário"
+                    value="{{ request.POST.email|default:'' }}"
+                    autocomplete="username"
                     required
                 >
 
@@ -71,15 +70,26 @@
                     type="password"
                     id="senha"
                     name="senha"
-                    placeholder="senha"
+                    placeholder="Senha"
                     autocomplete="current-password"
                     required
                 >
 
+                <label class="opcao-manter-conectado">
+                    <input
+                        type="checkbox"
+                        name="manter_conectado"
+                        {% if request.POST.manter_conectado %}
+                            checked
+                        {% endif %}
+                    >
+
+                    <span>Manter conectado</span>
+                </label>
+
                 <button type="submit">
                     Entrar
                 </button>
-
             </form>
 
             <p style="font-size: 14px; text-align: center;">

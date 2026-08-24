@@ -32,6 +32,7 @@ from django.core.paginator import Paginator
 from django.views.decorators.http import require_POST
 from django.core.exceptions import ValidationError
 from .services import expirar_solicitacoes_vencidas
+from django.conf import settings
 
 
 
@@ -915,105 +916,49 @@ def cadastrar_docente(request):
     )
 
 def login_view(request):
-
+    # Usuários que ainda possuem uma sessão válida
+    # seguem diretamente para o painel.
     if request.user.is_authenticated:
         return redirect('dashboard')
 
-    email_informado = ''
-
     if request.method == 'POST':
+        email = (
+            request.POST.get('email')
+            or ''
+        ).strip().lower()
 
-        email_informado = (
-            request.POST.get(
-                'email',
-                ''
-            )
-            .strip()
-            .lower()
+        senha = (
+            request.POST.get('senha')
+            or ''
         )
 
-        senha = request.POST.get(
-            'senha',
-            ''
+        manter_conectado = (
+            request.POST.get('manter_conectado')
+            == 'on'
         )
-
-        usuario_cadastrado = (
-            User.objects
-            .filter(
-                username__iexact=email_informado
-            )
-            .first()
-        )
-
-        if (
-            usuario_cadastrado
-            and not usuario_cadastrado.is_active
-        ):
-
-            perfil = (
-                pUsuario.objects
-                .filter(
-                    usuario=usuario_cadastrado
-                )
-                .first()
-            )
-
-            if (
-                perfil
-                and perfil.status_cadastro == 'PENDENTE'
-            ):
-
-                messages.warning(
-                    request,
-                    (
-                        'Seu cadastro está aguardando '
-                        'análise da Coordenação.'
-                    )
-                )
-
-            elif (
-                perfil
-                and perfil.status_cadastro == 'RECUSADO'
-            ):
-
-                messages.error(
-                    request,
-                    (
-                        'Seu cadastro foi recusado pela '
-                        'Coordenação.'
-                    )
-                )
-
-            else:
-
-                messages.error(
-                    request,
-                    (
-                        'Seu usuário está inativo. '
-                        'Procure a Coordenação.'
-                    )
-                )
-
-            return render(
-                request,
-                'login.html',
-                {
-                    'email_informado': email_informado,
-                }
-            )
 
         usuario = authenticate(
-            request=request,
-            username=email_informado,
+            request,
+            username=email,
             password=senha
         )
 
         if usuario is not None:
-
             login(
                 request,
                 usuario
             )
+
+            if manter_conectado:
+                # Mantém a sessão pelo período configurado
+                # em SESSION_COOKIE_AGE.
+                request.session.set_expiry(
+                    settings.SESSION_COOKIE_AGE
+                )
+            else:
+                # A sessão termina quando o navegador
+                # for completamente fechado.
+                request.session.set_expiry(0)
 
             messages.success(
                 request,
@@ -1024,15 +969,12 @@ def login_view(request):
 
         messages.error(
             request,
-            'Login ou senha incorretos.'
+            'E-mail ou senha incorretos.'
         )
 
     return render(
         request,
-        'login.html',
-        {
-            'email_informado': email_informado,
-        }
+        'login.html'
     )
 
 @require_POST

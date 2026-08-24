@@ -38,6 +38,52 @@ class LoginTests(TestCase):
             perfil='DOCENTE'
         )
 
+    def test_login_sem_manter_conectado_expira_ao_fechar_navegador(
+        self
+    ):
+        response = self.client.post(
+            reverse('login'),
+            {
+                'email': 'docente@ufac.br',
+                'senha': 'Senha123!',
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+        self.assertTrue(
+            self.client.session.get_expire_at_browser_close()
+        )
+
+    def test_login_com_manter_conectado_cria_sessao_persistente(
+        self
+    ):
+        response = self.client.post(
+            reverse('login'),
+            {
+                'email': 'docente@ufac.br',
+                'senha': 'Senha123!',
+                'manter_conectado': 'on',
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+        self.assertFalse(
+            self.client.session.get_expire_at_browser_close()
+        )
+
+        self.assertGreater(
+            self.client.session.get_expiry_age(),
+            0
+        )
+
     def test_tela_login_abre(self):
         response = self.client.get(
             reverse('login')
