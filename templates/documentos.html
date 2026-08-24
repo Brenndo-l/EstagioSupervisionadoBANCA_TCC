@@ -13,12 +13,6 @@
 
 {% if eh_coordenacao %}
 
-    <a
-        href="{% url 'gerar_pdf_teste' %}"
-        class="btn-download"
-    >
-        TESTAR GERAÇÃO DE PDF
-    </a>
 
     <div class="form-container" style="margin-top: 20px;">
 
@@ -50,8 +44,8 @@
     <h2>Bancas aprovadas</h2>
 
     <p>
-        Selecione uma banca aprovada para testar
-        a geração automática dos dados em PDF.
+        Selecione uma banca aprovada para gerar
+        a minuta institucional que será inserida no SEI.
     </p>
 
     {% if solicitacoes_aprovadas %}
@@ -95,7 +89,7 @@
                                 href="{% url 'gerar_pdf_banca' solicitacao.id %}"
                                 class="btn-download"
                             >
-                                GERAR PDF
+                                GERAR MINUTA
                             </a>
                         </td>
 

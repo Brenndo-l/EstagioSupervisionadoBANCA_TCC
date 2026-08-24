@@ -16,7 +16,6 @@ urlpatterns = [
     path('pesquisar/', views.pesquisar, name='pesquisar'),
     path('documentos/', views.documentos, name='documentos'),
     path('documentos/<int:modelo_id>/download/', views.baixar_documento, name='baixar_documento'),
-    path('documentos/teste-pdf/', views.gerar_pdf_teste, name='gerar_pdf_teste'),
     path('documentos/banca/<int:solicitacao_id>/pdf/', views.gerar_pdf_banca, name='gerar_pdf_banca'),
     path('espacos/', views.gerenciar_espacos, name='gerenciar_espacos'),
     path('espacos/<int:espaco_id>/editar/', views.editar_espaco, name='editar_espaco'),

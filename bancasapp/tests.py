@@ -803,6 +803,113 @@ class AvaliacaoSolicitacaoTests(TestCase):
             'avaliar_solicitacao',
             args=[self.solicitacao.id]
         )
+    def test_coordenacao_consegue_gerar_minuta_pdf(
+        self
+    ):
+
+        self.solicitacao.status = 'APROVADA'
+
+        self.solicitacao.save(
+            update_fields=['status']
+        )
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.get(
+            reverse(
+                'gerar_pdf_banca',
+                args=[self.solicitacao.id]
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertEqual(
+            response['Content-Type'],
+            'application/pdf'
+        )
+
+        self.assertTrue(
+            response.content.startswith(
+                b'%PDF'
+            )
+        )
+
+
+    def test_docente_participante_consegue_gerar_minuta(
+        self
+    ):
+
+        self.solicitacao.status = 'APROVADA'
+
+        self.solicitacao.save(
+            update_fields=['status']
+        )
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.get(
+            reverse(
+                'gerar_pdf_banca',
+                args=[self.solicitacao.id]
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertEqual(
+            response['Content-Type'],
+            'application/pdf'
+        )
+
+
+    def test_docente_sem_vinculo_nao_gera_minuta(
+        self
+    ):
+
+        usuario_sem_vinculo = (
+            User.objects.create_user(
+                username='semvinculo@ufac.br',
+                password='Senha123!'
+            )
+        )
+
+        pUsuario.objects.create(
+            usuario=usuario_sem_vinculo,
+            perfil='DOCENTE'
+        )
+
+        self.solicitacao.status = 'APROVADA'
+
+        self.solicitacao.save(
+            update_fields=['status']
+        )
+
+        self.client.force_login(
+            usuario_sem_vinculo
+        )
+
+        response = self.client.get(
+            reverse(
+                'gerar_pdf_banca',
+                args=[self.solicitacao.id]
+            )
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('documentos')
+        )    
 
     def test_solicitacao_vencida_e_marcada_como_expirada(
     self

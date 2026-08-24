@@ -1317,15 +1317,76 @@ def documentos(request):
     modelos = ModeloDocumento.objects.all().order_by('-data_upload')
 
     # Bancas aprovadas que podem ser usadas na geração de documentos
-    solicitacoes_aprovadas = SolicitacaoAgendamento.objects.select_related(
+    consulta_solicitacoes = (
+    SolicitacaoAgendamento.objects
+    .select_related(
         'projeto_tcc',
         'projeto_tcc__discente',
         'espaco',
         'usuario_solicitante',
-        'usuario_solicitante__usuario'
-    ).filter(
+        'usuario_solicitante__usuario',
+    )
+    .filter(
         status='APROVADA'
-    ).order_by('-opcao_data_inicio')
+    )
+)
+
+    if not eh_coordenacao:
+
+        perfil_logado = (
+            pUsuario.objects
+            .filter(
+                usuario=request.user,
+                perfil='DOCENTE'
+            )
+            .first()
+        )
+
+        if perfil_logado is None:
+
+            consulta_solicitacoes = (
+                SolicitacaoAgendamento.objects.none()
+            )
+
+        else:
+
+            consulta_solicitacoes = (
+                consulta_solicitacoes
+                .filter(
+                    Q(
+                        usuario_solicitante=(
+                            perfil_logado
+                        )
+                    )
+                    | Q(
+                        composicao_banca__orientador=(
+                            perfil_logado
+                        )
+                    )
+                    | Q(
+                        composicao_banca__coorientador=(
+                            perfil_logado
+                        )
+                    )
+                    | Q(
+                        composicao_banca__avaliador_interno=(
+                            perfil_logado
+                        )
+                    )
+                    | Q(
+                        composicao_banca__segundo_avaliador_interno=(
+                            perfil_logado
+                        )
+                    )
+                )
+                .distinct()
+            )
+
+    solicitacoes_aprovadas = (
+        consulta_solicitacoes.order_by(
+            '-opcao_data_inicio'
+        )
+    )
 
     contexto = {
         'form': form,
@@ -1372,111 +1433,187 @@ def baixar_documento(request, modelo_id):
     )
 
 @login_required(login_url='login')
-def gerar_pdf_teste(request):
-    # Carrega o HTML usado para montar o PDF
-    template = get_template('pdf/pdf_teste.html')
+def _nome_docente_documento(perfil):
 
-    nome_usuario = (
-        request.user.get_full_name()
-        or request.user.username
+    if perfil is None:
+        return ''
+
+    nome_completo = (
+        perfil.usuario.get_full_name().strip()
     )
 
-    contexto = {
-        'usuario': nome_usuario,
-    }
-
-    html = template.render(contexto)
-
-    # Cria a resposta que será enviada como PDF
-    response = HttpResponse(
-        content_type='application/pdf'
+    return (
+        nome_completo
+        or perfil.usuario.username
     )
 
-    response['Content-Disposition'] = (
-        'attachment; filename="sgtcc_teste_pdf.pdf"'
-    )
 
-    # Converte o HTML em PDF
-    resultado = pisa.CreatePDF(
-        html,
-        dest=response,
-        encoding='UTF-8'
-    )
+@usuario_interno_required
+def gerar_pdf_banca(
+    request,
+    solicitacao_id
+):
 
-    if resultado.err:
-        return HttpResponse(
-            'Erro ao gerar o arquivo PDF.',
-            status=500
-        )
-
-    return response
-
-@login_required(login_url='login')
-def gerar_pdf_banca(request, solicitacao_id):
-
-    # Só aceita uma solicitação que esteja aprovada
     solicitacao = get_object_or_404(
-        SolicitacaoAgendamento.objects.select_related(
+        SolicitacaoAgendamento.objects
+        .select_related(
             'projeto_tcc',
             'projeto_tcc__discente',
-            'espaco'
+            'espaco',
+            'usuario_solicitante',
+            'usuario_solicitante__usuario',
         ),
         id=solicitacao_id,
         status='APROVADA'
     )
 
-    # Busca a composição cadastrada para esse TCC
-    composicao = ComposicaoBanca.objects.select_related(
-        'orientador__usuario',
-        'avaliador_interno__usuario'
-    ).filter(
-        solicitacao=solicitacao
-    ).first()
+    composicao = (
+        ComposicaoBanca.objects
+        .select_related(
+            'orientador__usuario',
+            'coorientador__usuario',
+            'avaliador_interno__usuario',
+            'segundo_avaliador_interno__usuario',
+        )
+        .filter(
+            solicitacao=solicitacao
+        )
+        .first()
+    )
 
-    # Se a composição não existir, não gera um documento incompleto
-    if not composicao:
+    if composicao is None:
+
         messages.error(
             request,
-            'Não foi encontrada uma composição de banca para este TCC.'
+            'Não foi encontrada uma composição '
+            'para esta solicitação.'
         )
+
         return redirect('documentos')
 
-    # Nome do orientador
-    nome_orientador = (
-        composicao.orientador.usuario.get_full_name()
-        or composicao.orientador.usuario.username
+    # A Coordenação pode gerar qualquer minuta.
+    usuario_permitido = (
+        usuario_e_coordenacao(
+            request.user
+        )
     )
 
-    # Nome do avaliador interno
-    nome_avaliador_interno = (
-        composicao.avaliador_interno.usuario.get_full_name()
-        or composicao.avaliador_interno.usuario.username
-    )
+    # Docentes só podem gerar documentos de bancas
+    # das quais participam ou que solicitaram.
+    if not usuario_permitido:
+
+        perfil_logado = (
+            pUsuario.objects
+            .filter(
+                usuario=request.user,
+                perfil='DOCENTE'
+            )
+            .first()
+        )
+
+        membros_internos = {
+            membro_id
+            for membro_id in [
+                composicao.orientador_id,
+                composicao.coorientador_id,
+                composicao.avaliador_interno_id,
+                (
+                    composicao
+                    .segundo_avaliador_interno_id
+                ),
+            ]
+            if membro_id is not None
+        }
+
+        usuario_permitido = (
+            perfil_logado is not None
+            and (
+                solicitacao.usuario_solicitante_id
+                == perfil_logado.id
+                or perfil_logado.id
+                in membros_internos
+            )
+        )
+
+    if not usuario_permitido:
+
+        messages.error(
+            request,
+            'Você não possui permissão para '
+            'gerar este documento.'
+        )
+
+        return redirect('documentos')
 
     contexto = {
-        'titulo_tcc': solicitacao.projeto_tcc.titulo,
-        'discente': solicitacao.projeto_tcc.discente.nome,
-        'orientador': nome_orientador,
-        'avaliador_interno': nome_avaliador_interno,
-        'avaliador_externo': composicao.nome_avaliador_externo,
-        'instituicao_externa': composicao.instituicao_avaliador_externo,
-        'espaco': solicitacao.espaco.nome,
-        'data_inicio': solicitacao.opcao_data_inicio,
-        'data_fim': solicitacao.opcao_data_fim,
+        'discente': (
+            solicitacao.projeto_tcc.discente.nome
+        ),
+
+        'titulo_tcc': (
+            solicitacao.projeto_tcc.titulo
+        ),
+
+        'data_defesa': (
+            solicitacao.opcao_data_inicio
+        ),
+
+        'orientador': (
+            _nome_docente_documento(
+                composicao.orientador
+            )
+        ),
+
+        'coorientador': (
+            _nome_docente_documento(
+                composicao.coorientador
+            )
+        ),
+
+        'avaliador_interno': (
+            _nome_docente_documento(
+                composicao.avaliador_interno
+            )
+        ),
+
+        'segundo_avaliador_interno': (
+            _nome_docente_documento(
+                composicao
+                .segundo_avaliador_interno
+            )
+        ),
+
+        'avaliador_externo': (
+            composicao.nome_avaliador_externo
+            or ''
+        ),
+
+        'instituicao_externa': (
+            composicao
+            .instituicao_avaliador_externo
+            or ''
+        ),
     }
 
     template = get_template(
         'pdf/dados_banca_aprovada.html'
     )
 
-    html = template.render(contexto)
+    html = template.render(
+        contexto
+    )
 
     response = HttpResponse(
         content_type='application/pdf'
     )
 
+    nome_arquivo = (
+        f'minuta_declaracao_banca_'
+        f'{solicitacao.id}.pdf'
+    )
+
     response['Content-Disposition'] = (
-        'attachment; filename="dados_banca_aprovada.pdf"'
+        f'attachment; filename="{nome_arquivo}"'
     )
 
     resultado = pisa.CreatePDF(
@@ -1486,9 +1623,196 @@ def gerar_pdf_banca(request, solicitacao_id):
     )
 
     if resultado.err:
+
         return HttpResponse(
-            'Erro ao gerar o arquivo PDF.',
+            'Erro ao gerar a minuta em PDF.',
             status=500
+        )
+
+    return response
+
+@usuario_interno_required
+def gerar_pdf_banca(request, solicitacao_id):
+
+    # A minuta somente pode ser gerada para uma
+    # solicitação que já tenha sido aprovada.
+    solicitacao = get_object_or_404(
+        SolicitacaoAgendamento.objects.select_related(
+            'projeto_tcc',
+            'projeto_tcc__discente',
+            'espaco',
+        ),
+        id=solicitacao_id,
+        status='APROVADA',
+    )
+
+    # Cada composição pertence à sua solicitação específica.
+    # Não buscamos somente pelo projeto porque o mesmo projeto
+    # pode possuir registros históricos diferentes.
+    composicao = (
+        ComposicaoBanca.objects
+        .select_related(
+            'orientador__usuario',
+            'coorientador__usuario',
+            'avaliador_interno__usuario',
+            'segundo_avaliador_interno__usuario',
+        )
+        .filter(
+            solicitacao=solicitacao
+        )
+        .first()
+    )
+
+    # Impede a geração de uma minuta incompleta.
+    if not composicao:
+
+        messages.error(
+            request,
+            (
+                'Não foi encontrada uma composição de banca '
+                'vinculada a esta solicitação.'
+            )
+        )
+
+        return redirect('documentos')
+
+    # A Coordenação pode gerar qualquer minuta.
+    # Docentes só podem gerar minutas das bancas
+    # das quais participam oficialmente.
+    if not usuario_e_coordenacao(request.user):
+
+        perfil_logado = pUsuario.objects.filter(
+            usuario=request.user,
+            perfil='DOCENTE',
+        ).first()
+
+        participantes_ids = {
+            composicao.orientador_id,
+            composicao.coorientador_id,
+            composicao.avaliador_interno_id,
+            composicao.segundo_avaliador_interno_id,
+        }
+
+        # Coorientador e segundo avaliador são opcionais,
+        # portanto seus valores podem ser None.
+        participantes_ids.discard(None)
+
+        if (
+            perfil_logado is None
+            or perfil_logado.id not in participantes_ids
+        ):
+
+            messages.error(
+                request,
+                (
+                    'Você não participa desta banca e não '
+                    'pode gerar a minuta.'
+                )
+            )
+
+            return redirect('documentos')
+
+    # Retorna o nome completo do docente.
+    # Caso ele não tenha nome completo cadastrado,
+    # utiliza seu username.
+    def nome_docente(perfil):
+
+        if perfil is None:
+            return ''
+
+        return (
+            perfil.usuario.get_full_name()
+            or perfil.usuario.username
+        )
+
+    nome_orientador = nome_docente(
+        composicao.orientador
+    )
+
+    nome_coorientador = nome_docente(
+        composicao.coorientador
+    )
+
+    nome_avaliador_interno = nome_docente(
+        composicao.avaliador_interno
+    )
+
+    nome_segundo_avaliador = nome_docente(
+        composicao.segundo_avaliador_interno
+    )
+
+    contexto = {
+        # Objetos completos, caso o template precise
+        # acessar algum atributo diretamente.
+        'solicitacao': solicitacao,
+        'composicao': composicao,
+
+        # Dados principais da declaração.
+        'discente': (
+            solicitacao.projeto_tcc.discente.nome
+        ),
+        'titulo_tcc': (
+            solicitacao.projeto_tcc.titulo
+        ),
+
+        # Composição da banca.
+        'orientador': nome_orientador,
+        'coorientador': nome_coorientador,
+        'avaliador_interno': (
+            nome_avaliador_interno
+        ),
+        'segundo_avaliador_interno': (
+            nome_segundo_avaliador
+        ),
+        'avaliador_externo': (
+            composicao.nome_avaliador_externo
+        ),
+        'instituicao_externa': (
+            composicao.instituicao_avaliador_externo
+        ),
+
+        # Dados do agendamento.
+        'espaco': solicitacao.espaco.nome,
+        'data_inicio': (
+            solicitacao.opcao_data_inicio
+        ),
+        'data_fim': solicitacao.opcao_data_fim,
+        'data_defesa': (
+            solicitacao.opcao_data_inicio
+        ),
+    }
+
+    # Este é o template institucional que substituiu
+    # o antigo PDF técnico de teste.
+    template = get_template(
+        'pdf/dados_banca_aprovada.html'
+    )
+
+    html = template.render(
+        contexto
+    )
+
+    response = HttpResponse(
+        content_type='application/pdf'
+    )
+
+    response['Content-Disposition'] = (
+        'attachment; '
+        f'filename="minuta_declaracao_banca_'
+        f'{solicitacao.id}.pdf"'
+    )
+
+    resultado = pisa.CreatePDF(
+        html,
+        dest=response,
+        encoding='UTF-8',
+    )
+
+    if resultado.err:
+
+        return HttpResponse(
+            'Erro ao gerar a minuta em PDF.',
+            status=500,
         )
 
     return response
