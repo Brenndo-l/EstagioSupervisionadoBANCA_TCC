@@ -31,10 +31,18 @@
         <p>{{ total_recusadas }}</p>
     </div>
 
+    <div class="card">
+        <h3>Expiradas</h3>
+        <p>{{ total_expiradas }}</p>
+    </div>
+
 </div>
 
 
-<div class="table-container" style="margin-top: 30px;">
+<div
+    class="table-container"
+    style="margin-top: 30px;"
+>
 
     <h2>Solicitações cadastradas</h2>
 
@@ -62,6 +70,13 @@
         </a>
 
         <a
+            href="?status=EXPIRADA"
+            class="btn-filter {% if status_atual == 'EXPIRADA' %}active{% endif %}"
+        >
+            Expiradas
+        </a>
+
+        <a
             href="?status=TODAS"
             class="btn-filter {% if status_atual == 'TODAS' %}active{% endif %}"
         >
@@ -76,6 +91,7 @@
         <table>
 
             <thead>
+
                 <tr>
                     <th>Discente</th>
                     <th>Título do TCC</th>
@@ -86,6 +102,7 @@
                     <th>Status</th>
                     <th>Ação</th>
                 </tr>
+
             </thead>
 
             <tbody>
@@ -124,20 +141,34 @@
 
                             {% if solicitacao.status == 'EM_ANÁLISE' %}
 
-                                <span class="status-badge status-analise">
+                                <span
+                                    class="status-badge status-analise"
+                                >
                                     Em Análise
                                 </span>
 
                             {% elif solicitacao.status == 'APROVADA' %}
 
-                                <span class="status-badge status-aprovada">
+                                <span
+                                    class="status-badge status-aprovada"
+                                >
                                     Aprovada
                                 </span>
 
-                            {% else %}
+                            {% elif solicitacao.status == 'RECUSADA' %}
 
-                                <span class="status-badge status-recusada">
+                                <span
+                                    class="status-badge status-recusada"
+                                >
                                     Recusada
+                                </span>
+
+                            {% elif solicitacao.status == 'EXPIRADA' %}
+
+                                <span
+                                    class="status-badge status-expirada"
+                                >
+                                    Expirada
                                 </span>
 
                             {% endif %}
@@ -163,6 +194,12 @@
                                     AVALIAR
                                 </a>
 
+                            {% elif solicitacao.status == 'EXPIRADA' %}
+
+                                <span style="color: #666;">
+                                    Prazo expirado
+                                </span>
+
                             {% else %}
 
                                 <span style="color: #666;">
@@ -184,13 +221,16 @@
 
         {% if solicitacoes.has_other_pages %}
 
-            <div style="
-                margin-top: 20px;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                gap: 15px;
-            ">
+            <div
+                style="
+                    margin-top: 20px;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    gap: 15px;
+                    flex-wrap: wrap;
+                "
+            >
 
                 {% if solicitacoes.has_previous %}
 
@@ -204,8 +244,10 @@
                 {% endif %}
 
                 <span>
-                    Página {{ solicitacoes.number }}
-                    de {{ solicitacoes.paginator.num_pages }}
+                    Página
+                    {{ solicitacoes.number }}
+                    de
+                    {{ solicitacoes.paginator.num_pages }}
                 </span>
 
                 {% if solicitacoes.has_next %}

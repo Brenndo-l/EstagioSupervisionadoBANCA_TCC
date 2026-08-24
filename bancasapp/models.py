@@ -215,6 +215,7 @@ class SolicitacaoAgendamento(models.Model):
         ('EM_ANÁLISE', 'Em Análise'),
         ('APROVADA', 'Aprovada'),
         ('RECUSADA', 'Recusada'),
+        ('EXPIRADA', 'Expirada'),
     )
 
     usuario_solicitante = models.ForeignKey(

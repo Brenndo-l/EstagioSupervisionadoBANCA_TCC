@@ -774,6 +774,22 @@ class AvaliacaoSolicitacaoTests(TestCase):
             status='EM_ANÁLISE'
         )
 
+        self.disponibilidade = (
+            DisponibilidadeEspaco.objects.create(
+                espaco=self.espaco,
+                data_hora_inicio=(
+                    inicio
+                    - timedelta(hours=1)
+                ),
+                data_hora_fim=(
+                    fim
+                    + timedelta(hours=1)
+                ),
+                ativo=True,
+                criada_por=self.usuario_coordenacao,
+            )
+        )
+
         self.composicao = ComposicaoBanca.objects.create(
             projeto_tcc=self.projeto,
             solicitacao=self.solicitacao,
@@ -786,6 +802,148 @@ class AvaliacaoSolicitacaoTests(TestCase):
         self.url_avaliacao = reverse(
             'avaliar_solicitacao',
             args=[self.solicitacao.id]
+        )
+
+    def test_solicitacao_vencida_e_marcada_como_expirada(
+    self
+    ):
+
+        agora = timezone.now()
+
+        self.solicitacao.opcao_data_inicio = (
+            agora
+            - timedelta(minutes=10)
+        )
+
+        self.solicitacao.opcao_data_fim = (
+            agora
+            + timedelta(hours=1)
+        )
+
+        self.solicitacao.save(
+            update_fields=[
+                'opcao_data_inicio',
+                'opcao_data_fim',
+            ]
+        )
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.get(
+            reverse('solicitacoes_coordenacao')
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.solicitacao.refresh_from_db()
+
+        self.assertEqual(
+            self.solicitacao.status,
+            'EXPIRADA'
+        )
+
+        self.assertContains(
+            response,
+            'Expirada'
+        )
+
+
+    def test_solicitacao_expirada_nao_pode_ser_avaliada(
+        self
+    ):
+
+        agora = timezone.now()
+
+        self.solicitacao.opcao_data_inicio = (
+            agora
+            - timedelta(hours=2)
+        )
+
+        self.solicitacao.opcao_data_fim = (
+            agora
+            - timedelta(hours=1)
+        )
+
+        self.solicitacao.save(
+            update_fields=[
+                'opcao_data_inicio',
+                'opcao_data_fim',
+            ]
+        )
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.get(
+            self.url_avaliacao
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('solicitacoes_coordenacao')
+        )
+
+        self.solicitacao.refresh_from_db()
+
+        self.assertEqual(
+            self.solicitacao.status,
+            'EXPIRADA'
+        )
+
+        self.assertEqual(
+            BancaTCC.objects.count(),
+            0
+        )
+
+
+    def test_aprovacao_revalida_disponibilidade(
+        self
+    ):
+
+        self.disponibilidade.ativo = False
+
+        self.disponibilidade.save(
+            update_fields=['ativo']
+        )
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.post(
+            self.url_avaliacao,
+            {
+                'acao': 'aprovar',
+                'motivo_decisao': (
+                    'Tentativa depois da indisponibilidade.'
+                ),
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                'editar_solicitacao_coordenacao',
+                args=[self.solicitacao.id]
+            )
+        )
+
+        self.solicitacao.refresh_from_db()
+
+        self.assertEqual(
+            self.solicitacao.status,
+            'EM_ANÁLISE'
+        )
+
+        self.assertEqual(
+            BancaTCC.objects.count(),
+            0
         )
 
     def test_coordenacao_consegue_editar_solicitacao_pendente(
@@ -1237,7 +1395,7 @@ class AvaliacaoSolicitacaoTests(TestCase):
 
         self.assertRedirects(
             segunda_resposta,
-            reverse('dashboard')
+            reverse('solicitacoes_coordenacao')
         )
 
         self.solicitacao.refresh_from_db()

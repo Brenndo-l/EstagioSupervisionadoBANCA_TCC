@@ -51,6 +51,9 @@
 
                                 {% elif resultado.status == 'RECUSADA' %}
                                     <span class="status-badge status-recusada">Recusada</span>
+                                
+                                {% elif resultado.status == 'EXPIRADA' %}
+                                    <span class="status-badge status-expirada">Expirada</span>
 
                                 {% else %}
                                     <span class="status-badge status-analise">Em Análise</span>

@@ -270,8 +270,14 @@ class SolicitacaoBancaForm(forms.ModelForm):
 
                 agendamentos_ativos = (
                     SolicitacaoAgendamento.objects
+                    .filter(
+                        opcao_data_fim__gt=timezone.now()
+                    )
                     .exclude(
-                        status='RECUSADA'
+                        status__in=[
+                            'RECUSADA',
+                            'EXPIRADA',
+                        ]
                     )
                     .exclude(
                         pk=self.instance.pk

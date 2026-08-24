@@ -20,6 +20,7 @@ from django.utils import timezone
 from django.core.paginator import Paginator
 from django.views.decorators.http import require_POST
 from django.core.exceptions import ValidationError
+from .services import expirar_solicitacoes_vencidas
 
 
 
@@ -27,6 +28,8 @@ from django.core.exceptions import ValidationError
 # 1. Tela inicial do sistema
 @usuario_interno_required
 def dashboard(request):
+
+    expirar_solicitacoes_vencidas() 
 
     is_coordenacao = usuario_e_coordenacao(
         request.user
@@ -86,8 +89,8 @@ def dashboard(request):
                 'usuario_solicitante__usuario',
                 'decidida_por',
             )
-            .exclude(
-                status='EM_ANÁLISE'
+            .filter(
+                status__in=['APROVADA', 'RECUSADA']
             )
             .order_by(
                 '-data_decisao',
@@ -161,6 +164,8 @@ def dashboard(request):
 @coordenacao_required
 def solicitacoes_coordenacao(request):
 
+    expirar_solicitacoes_vencidas()
+
     status_atual = request.GET.get(
         'status',
         'EM_ANÁLISE'
@@ -170,6 +175,7 @@ def solicitacoes_coordenacao(request):
         'EM_ANÁLISE',
         'APROVADA',
         'RECUSADA',
+        'EXPIRADA',
         'TODAS',
     }
 
@@ -228,6 +234,11 @@ def solicitacoes_coordenacao(request):
                 status='RECUSADA'
             ).count()
         ),
+        'total_expiradas': (
+            SolicitacaoAgendamento.objects.filter(
+                status='EXPIRADA'
+            ).count()
+        ),
     }
 
     return render(
@@ -242,6 +253,8 @@ def editar_solicitacao_coordenacao(
     solicitacao_id
 ):
 
+    expirar_solicitacoes_vencidas()
+
     solicitacao = get_object_or_404(
         SolicitacaoAgendamento.objects.select_related(
             'projeto_tcc',
@@ -255,12 +268,24 @@ def editar_solicitacao_coordenacao(
 
     # Após uma decisão, os dados passam a fazer
     # parte do histórico e não podem ser alterados.
+    if solicitacao.status == 'EXPIRADA':
+
+        messages.warning(
+            request,
+            'O horário desta solicitação passou '
+            'antes que ela fosse avaliada.'
+        )
+
+        return redirect(
+            'solicitacoes_coordenacao'
+        )
+
     if solicitacao.status != 'EM_ANÁLISE':
 
         messages.warning(
             request,
-            'Somente solicitações em análise '
-            'podem ser editadas.'
+            'Esta solicitação já foi avaliada '
+            'pela Coordenação.'
         )
 
         return redirect(
@@ -476,6 +501,8 @@ def editar_solicitacao_coordenacao(
 @usuario_interno_required
 def visualizar_bancas(request):
 
+    expirar_solicitacoes_vencidas()
+
     consulta = (
         SolicitacaoAgendamento.objects
         .select_related(
@@ -564,6 +591,8 @@ def visualizar_bancas(request):
 # 3. Tela do formulário para o professor pedir a banca
 @docente_required
 def solicitar_banca(request):
+
+    expirar_solicitacoes_vencidas()
 
     perfil_logado = pUsuario.objects.get(
         usuario=request.user,
@@ -852,10 +881,80 @@ def login_view(request):
             
     return render(request, 'login.html')
 
-@coordenacao_required
-def avaliar_solicitacao(request, solicitacao_id):
+def criar_formulario_revalidacao(
+    solicitacao,
+    composicao
+):
 
-    # Carrega a solicitação e seus dados relacionados
+    inicio_local = timezone.localtime(
+        solicitacao.opcao_data_inicio
+    )
+
+    fim_local = timezone.localtime(
+        solicitacao.opcao_data_fim
+    )
+
+    dados_atuais = {
+        'espaco': (
+            solicitacao.espaco_id
+        ),
+
+        'opcao_data_inicio': (
+            inicio_local.strftime(
+                '%Y-%m-%dT%H:%M'
+            )
+        ),
+
+        'opcao_data_fim': (
+            fim_local.strftime(
+                '%Y-%m-%dT%H:%M'
+            )
+        ),
+
+        'orientador': (
+            composicao.orientador_id
+        ),
+
+        'coorientador': (
+            composicao.coorientador_id
+            or ''
+        ),
+
+        'avaliador_interno': (
+            composicao.avaliador_interno_id
+        ),
+
+        'segundo_avaliador_interno': (
+            composicao.segundo_avaliador_interno_id
+            or ''
+        ),
+
+        'nome_avaliador_externo': (
+            composicao.nome_avaliador_externo
+            or ''
+        ),
+
+        'instituicao_avaliador_externo': (
+            composicao.instituicao_avaliador_externo
+            or ''
+        ),
+    }
+
+    return EdicaoSolicitacaoCoordenacaoForm(
+        data=dados_atuais,
+        instance=solicitacao
+    )
+
+
+@coordenacao_required
+def avaliar_solicitacao(
+    request,
+    solicitacao_id
+):
+
+    expirar_solicitacoes_vencidas()
+
+    # Carrega a solicitação e seus dados relacionados.
     solicitacao = get_object_or_404(
         SolicitacaoAgendamento.objects.select_related(
             'projeto_tcc',
@@ -867,104 +966,236 @@ def avaliar_solicitacao(request, solicitacao_id):
         pk=solicitacao_id
     )
 
-    # Busca os membros cadastrados para a banca
-    composicao = ComposicaoBanca.objects.select_related(
-        'orientador__usuario',
-        'coorientador__usuario',
-        'avaliador_interno__usuario',
-        'segundo_avaliador_interno__usuario',
-    ).filter(
-        solicitacao=solicitacao
-    ).first()
+    # Busca a composição vinculada especificamente
+    # a esta solicitação.
+    composicao = (
+        ComposicaoBanca.objects
+        .select_related(
+            'orientador__usuario',
+            'coorientador__usuario',
+            'avaliador_interno__usuario',
+            'segundo_avaliador_interno__usuario',
+        )
+        .filter(
+            solicitacao=solicitacao
+        )
+        .first()
+    )
 
-    # Uma solicitação já decidida não pode ser avaliada novamente
-    if solicitacao.status != 'EM_ANÁLISE':
+    # Uma solicitação que passou do horário
+    # não pode mais ser avaliada.
+    if solicitacao.status == 'EXPIRADA':
+
         messages.warning(
             request,
-            'Esta solicitação já foi avaliada pela coordenação.'
+            'O horário desta solicitação passou '
+            'antes que ela fosse avaliada.'
         )
-        return redirect('dashboard')
+
+        return redirect(
+            'solicitacoes_coordenacao'
+        )
+
+    # Uma solicitação já decidida também não
+    # pode receber outra decisão.
+    if solicitacao.status != 'EM_ANÁLISE':
+
+        messages.warning(
+            request,
+            'Esta solicitação já foi avaliada '
+            'pela Coordenação.'
+        )
+
+        return redirect(
+            'solicitacoes_coordenacao'
+        )
 
     if request.method == 'POST':
 
-        form = AvaliacaoSolicitacaoForm(request.POST)
-        acao = request.POST.get('acao')
+        form = AvaliacaoSolicitacaoForm(
+            request.POST
+        )
 
-        # Protege contra valores inválidos enviados manualmente
-        if acao not in ['aprovar', 'recusar']:
+        acao = request.POST.get(
+            'acao'
+        )
+
+        # Protege contra valores enviados
+        # manualmente pelo navegador.
+        if acao not in [
+            'aprovar',
+            'recusar',
+        ]:
+
             messages.error(
                 request,
                 'Ação de avaliação inválida.'
             )
 
-        # Não permite aprovar uma banca sem membros cadastrados
-        elif acao == 'aprovar' and composicao is None:
+        # Uma solicitação sem composição pode ser
+        # recusada, mas não pode ser aprovada.
+        elif (
+            acao == 'aprovar'
+            and composicao is None
+        ):
+
             messages.error(
                 request,
-                'Não é possível aprovar: a composição da banca não foi encontrada.'
+                'Não é possível aprovar: '
+                'a composição da banca '
+                'não foi encontrada.'
             )
 
         elif form.is_valid():
 
-            # A transação garante que todas as mudanças aconteçam juntas
-            with transaction.atomic():
+            # A revalidação é necessária apenas
+            # para a aprovação.
+            #
+            # A recusa não precisa de sala,
+            # disponibilidade ou professores livres.
+            if acao == 'aprovar':
 
-                # Bloqueia temporariamente o registro durante a decisão
-                solicitacao_bloqueada = get_object_or_404(
-                    SolicitacaoAgendamento.objects.select_for_update().select_related(
-                        'projeto_tcc'
-                    ),
-                    pk=solicitacao_id
+                formulario_revalidacao = (
+                    criar_formulario_revalidacao(
+                        solicitacao,
+                        composicao
+                    )
                 )
 
-                # Segunda verificação contra envios duplicados
-                if solicitacao_bloqueada.status != 'EM_ANÁLISE':
+                if (
+                    not formulario_revalidacao.is_valid()
+                ):
+
+                    messages.error(
+                        request,
+                        'A solicitação não pode mais '
+                        'ser aprovada com os dados atuais. '
+                        'Corrija-a antes de continuar.'
+                    )
+
+                    # Mostra os motivos encontrados,
+                    # como sala indisponível, choque de
+                    # docente ou horário inválido.
+                    for erros in (
+                        formulario_revalidacao
+                        .errors
+                        .values()
+                    ):
+
+                        for erro in erros:
+
+                            messages.error(
+                                request,
+                                erro
+                            )
+
+                    return redirect(
+                        'editar_solicitacao_coordenacao',
+                        solicitacao_id=solicitacao.id
+                    )
+
+            # Só chega à transação quando:
+            #
+            # 1. A recusa está válida; ou
+            # 2. A aprovação passou por toda
+            #    a revalidação.
+            with transaction.atomic():
+
+                solicitacao_bloqueada = (
+                    get_object_or_404(
+                        SolicitacaoAgendamento.objects
+                        .select_for_update()
+                        .select_related(
+                            'projeto_tcc'
+                        ),
+                        pk=solicitacao_id
+                    )
+                )
+
+                # Proteção contra clique duplo ou
+                # duas decisões simultâneas.
+                if (
+                    solicitacao_bloqueada.status
+                    != 'EM_ANÁLISE'
+                ):
+
                     messages.warning(
                         request,
-                        'Esta solicitação já foi avaliada.'
+                        'Esta solicitação já foi '
+                        'avaliada ou expirou.'
                     )
-                    return redirect('dashboard')
 
-                motivo = form.cleaned_data['motivo_decisao']
+                    return redirect(
+                        'solicitacoes_coordenacao'
+                    )
 
-                solicitacao_bloqueada.motivo_decisao = motivo
-                solicitacao_bloqueada.data_decisao = timezone.now()
-                solicitacao_bloqueada.decidida_por = request.user
+                motivo = form.cleaned_data[
+                    'motivo_decisao'
+                ]
 
-                projeto = solicitacao_bloqueada.projeto_tcc
+                solicitacao_bloqueada.motivo_decisao = (
+                    motivo
+                )
+
+                solicitacao_bloqueada.data_decisao = (
+                    timezone.now()
+                )
+
+                solicitacao_bloqueada.decidida_por = (
+                    request.user
+                )
+
+                projeto = (
+                    solicitacao_bloqueada.projeto_tcc
+                )
 
                 if acao == 'aprovar':
 
-                    solicitacao_bloqueada.status = 'APROVADA'
+                    solicitacao_bloqueada.status = (
+                        'APROVADA'
+                    )
+
                     projeto.status = 'APROVADO'
 
-                    # Cria o agendamento definitivo da banca
+                    # A BancaTCC oficial só é criada
+                    # depois de todas as validações.
                     BancaTCC.objects.create(
                         projeto_tcc=projeto,
-                        espaco=solicitacao_bloqueada.espaco,
+                        espaco=(
+                            solicitacao_bloqueada.espaco
+                        ),
                         data_horario_inicio=(
-                            solicitacao_bloqueada.opcao_data_inicio
+                            solicitacao_bloqueada
+                            .opcao_data_inicio
                         ),
                         data_horario_fim=(
-                            solicitacao_bloqueada.opcao_data_fim
+                            solicitacao_bloqueada
+                            .opcao_data_fim
                         ),
                     )
 
                     mensagem_final = (
-                        f'A banca "{projeto.titulo}" foi aprovada com sucesso.'
+                        f'A banca "{projeto.titulo}" '
+                        'foi aprovada com sucesso.'
                     )
 
                 else:
 
-                    solicitacao_bloqueada.status = 'RECUSADA'
+                    solicitacao_bloqueada.status = (
+                        'RECUSADA'
+                    )
+
                     projeto.status = 'RECUSADA'
 
                     mensagem_final = (
-                        f'A banca "{projeto.titulo}" foi recusada.'
+                        f'A banca "{projeto.titulo}" '
+                        'foi recusada.'
                     )
 
                 projeto.save(
-                    update_fields=['status']
+                    update_fields=[
+                        'status',
+                    ]
                 )
 
                 solicitacao_bloqueada.save(
@@ -977,19 +1208,25 @@ def avaliar_solicitacao(request, solicitacao_id):
                 )
 
             if acao == 'aprovar':
+
                 messages.success(
                     request,
                     mensagem_final
                 )
+
             else:
+
                 messages.warning(
                     request,
                     mensagem_final
                 )
 
-            return redirect('dashboard')
+            return redirect(
+                'dashboard'
+            )
 
     else:
+
         form = AvaliacaoSolicitacaoForm()
 
     contexto = {
@@ -1014,6 +1251,9 @@ def meus_tccs(request):
 
 @login_required(login_url='login')
 def pesquisar(request):
+
+    expirar_solicitacoes_vencidas()
+
     termo = request.GET.get('q', '').strip()
     resultados = SolicitacaoAgendamento.objects.none()
 

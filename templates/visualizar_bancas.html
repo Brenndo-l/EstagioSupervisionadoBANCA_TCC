@@ -41,6 +41,13 @@
                 Recusadas
             </a>
 
+            <a
+                href="{% url 'visualizar_bancas' %}?status=EXPIRADA"
+                class="btn-filter {% if status_atual == 'EXPIRADA' %}active{% endif %}"
+            >
+                Expiradas
+            </a>
+
         </div>
 
         <table>
@@ -90,6 +97,12 @@
 
                                 <span class="status-badge status-aprovada">
                                     Aprovada
+                                </span>
+                            
+                            {% elif solicitacao.status == 'EXPIRADA' %}
+
+                                <span class="status-badge status-expirada">
+                                    Expirada
                                 </span>
 
                             {% else %}
