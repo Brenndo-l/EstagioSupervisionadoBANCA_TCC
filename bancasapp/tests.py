@@ -87,6 +87,187 @@ class LoginTests(TestCase):
             self.client.session
         )
 
+class CadastroDocenteTests(TestCase):
+
+    def setUp(self):
+
+        self.url_cadastro = reverse(
+            'cadastrar_docente'
+        )
+
+        self.senha = (
+            'T9!qZ4@mP7#vL2'
+        )
+
+    def dados_validos(self):
+
+        return {
+            'first_name': 'Maria',
+            'last_name': 'Docente da Silva',
+            'email': 'maria.docente@ufac.br',
+            'password1': self.senha,
+            'password2': self.senha,
+        }
+
+    def test_tela_cadastro_docente_abre(self):
+
+        response = self.client.get(
+            self.url_cadastro
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertTemplateUsed(
+            response,
+            'cadastro_docente.html'
+        )
+
+    def test_email_nao_institucional_e_rejeitado(self):
+
+        dados = self.dados_validos()
+
+        dados['email'] = (
+            'maria.docente@gmail.com'
+        )
+
+        response = self.client.post(
+            self.url_cadastro,
+            dados
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
+            response,
+            'terminado em @ufac.br'
+        )
+
+        self.assertEqual(
+            User.objects.count(),
+            0
+        )
+
+    def test_cadastro_valido_cria_docente_pendente(self):
+
+        response = self.client.post(
+            self.url_cadastro,
+            self.dados_validos()
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('login')
+        )
+
+        usuario = User.objects.get(
+            username='maria.docente@ufac.br'
+        )
+
+        perfil = pUsuario.objects.get(
+            usuario=usuario
+        )
+
+        self.assertEqual(
+            usuario.email,
+            'maria.docente@ufac.br'
+        )
+
+        self.assertEqual(
+            usuario.get_full_name(),
+            'Maria Docente da Silva'
+        )
+
+        self.assertFalse(
+            usuario.is_active
+        )
+
+        self.assertEqual(
+            perfil.perfil,
+            'DOCENTE'
+        )
+
+        self.assertEqual(
+            perfil.status_cadastro,
+            'PENDENTE'
+        )
+
+    def test_email_duplicado_e_rejeitado(self):
+
+        usuario = User.objects.create_user(
+            username='maria.docente@ufac.br',
+            email='maria.docente@ufac.br',
+            password=self.senha
+        )
+
+        pUsuario.objects.create(
+            usuario=usuario,
+            perfil='DOCENTE'
+        )
+
+        response = self.client.post(
+            self.url_cadastro,
+            self.dados_validos()
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
+            response,
+            'Já existe um cadastro'
+        )
+
+        self.assertEqual(
+            User.objects.count(),
+            1
+        )
+
+    def test_docente_pendente_nao_consegue_entrar(self):
+
+        usuario = User.objects.create_user(
+            username='pendente@ufac.br',
+            email='pendente@ufac.br',
+            password=self.senha,
+            is_active=False
+        )
+
+        pUsuario.objects.create(
+            usuario=usuario,
+            perfil='DOCENTE',
+            status_cadastro='PENDENTE'
+        )
+
+        response = self.client.post(
+            reverse('login'),
+            {
+                'email': 'pendente@ufac.br',
+                'senha': self.senha,
+            }
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
+            response,
+            'aguardando análise da Coordenação'
+        )
+
+        self.assertNotIn(
+            '_auth_user_id',
+            self.client.session
+        )
+
 
 # Testes da solicitação de banca
 class AgendamentoTests(TestCase):

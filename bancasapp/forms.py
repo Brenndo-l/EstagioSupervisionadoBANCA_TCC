@@ -1,7 +1,187 @@
 from django import forms
-from .models import SolicitacaoAgendamento, Discente, ProjetoTCC, pUsuario, ModeloDocumento, EspacoFisico, DisponibilidadeEspaco
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
 from django.db.models import Q
 from django.utils import timezone
+from .models import Discente,DisponibilidadeEspaco,EspacoFisico,ModeloDocumento,ProjetoTCC,SolicitacaoAgendamento,pUsuario
+
+class CadastroDocenteForm(UserCreationForm):
+
+    first_name = forms.CharField(
+        label='Nome',
+        max_length=150,
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-input',
+                'placeholder': 'Informe seu nome',
+                'autocomplete': 'given-name',
+            }
+        )
+    )
+
+    last_name = forms.CharField(
+        label='Sobrenome',
+        max_length=150,
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-input',
+                'placeholder': 'Informe seu sobrenome',
+                'autocomplete': 'family-name',
+            }
+        )
+    )
+
+    email = forms.EmailField(
+        label='E-mail institucional',
+        max_length=254,
+        widget=forms.EmailInput(
+            attrs={
+                'class': 'form-input',
+                'placeholder': 'nome.sobrenome@ufac.br',
+                'autocomplete': 'email',
+            }
+        )
+    )
+
+    class Meta:
+        model = User
+
+        fields = [
+            'first_name',
+            'last_name',
+            'email',
+            'password1',
+            'password2',
+        ]
+
+    def __init__(self, *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
+
+        self.fields['password1'].label = 'Senha'
+
+        self.fields[
+            'password1'
+        ].widget.attrs.update(
+            {
+                'class': 'form-input',
+                'placeholder': 'Crie uma senha',
+                'autocomplete': 'new-password',
+            }
+        )
+
+        self.fields[
+            'password2'
+        ].label = 'Confirmação da senha'
+
+        self.fields[
+            'password2'
+        ].widget.attrs.update(
+            {
+                'class': 'form-input',
+                'placeholder': 'Digite novamente a senha',
+                'autocomplete': 'new-password',
+            }
+        )
+
+    def clean_first_name(self):
+
+        nome = self.cleaned_data[
+            'first_name'
+        ].strip()
+
+        if len(nome) < 2:
+            raise forms.ValidationError(
+                'Informe um nome válido.'
+            )
+
+        return nome
+
+    def clean_last_name(self):
+
+        sobrenome = self.cleaned_data[
+            'last_name'
+        ].strip()
+
+        if len(sobrenome) < 2:
+            raise forms.ValidationError(
+                'Informe um sobrenome válido.'
+            )
+
+        return sobrenome
+
+    def clean_email(self):
+
+        email = (
+            self.cleaned_data['email']
+            .strip()
+            .lower()
+        )
+
+        dominio = email.rsplit(
+            '@',
+            1
+        )[-1]
+
+        if dominio != 'ufac.br':
+            raise forms.ValidationError(
+                'Utilize um endereço institucional '
+                'terminado em @ufac.br.'
+            )
+
+        cadastro_existente = (
+            User.objects
+            .filter(
+                Q(username__iexact=email)
+                | Q(email__iexact=email)
+            )
+            .exists()
+        )
+
+        if cadastro_existente:
+            raise forms.ValidationError(
+                'Já existe um cadastro utilizando '
+                'este e-mail institucional.'
+            )
+
+        return email
+
+    def save(self, commit=True):
+
+        usuario = super().save(
+            commit=False
+        )
+
+        email = self.cleaned_data[
+            'email'
+        ]
+
+        usuario.username = email
+        usuario.email = email
+
+        usuario.first_name = self.cleaned_data[
+            'first_name'
+        ]
+
+        usuario.last_name = self.cleaned_data[
+            'last_name'
+        ]
+
+        # A conta somente será ativada depois da
+        # aprovação realizada pela Coordenação.
+        usuario.is_active = False
+
+        if commit:
+
+            usuario.save()
+
+            pUsuario.objects.create(
+                usuario=usuario,
+                perfil='DOCENTE',
+                status_cadastro='PENDENTE'
+            )
+
+        return usuario
 
 class SolicitacaoBancaForm(forms.ModelForm):
     orientador = forms.ModelChoiceField(
@@ -84,6 +264,34 @@ class SolicitacaoBancaForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
+
+        docentes_ativos = (
+            pUsuario.objects
+            .select_related('usuario')
+            .filter(
+                perfil='DOCENTE',
+                status_cadastro='APROVADO',
+                usuario__is_active=True,
+            )
+            .order_by(
+                'usuario__first_name',
+                'usuario__last_name',
+                'usuario__username',
+            )
+        )
+
+        campos_docentes = [
+            'orientador',
+            'coorientador',
+            'avaliador_interno',
+            'segundo_avaliador_interno',
+        ]
+
+        for nome_campo in campos_docentes:
+
+            self.fields[
+                nome_campo
+            ].queryset = docentes_ativos
 
         # Todas as salas ativas aparecem no formulário,
         # mesmo que ainda não possuam disponibilidade.

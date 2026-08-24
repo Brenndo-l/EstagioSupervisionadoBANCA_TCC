@@ -568,3 +568,22 @@ img {
     background-color: #6c757d;
 }
 
+.form-logout {
+    margin: 0;
+}
+
+.btn-logout {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: bold;
+    padding: 0;
+    text-align: left;
+}
+
+.btn-logout:hover {
+    color: #facc22;
+}

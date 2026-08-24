@@ -7,22 +7,72 @@ from django.core.exceptions import ValidationError
 #Quem e o usuario logado - coordenação ou docente
 #conectado ao sistema de login
 class pUsuario(models.Model):
+
     Tipos_Perfil = (
         ('COORDENACAO', 'Coordenação'),
         ('DOCENTE', 'Docente'),
     )
-    usuario = models.OneToOneField(User, on_delete=models.CASCADE)
-    perfil = models.CharField(max_length=15, choices=Tipos_Perfil)
-    
+
+    STATUS_CADASTRO = (
+        ('PENDENTE', 'Pendente'),
+        ('APROVADO', 'Aprovado'),
+        ('RECUSADO', 'Recusado'),
+    )
+
+    usuario = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE
+    )
+
+    perfil = models.CharField(
+        max_length=15,
+        choices=Tipos_Perfil
+    )
+
+    # Usuários que já existiam no sistema permanecem aprovados.
+    # Novos docentes serão criados explicitamente como pendentes.
+    status_cadastro = models.CharField(
+        max_length=10,
+        choices=STATUS_CADASTRO,
+        default='APROVADO',
+        verbose_name='Situação do cadastro'
+    )
+
+    data_cadastro = models.DateTimeField(
+        default=timezone.now,
+        editable=False
+    )
+
+    data_analise = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False
+    )
+
+    analisado_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cadastros_docentes_analisados',
+        editable=False
+    )
+
+    motivo_analise = models.TextField(
+        blank=True
+    )
+
     def __str__(self):
-        # Tenta pegar o nome completo (first_name + last_name)
-        nome_exibicao = self.usuario.get_full_name()
-        
-        # Se o nome completo estiver vazio, usa o e-mail/username
-        if not nome_exibicao:
-            nome_exibicao = self.usuario.username
-            
-        return f"{nome_exibicao} ({self.get_perfil_display()})"
+
+        nome_exibicao = (
+            self.usuario.get_full_name().strip()
+            or self.usuario.username
+        )
+
+        return (
+            f'{nome_exibicao} '
+            f'({self.get_perfil_display()})'
+        )
 
 # Salas e laboratórios que podem receber bancas
 class EspacoFisico(models.Model):

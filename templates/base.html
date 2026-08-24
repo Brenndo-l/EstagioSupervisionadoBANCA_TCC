@@ -24,7 +24,20 @@
         {% endif %}
         
         <div class="footer-menu">
-            <a href="#">SAIR</a>
+            <form
+                method="POST"
+                action="{% url 'logout' %}"
+                class="form-logout"
+            >
+                {% csrf_token %}
+
+                <button
+                    type="submit"
+                    class="btn-logout"
+                >
+                    SAIR
+                </button>
+            </form>
         </div>
     </div>
 

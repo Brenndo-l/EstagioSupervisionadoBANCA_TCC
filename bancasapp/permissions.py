@@ -12,40 +12,43 @@ def usuario_e_coordenacao(user):
     """
     Verifica se o usuário pertence à Coordenação.
 
-    Durante o desenvolvimento, um superusuário também é
-    considerado parte da Coordenação.
+    Durante o desenvolvimento, um superusuário ativo também
+    é considerado parte da Coordenação.
     """
 
-    if not user.is_authenticated:
+    if not user.is_authenticated or not user.is_active:
         return False
 
-    return (
-        user.is_superuser
-        or pUsuario.objects.filter(
-            usuario=user,
-            perfil='COORDENACAO'
-        ).exists()
-    )
+    if user.is_superuser:
+        return True
+
+    return pUsuario.objects.filter(
+        usuario=user,
+        perfil='COORDENACAO',
+        status_cadastro='APROVADO'
+    ).exists()
 
 
 def usuario_e_docente(user):
     """
-    Verifica se o usuário possui o perfil DOCENTE.
+    Verifica se o usuário é um docente ativo
+    e aprovado pela Coordenação.
     """
 
-    if not user.is_authenticated:
+    if not user.is_authenticated or not user.is_active:
         return False
 
     return pUsuario.objects.filter(
         usuario=user,
-        perfil='DOCENTE'
+        perfil='DOCENTE',
+        status_cadastro='APROVADO'
     ).exists()
 
 
 def usuario_interno_required(view_func):
     """
-    Permite acesso apenas a usuários internos do SGTCC:
-    Coordenação ou Docente.
+    Permite acesso somente aos usuários internos do SGTCC:
+    Coordenação ou docente aprovado.
     """
 
     @login_required(login_url='login')
@@ -58,15 +61,19 @@ def usuario_interno_required(view_func):
         )
 
         if usuario_permitido:
-            return view_func(request, *args, **kwargs)
+            return view_func(
+                request,
+                *args,
+                **kwargs
+            )
 
         messages.error(
             request,
             'Seu usuário não possui um perfil ativo no SGTCC.'
         )
 
-        # Encerra a sessão para evitar que o usuário fique preso
-        # em um ciclo de redirecionamentos.
+        # Evita que um usuário sem autorização permaneça
+        # autenticado e entre em um ciclo de redirecionamentos.
         logout(request)
 
         return redirect('login')
@@ -84,7 +91,11 @@ def coordenacao_required(view_func):
     def wrapper(request, *args, **kwargs):
 
         if usuario_e_coordenacao(request.user):
-            return view_func(request, *args, **kwargs)
+            return view_func(
+                request,
+                *args,
+                **kwargs
+            )
 
         messages.error(
             request,
@@ -98,7 +109,8 @@ def coordenacao_required(view_func):
 
 def docente_required(view_func):
     """
-    Permite acesso somente aos docentes cadastrados.
+    Permite acesso somente aos docentes aprovados
+    pela Coordenação.
     """
 
     @login_required(login_url='login')
@@ -106,11 +118,15 @@ def docente_required(view_func):
     def wrapper(request, *args, **kwargs):
 
         if usuario_e_docente(request.user):
-            return view_func(request, *args, **kwargs)
+            return view_func(
+                request,
+                *args,
+                **kwargs
+            )
 
         messages.error(
             request,
-            'Apenas docentes cadastrados podem solicitar uma banca.'
+            'Apenas docentes aprovados podem realizar esta operação.'
         )
 
         return redirect('dashboard')

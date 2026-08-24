@@ -1,7 +1,18 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import SolicitacaoBancaForm, EdicaoSolicitacaoCoordenacaoForm, DiscenteForm, ProjetoTCCForm, ModeloDocumentoForm, AvaliacaoSolicitacaoForm, EspacoFisicoForm, DisponibilidadeEspacoForm
+from .forms import (
+    AvaliacaoSolicitacaoForm,
+    CadastroDocenteForm,
+    DiscenteForm,
+    DisponibilidadeEspacoForm,
+    EdicaoSolicitacaoCoordenacaoForm,
+    EspacoFisicoForm,
+    ModeloDocumentoForm,
+    ProjetoTCCForm,
+    SolicitacaoBancaForm,
+)
 from .models import ProjetoTCC, pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico, ComposicaoBanca, ModeloDocumento, DisponibilidadeEspaco
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
@@ -862,24 +873,178 @@ def cadastrar_projeto(request):
     contexto = {'form': form, 'titulo': 'Cadastrar Projeto de TCC'}
     return render(request, 'cadastrar_dados.html', contexto)
 
+def cadastrar_docente(request):
+
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+
+        form = CadastroDocenteForm(
+            request.POST
+        )
+
+        if form.is_valid():
+
+            with transaction.atomic():
+                form.save()
+
+            messages.success(
+                request,
+                (
+                    'Cadastro enviado com sucesso. '
+                    'Aguarde a aprovação da Coordenação '
+                    'antes de acessar o sistema.'
+                )
+            )
+
+            return redirect('login')
+
+    else:
+
+        form = CadastroDocenteForm()
+
+    contexto = {
+        'form': form,
+    }
+
+    return render(
+        request,
+        'cadastro_docente.html',
+        contexto
+    )
+
 def login_view(request):
-    if request.method == "POST":
-        email = request.POST.get("email")
-        senha = request.POST.get("senha")
-        
-        usuario = authenticate(username=email, password=senha)
-        
+
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+
+    email_informado = ''
+
+    if request.method == 'POST':
+
+        email_informado = (
+            request.POST.get(
+                'email',
+                ''
+            )
+            .strip()
+            .lower()
+        )
+
+        senha = request.POST.get(
+            'senha',
+            ''
+        )
+
+        usuario_cadastrado = (
+            User.objects
+            .filter(
+                username__iexact=email_informado
+            )
+            .first()
+        )
+
+        if (
+            usuario_cadastrado
+            and not usuario_cadastrado.is_active
+        ):
+
+            perfil = (
+                pUsuario.objects
+                .filter(
+                    usuario=usuario_cadastrado
+                )
+                .first()
+            )
+
+            if (
+                perfil
+                and perfil.status_cadastro == 'PENDENTE'
+            ):
+
+                messages.warning(
+                    request,
+                    (
+                        'Seu cadastro está aguardando '
+                        'análise da Coordenação.'
+                    )
+                )
+
+            elif (
+                perfil
+                and perfil.status_cadastro == 'RECUSADO'
+            ):
+
+                messages.error(
+                    request,
+                    (
+                        'Seu cadastro foi recusado pela '
+                        'Coordenação.'
+                    )
+                )
+
+            else:
+
+                messages.error(
+                    request,
+                    (
+                        'Seu usuário está inativo. '
+                        'Procure a Coordenação.'
+                    )
+                )
+
+            return render(
+                request,
+                'login.html',
+                {
+                    'email_informado': email_informado,
+                }
+            )
+
+        usuario = authenticate(
+            request=request,
+            username=email_informado,
+            password=senha
+        )
+
         if usuario is not None:
-            login(request, usuario)
-            # AVISO DE SUCESSO NO LOGIN
-            messages.success(request, f'Bem-vindo(a) ao sistema!')
-            return redirect("dashboard")
-        else:
-            # AVISO DE ERRO
-            messages.error(request, 'Login ou senha incorretos.')
-            return render(request, "login.html") # Tiramos aquele dicionário de erro daqui
-            
-    return render(request, 'login.html')
+
+            login(
+                request,
+                usuario
+            )
+
+            messages.success(
+                request,
+                'Bem-vindo(a) ao sistema!'
+            )
+
+            return redirect('dashboard')
+
+        messages.error(
+            request,
+            'Login ou senha incorretos.'
+        )
+
+    return render(
+        request,
+        'login.html',
+        {
+            'email_informado': email_informado,
+        }
+    )
+
+@require_POST
+def logout_view(request):
+    logout(request)
+
+    messages.success(
+        request,
+        'Sessão encerrada com sucesso.'
+    )
+
+    return redirect('login')
 
 def criar_formulario_revalidacao(
     solicitacao,
@@ -1432,204 +1597,6 @@ def baixar_documento(request, modelo_id):
         filename=nome_arquivo
     )
 
-@login_required(login_url='login')
-def _nome_docente_documento(perfil):
-
-    if perfil is None:
-        return ''
-
-    nome_completo = (
-        perfil.usuario.get_full_name().strip()
-    )
-
-    return (
-        nome_completo
-        or perfil.usuario.username
-    )
-
-
-@usuario_interno_required
-def gerar_pdf_banca(
-    request,
-    solicitacao_id
-):
-
-    solicitacao = get_object_or_404(
-        SolicitacaoAgendamento.objects
-        .select_related(
-            'projeto_tcc',
-            'projeto_tcc__discente',
-            'espaco',
-            'usuario_solicitante',
-            'usuario_solicitante__usuario',
-        ),
-        id=solicitacao_id,
-        status='APROVADA'
-    )
-
-    composicao = (
-        ComposicaoBanca.objects
-        .select_related(
-            'orientador__usuario',
-            'coorientador__usuario',
-            'avaliador_interno__usuario',
-            'segundo_avaliador_interno__usuario',
-        )
-        .filter(
-            solicitacao=solicitacao
-        )
-        .first()
-    )
-
-    if composicao is None:
-
-        messages.error(
-            request,
-            'Não foi encontrada uma composição '
-            'para esta solicitação.'
-        )
-
-        return redirect('documentos')
-
-    # A Coordenação pode gerar qualquer minuta.
-    usuario_permitido = (
-        usuario_e_coordenacao(
-            request.user
-        )
-    )
-
-    # Docentes só podem gerar documentos de bancas
-    # das quais participam ou que solicitaram.
-    if not usuario_permitido:
-
-        perfil_logado = (
-            pUsuario.objects
-            .filter(
-                usuario=request.user,
-                perfil='DOCENTE'
-            )
-            .first()
-        )
-
-        membros_internos = {
-            membro_id
-            for membro_id in [
-                composicao.orientador_id,
-                composicao.coorientador_id,
-                composicao.avaliador_interno_id,
-                (
-                    composicao
-                    .segundo_avaliador_interno_id
-                ),
-            ]
-            if membro_id is not None
-        }
-
-        usuario_permitido = (
-            perfil_logado is not None
-            and (
-                solicitacao.usuario_solicitante_id
-                == perfil_logado.id
-                or perfil_logado.id
-                in membros_internos
-            )
-        )
-
-    if not usuario_permitido:
-
-        messages.error(
-            request,
-            'Você não possui permissão para '
-            'gerar este documento.'
-        )
-
-        return redirect('documentos')
-
-    contexto = {
-        'discente': (
-            solicitacao.projeto_tcc.discente.nome
-        ),
-
-        'titulo_tcc': (
-            solicitacao.projeto_tcc.titulo
-        ),
-
-        'data_defesa': (
-            solicitacao.opcao_data_inicio
-        ),
-
-        'orientador': (
-            _nome_docente_documento(
-                composicao.orientador
-            )
-        ),
-
-        'coorientador': (
-            _nome_docente_documento(
-                composicao.coorientador
-            )
-        ),
-
-        'avaliador_interno': (
-            _nome_docente_documento(
-                composicao.avaliador_interno
-            )
-        ),
-
-        'segundo_avaliador_interno': (
-            _nome_docente_documento(
-                composicao
-                .segundo_avaliador_interno
-            )
-        ),
-
-        'avaliador_externo': (
-            composicao.nome_avaliador_externo
-            or ''
-        ),
-
-        'instituicao_externa': (
-            composicao
-            .instituicao_avaliador_externo
-            or ''
-        ),
-    }
-
-    template = get_template(
-        'pdf/dados_banca_aprovada.html'
-    )
-
-    html = template.render(
-        contexto
-    )
-
-    response = HttpResponse(
-        content_type='application/pdf'
-    )
-
-    nome_arquivo = (
-        f'minuta_declaracao_banca_'
-        f'{solicitacao.id}.pdf'
-    )
-
-    response['Content-Disposition'] = (
-        f'attachment; filename="{nome_arquivo}"'
-    )
-
-    resultado = pisa.CreatePDF(
-        html,
-        dest=response,
-        encoding='UTF-8'
-    )
-
-    if resultado.err:
-
-        return HttpResponse(
-            'Erro ao gerar a minuta em PDF.',
-            status=500
-        )
-
-    return response
 
 @usuario_interno_required
 def gerar_pdf_banca(request, solicitacao_id):

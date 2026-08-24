@@ -1,40 +1,101 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="{% static 'css/login.css' %}">
-    <title>login</title>
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/login.css' %}"
+    >
+
+    <title>Login | SGTCC</title>
 </head>
+
 <body>
+
     <div class="container">
+
         <aside class="sidebar">
-            <img src="{% static 'assets/logo_ufac.png' %}" alt="Minha Imagem">
+
+            <img
+                src="{% static 'assets/logo_ufac.png' %}"
+                alt="Universidade Federal do Acre"
+            >
+
             <p>SGTCC</p>
+
         </aside>
 
         <main class="form-login">
+
             <h1>Login</h1>
-            
+
             {% if messages %}
+
                 <div class="mensagens-flutuantes">
+
                     {% for message in messages %}
+
                         <div class="alerta alerta-{{ message.tags }}">
                             {{ message }}
                         </div>
+
                     {% endfor %}
+
                 </div>
+
             {% endif %}
-            
+
             <form method="POST">
+
                 {% csrf_token %}
-                <input type="text" id="login" placeholder="e-mail" name="email" required>
-                <input type="password" id="senha" placeholder="senha" name="senha" required>
-        
-                <button type="submit">Entrar</button>
+
+                <input
+                    type="email"
+                    id="login"
+                    name="email"
+                    placeholder="e-mail institucional"
+                    value="{{ email_informado|default:'' }}"
+                    autocomplete="email"
+                    required
+                >
+
+                <input
+                    type="password"
+                    id="senha"
+                    name="senha"
+                    placeholder="senha"
+                    autocomplete="current-password"
+                    required
+                >
+
+                <button type="submit">
+                    Entrar
+                </button>
+
             </form>
+
+            <p style="font-size: 14px; text-align: center;">
+
+                Ainda não possui cadastro?
+
+                <a href="{% url 'cadastrar_docente' %}">
+                    Solicitar cadastro
+                </a>
+
+            </p>
+
         </main>
+
     </div>
+
 </body>
+
 </html>

@@ -1,28 +1,117 @@
 from django.urls import path
+
 from . import views
 
+
 urlpatterns = [
-    # Caminho vazio '' significa a página principal (ex: localhost:8000/)
-    path('', views.login_view, name='login'),
-    path('dashboard/', views.dashboard, name='dashboard'),
-    # Ex: localhost:8000/bancas/
-    path('bancas/', views.visualizar_bancas, name='visualizar_bancas'),
-    # Ex: localhost:8000/solicitar/
-    path('solicitar/', views.solicitar_banca, name='solicitar_banca'),
-    path('cadastrar/aluno/', views.cadastrar_aluno, name='cadastrar_aluno'),
-    path('cadastrar/projeto/', views.cadastrar_projeto, name='cadastrar_projeto'),
-    path('avaliar/<int:solicitacao_id>/', views.avaliar_solicitacao, name='avaliar_solicitacao'),
-    path('meus-tccs/', views.meus_tccs, name='meus_tccs'),
-    path('pesquisar/', views.pesquisar, name='pesquisar'),
-    path('documentos/', views.documentos, name='documentos'),
-    path('documentos/<int:modelo_id>/download/', views.baixar_documento, name='baixar_documento'),
-    path('documentos/banca/<int:solicitacao_id>/pdf/', views.gerar_pdf_banca, name='gerar_pdf_banca'),
-    path('espacos/', views.gerenciar_espacos, name='gerenciar_espacos'),
-    path('espacos/<int:espaco_id>/editar/', views.editar_espaco, name='editar_espaco'),
-    path('espacos/<int:espaco_id>/status/',views.alternar_status_espaco,name='alternar_status_espaco'),
-    path('disponibilidades/<int:disponibilidade_id>/editar/',views.editar_disponibilidade,name='editar_disponibilidade'),
-    path('disponibilidades/<int:disponibilidade_id>/status/', views.alternar_status_disponibilidade, name='alternar_status_disponibilidade'),
-    path('coordenacao/solicitacoes/', views.solicitacoes_coordenacao, name='solicitacoes_coordenacao'),
-    path('solicitacoes/<int:solicitacao_id>/arquivo-tcc/',views.baixar_tcc_solicitacao,name='baixar_tcc_solicitacao'),
-    path('coordenacao/solicitacoes/''<int:solicitacao_id>/editar/',views.editar_solicitacao_coordenacao,name='editar_solicitacao_coordenacao'),
+    path(
+        '',
+        views.login_view,
+        name='login'
+    ),
+    path(
+        'sair/',
+        views.logout_view,
+        name='logout'
+    ),
+    path(
+        'cadastro/docente/',
+        views.cadastrar_docente,
+        name='cadastrar_docente'
+    ),
+    path(
+        'dashboard/',
+        views.dashboard,
+        name='dashboard'
+    ),
+    path(
+        'bancas/',
+        views.visualizar_bancas,
+        name='visualizar_bancas'
+    ),
+    path(
+        'solicitar/',
+        views.solicitar_banca,
+        name='solicitar_banca'
+    ),
+    path(
+        'cadastrar/aluno/',
+        views.cadastrar_aluno,
+        name='cadastrar_aluno'
+    ),
+    path(
+        'cadastrar/projeto/',
+        views.cadastrar_projeto,
+        name='cadastrar_projeto'
+    ),
+    path(
+        'avaliar/<int:solicitacao_id>/',
+        views.avaliar_solicitacao,
+        name='avaliar_solicitacao'
+    ),
+    path(
+        'meus-tccs/',
+        views.meus_tccs,
+        name='meus_tccs'
+    ),
+    path(
+        'pesquisar/',
+        views.pesquisar,
+        name='pesquisar'
+    ),
+    path(
+        'documentos/',
+        views.documentos,
+        name='documentos'
+    ),
+    path(
+        'documentos/<int:modelo_id>/download/',
+        views.baixar_documento,
+        name='baixar_documento'
+    ),
+    path(
+        'documentos/banca/<int:solicitacao_id>/pdf/',
+        views.gerar_pdf_banca,
+        name='gerar_pdf_banca'
+    ),
+    path(
+        'espacos/',
+        views.gerenciar_espacos,
+        name='gerenciar_espacos'
+    ),
+    path(
+        'espacos/<int:espaco_id>/editar/',
+        views.editar_espaco,
+        name='editar_espaco'
+    ),
+    path(
+        'espacos/<int:espaco_id>/status/',
+        views.alternar_status_espaco,
+        name='alternar_status_espaco'
+    ),
+    path(
+        'disponibilidades/<int:disponibilidade_id>/editar/',
+        views.editar_disponibilidade,
+        name='editar_disponibilidade'
+    ),
+    path(
+        'disponibilidades/<int:disponibilidade_id>/status/',
+        views.alternar_status_disponibilidade,
+        name='alternar_status_disponibilidade'
+    ),
+    path(
+        'coordenacao/solicitacoes/',
+        views.solicitacoes_coordenacao,
+        name='solicitacoes_coordenacao'
+    ),
+    path(
+        'solicitacoes/<int:solicitacao_id>/arquivo-tcc/',
+        views.baixar_tcc_solicitacao,
+        name='baixar_tcc_solicitacao'
+    ),
+    path(
+        'coordenacao/solicitacoes/<int:solicitacao_id>/editar/',
+        views.editar_solicitacao_coordenacao,
+        name='editar_solicitacao_coordenacao'
+    ),
 ]
