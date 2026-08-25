@@ -167,8 +167,8 @@ class CadastroDocenteForm(UserCreationForm):
             'last_name'
         ]
 
-        # A conta somente será ativada depois da
-        # aprovação realizada pela Coordenação.
+        # A conta será ativada automaticamente
+        # após a confirmação do e-mail.
         usuario.is_active = False
 
         if commit:
@@ -177,53 +177,58 @@ class CadastroDocenteForm(UserCreationForm):
 
             pUsuario.objects.create(
                 usuario=usuario,
-                perfil='DOCENTE',
-                status_cadastro='PENDENTE'
+                perfil='DOCENTE'
             )
 
         return usuario
 
 class SolicitacaoBancaForm(forms.ModelForm):
+
     orientador = forms.ModelChoiceField(
-    queryset=pUsuario.objects.filter(perfil='DOCENTE'),
-    label="Professor Orientador",
-    empty_label="Selecione o Orientador"
+        queryset=pUsuario.objects.none(),
+        label='Professor Orientador',
+        empty_label='Selecione o Orientador'
     )
+
     coorientador = forms.ModelChoiceField(
-        queryset=pUsuario.objects.filter(
-            perfil='DOCENTE'
-        ),
+        queryset=pUsuario.objects.none(),
         required=False,
         label='Professor Coorientador (Opcional)',
         empty_label='Sem coorientador'
     )
+
     avaliador_interno = forms.ModelChoiceField(
-    queryset=pUsuario.objects.filter(perfil='DOCENTE'),
-    label="Avaliador Interno (UFAC)",
-    empty_label="Selecione o Avaliador"
+        queryset=pUsuario.objects.none(),
+        label='Avaliador Interno (UFAC)',
+        empty_label='Selecione o Avaliador'
     )
+
     segundo_avaliador_interno = forms.ModelChoiceField(
-        queryset=pUsuario.objects.filter(
-            perfil='DOCENTE'
-        ),
+        queryset=pUsuario.objects.none(),
         required=False,
         label='Segundo Avaliador Interno (Opcional)',
         empty_label='Sem segundo avaliador'
     )
+
     nome_avaliador_externo = forms.CharField(
-        max_length=150, 
-        required=False, 
-        label="Nome do Avaliador Externo (Opcional)"
+        max_length=150,
+        required=False,
+        label='Nome do Avaliador Externo (Opcional)'
     )
+
     instituicao_avaliador_externo = forms.CharField(
-        max_length=100, 
-        required=False, 
-        label="Instituição do Avaliador Externo (Opcional)"
+        max_length=100,
+        required=False,
+        label='Instituição do Avaliador Externo (Opcional)'
     )
+
     arquivo_tcc = forms.FileField(
         required=True,
         label='Arquivo do TCC em PDF',
-        help_text='Envie o trabalho em formato PDF, com no máximo 25 MB.',
+        help_text=(
+            'Envie o trabalho em formato PDF, '
+            'com no máximo 25 MB.'
+        ),
         widget=forms.FileInput(
             attrs={
                 'class': 'form-input',
@@ -232,45 +237,67 @@ class SolicitacaoBancaForm(forms.ModelForm):
         ),
         error_messages={
             'required': (
-                'Anexe o arquivo PDF do TCC antes de enviar '
-                'a solicitação.'
+                'Anexe o arquivo PDF do TCC antes de '
+                'enviar a solicitação.'
             ),
         }
     )
+
     class Meta:
-        # 1. de qual tabela puxa os dados
+
         model = SolicitacaoAgendamento
-        
-        # 2. campos que o professor preenche
-        fields = ['projeto_tcc', 'espaco', 'opcao_data_inicio', 'opcao_data_fim', 'arquivo_tcc']
-        
-        # 3. fica mais bonito pro caba ler
+
+        fields = [
+            'projeto_tcc',
+            'espaco',
+            'opcao_data_inicio',
+            'opcao_data_fim',
+            'arquivo_tcc',
+        ]
+
         labels = {
             'projeto_tcc': 'Projeto de TCC (Aluno)',
             'espaco': 'Laboratório / Sala Desejada',
             'opcao_data_inicio': 'Data e Hora de Início',
             'opcao_data_fim': 'Data e Hora de Término',
         }
-        
-        # 4. Colocando classes CSS (dps deixo bonito) e o calendário nativo
+
         widgets = {
-            'projeto_tcc': forms.Select(attrs={'class': 'form-input'}),
-            'espaco': forms.Select(attrs={'class': 'form-input'}),
-            # O type='datetime-local' calendario seboso
-            'opcao_data_inicio': forms.DateTimeInput(attrs={'class': 'form-input', 'type': 'datetime-local'}),
-            'opcao_data_fim': forms.DateTimeInput(attrs={'class': 'form-input', 'type': 'datetime-local'}),
+            'projeto_tcc': forms.Select(
+                attrs={
+                    'class': 'form-input',
+                }
+            ),
+            'espaco': forms.Select(
+                attrs={
+                    'class': 'form-input',
+                }
+            ),
+            'opcao_data_inicio': forms.DateTimeInput(
+                attrs={
+                    'class': 'form-input',
+                    'type': 'datetime-local',
+                }
+            ),
+            'opcao_data_fim': forms.DateTimeInput(
+                attrs={
+                    'class': 'form-input',
+                    'type': 'datetime-local',
+                }
+            ),
         }
 
     def __init__(self, *args, **kwargs):
 
         super().__init__(*args, **kwargs)
 
+        # Somente docentes que confirmaram o e-mail
+        # e possuem conta ativa aparecem na banca.
         docentes_ativos = (
             pUsuario.objects
             .select_related('usuario')
             .filter(
                 perfil='DOCENTE',
-                status_cadastro='APROVADO',
                 usuario__is_active=True,
             )
             .order_by(

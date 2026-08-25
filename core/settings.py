@@ -135,3 +135,16 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
+
+# Durante o desenvolvimento, o conteúdo do e-mail
+# será mostrado no terminal do runserver.
+EMAIL_BACKEND = (
+    'django.core.mail.backends.console.EmailBackend'
+)
+
+DEFAULT_FROM_EMAIL = (
+    'SGTCC <nao-responda@ufac.br>'
+)
+
+# Validade do link de confirmação: 24 horas.
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24

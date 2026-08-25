@@ -33,6 +33,10 @@ from django.views.decorators.http import require_POST
 from django.core.exceptions import ValidationError
 from .services import expirar_solicitacoes_vencidas
 from django.conf import settings
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
+from .emails import enviar_email_confirmacao_docente
+from .tokens import token_confirmacao_email
 
 
 
@@ -888,14 +892,37 @@ def cadastrar_docente(request):
         if form.is_valid():
 
             with transaction.atomic():
-                form.save()
+                usuario = form.save()
+
+            try:
+
+                enviar_email_confirmacao_docente(
+                    request,
+                    usuario
+                )
+
+            except Exception:
+
+                # Evita deixar um cadastro inativo preso
+                # caso o envio não seja concluído.
+                usuario.delete()
+
+                messages.error(
+                    request,
+                    'Não foi possível enviar o e-mail de '
+                    'confirmação. Tente novamente.'
+                )
+
+                return redirect(
+                    'cadastrar_docente'
+                )
 
             messages.success(
                 request,
                 (
-                    'Cadastro enviado com sucesso. '
-                    'Aguarde a aprovação da Coordenação '
-                    'antes de acessar o sistema.'
+                    'Cadastro realizado com sucesso. '
+                    'Enviamos um link de confirmação '
+                    'para seu e-mail institucional.'
                 )
             )
 
@@ -915,14 +942,114 @@ def cadastrar_docente(request):
         contexto
     )
 
+def confirmar_email_docente(
+    request,
+    uidb64,
+    token
+):
+
+    try:
+
+        usuario_id = force_str(
+            urlsafe_base64_decode(
+                uidb64
+            )
+        )
+
+        usuario = User.objects.get(
+            pk=usuario_id
+        )
+
+    except (
+        TypeError,
+        ValueError,
+        OverflowError,
+        User.DoesNotExist,
+    ):
+
+        usuario = None
+
+    if usuario is None:
+
+        messages.error(
+            request,
+            'O link de confirmação é inválido.'
+        )
+
+        return redirect('login')
+
+    if usuario.is_active:
+
+        messages.info(
+            request,
+            'Este e-mail já foi confirmado anteriormente.'
+        )
+
+        return redirect('login')
+
+    if not token_confirmacao_email.check_token(
+        usuario,
+        token
+    ):
+
+        messages.error(
+            request,
+            'O link de confirmação é inválido ou expirou.'
+        )
+
+        return redirect('login')
+
+    perfil = pUsuario.objects.filter(
+        usuario=usuario,
+        perfil='DOCENTE'
+    ).first()
+
+    if perfil is None:
+
+        messages.error(
+            request,
+            'Não foi encontrado um perfil docente '
+            'vinculado a este cadastro.'
+        )
+
+        return redirect('login')
+
+    with transaction.atomic():
+
+        usuario.is_active = True
+
+        usuario.save(
+            update_fields=[
+                'is_active',
+            ]
+        )
+
+        perfil.data_confirmacao_email = (
+            timezone.now()
+        )
+
+        perfil.save(
+            update_fields=[
+                'data_confirmacao_email',
+            ]
+        )
+
+    messages.success(
+        request,
+        'E-mail confirmado com sucesso. '
+        'Agora você pode entrar no SGTCC.'
+    )
+
+    return redirect('login')
+
 def login_view(request):
-    # Usuários que ainda possuem uma sessão válida
-    # seguem diretamente para o painel.
+
     if request.user.is_authenticated:
         return redirect('dashboard')
 
     if request.method == 'POST':
-        email = (
+
+        identificador = (
             request.POST.get('email')
             or ''
         ).strip().lower()
@@ -937,27 +1064,42 @@ def login_view(request):
             == 'on'
         )
 
+        usuario_cadastrado = (
+            User.objects
+            .filter(
+                Q(username__iexact=identificador)
+                | Q(email__iexact=identificador)
+            )
+            .first()
+        )
+
+        username_autenticacao = (
+            usuario_cadastrado.username
+            if usuario_cadastrado is not None
+            else identificador
+        )
+
         usuario = authenticate(
             request,
-            username=email,
+            username=username_autenticacao,
             password=senha
         )
 
         if usuario is not None:
+
             login(
                 request,
                 usuario
             )
 
             if manter_conectado:
-                # Mantém a sessão pelo período configurado
-                # em SESSION_COOKIE_AGE.
+
                 request.session.set_expiry(
                     settings.SESSION_COOKIE_AGE
                 )
+
             else:
-                # A sessão termina quando o navegador
-                # for completamente fechado.
+
                 request.session.set_expiry(0)
 
             messages.success(
@@ -967,10 +1109,32 @@ def login_view(request):
 
             return redirect('dashboard')
 
-        messages.error(
-            request,
-            'E-mail ou senha incorretos.'
+        docente_nao_confirmado = (
+            usuario_cadastrado is not None
+            and not usuario_cadastrado.is_active
+            and usuario_cadastrado.check_password(
+                senha
+            )
+            and pUsuario.objects.filter(
+                usuario=usuario_cadastrado,
+                perfil='DOCENTE'
+            ).exists()
         )
+
+        if docente_nao_confirmado:
+
+            messages.warning(
+                request,
+                'Confirme seu e-mail institucional '
+                'antes de acessar o sistema.'
+            )
+
+        else:
+
+            messages.error(
+                request,
+                'E-mail, usuário ou senha incorretos.'
+            )
 
     return render(
         request,

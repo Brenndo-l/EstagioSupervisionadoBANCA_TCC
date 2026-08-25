@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+
+    <title>
+        Confirmação de cadastro no SGTCC
+    </title>
+</head>
+
+<body style="font-family: Arial, sans-serif; color: #333;">
+
+    <div
+        style="
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 30px;
+        "
+    >
+
+        <h1 style="color: #2b3990;">
+            Confirmação de cadastro
+        </h1>
+
+        <p>
+            Olá,
+            <strong>{{ usuario.get_full_name }}</strong>.
+        </p>
+
+        <p>
+            Foi solicitado um cadastro de docente no SGTCC
+            utilizando este endereço institucional.
+        </p>
+
+        <p>
+            Clique no botão abaixo para confirmar seu e-mail
+            e ativar sua conta:
+        </p>
+
+        <p style="margin: 30px 0;">
+
+            <a
+                href="{{ link_confirmacao }}"
+                style="
+                    background-color: #2b3990;
+                    border-radius: 5px;
+                    color: white;
+                    display: inline-block;
+                    font-weight: bold;
+                    padding: 12px 22px;
+                    text-decoration: none;
+                "
+            >
+                Confirmar meu e-mail
+            </a>
+
+        </p>
+
+        <p>
+            Este link é válido por 24 horas.
+        </p>
+
+        <p>
+            Se você não solicitou este cadastro,
+            ignore esta mensagem.
+        </p>
+
+        <hr style="border: 0; border-top: 1px solid #ddd;">
+
+        <p style="color: #666; font-size: 13px;">
+            SGTCC — Sistema de Gerenciamento de Bancas de TCC<br>
+            Universidade Federal do Acre
+        </p>
+
+    </div>
+
+</body>
+
+</html>

@@ -13,12 +13,6 @@ class pUsuario(models.Model):
         ('DOCENTE', 'Docente'),
     )
 
-    STATUS_CADASTRO = (
-        ('PENDENTE', 'Pendente'),
-        ('APROVADO', 'Aprovado'),
-        ('RECUSADO', 'Recusado'),
-    )
-
     usuario = models.OneToOneField(
         User,
         on_delete=models.CASCADE
@@ -29,37 +23,16 @@ class pUsuario(models.Model):
         choices=Tipos_Perfil
     )
 
-    # Usuários que já existiam no sistema permanecem aprovados.
-    # Novos docentes serão criados explicitamente como pendentes.
-    status_cadastro = models.CharField(
-        max_length=10,
-        choices=STATUS_CADASTRO,
-        default='APROVADO',
-        verbose_name='Situação do cadastro'
-    )
-
     data_cadastro = models.DateTimeField(
         default=timezone.now,
         editable=False
     )
 
-    data_analise = models.DateTimeField(
+    data_confirmacao_email = models.DateTimeField(
         null=True,
         blank=True,
-        editable=False
-    )
-
-    analisado_por = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='cadastros_docentes_analisados',
-        editable=False
-    )
-
-    motivo_analise = models.TextField(
-        blank=True
+        editable=False,
+        verbose_name='Data de confirmação do e-mail'
     )
 
     def __str__(self):

@@ -114,4 +114,9 @@ urlpatterns = [
         views.editar_solicitacao_coordenacao,
         name='editar_solicitacao_coordenacao'
     ),
+    path(
+        'cadastro/docente/confirmar/<uidb64>/<token>/',
+        views.confirmar_email_docente,
+        name='confirmar_email_docente'
+    ),
 ]

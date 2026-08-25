@@ -14,6 +14,10 @@ from .models import (
     BancaTCC,
     DisponibilidadeEspaco,
 )
+from django.core import mail
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
+from .tokens import token_confirmacao_email
 
 def criar_pdf_teste():
 
@@ -155,6 +159,37 @@ class CadastroDocenteTests(TestCase):
             'password2': self.senha,
         }
 
+    def cadastrar_docente(self):
+
+        response = self.client.post(
+            self.url_cadastro,
+            self.dados_validos()
+        )
+
+        usuario = User.objects.get(
+            username='maria.docente@ufac.br'
+        )
+
+        return response, usuario
+
+    def url_confirmacao(self, usuario):
+
+        uid = urlsafe_base64_encode(
+            force_bytes(usuario.pk)
+        )
+
+        token = token_confirmacao_email.make_token(
+            usuario
+        )
+
+        return reverse(
+            'confirmar_email_docente',
+            kwargs={
+                'uidb64': uid,
+                'token': token,
+            }
+        )
+
     def test_tela_cadastro_docente_abre(self):
 
         response = self.client.get(
@@ -199,20 +234,15 @@ class CadastroDocenteTests(TestCase):
             0
         )
 
-    def test_cadastro_valido_cria_docente_pendente(self):
+    def test_cadastro_valido_cria_docente_nao_confirmado(self):
 
-        response = self.client.post(
-            self.url_cadastro,
-            self.dados_validos()
+        response, usuario = (
+            self.cadastrar_docente()
         )
 
         self.assertRedirects(
             response,
             reverse('login')
-        )
-
-        usuario = User.objects.get(
-            username='maria.docente@ufac.br'
         )
 
         perfil = pUsuario.objects.get(
@@ -238,9 +268,23 @@ class CadastroDocenteTests(TestCase):
             'DOCENTE'
         )
 
+        self.assertIsNone(
+            perfil.data_confirmacao_email
+        )
+
         self.assertEqual(
-            perfil.status_cadastro,
-            'PENDENTE'
+            len(mail.outbox),
+            1
+        )
+
+        self.assertEqual(
+            mail.outbox[0].to,
+            ['maria.docente@ufac.br']
+        )
+
+        self.assertIn(
+            '/cadastro/docente/confirmar/',
+            mail.outbox[0].body
         )
 
     def test_email_duplicado_e_rejeitado(self):
@@ -276,7 +320,7 @@ class CadastroDocenteTests(TestCase):
             1
         )
 
-    def test_docente_pendente_nao_consegue_entrar(self):
+    def test_docente_nao_confirmado_nao_consegue_entrar(self):
 
         usuario = User.objects.create_user(
             username='pendente@ufac.br',
@@ -287,8 +331,7 @@ class CadastroDocenteTests(TestCase):
 
         pUsuario.objects.create(
             usuario=usuario,
-            perfil='DOCENTE',
-            status_cadastro='PENDENTE'
+            perfil='DOCENTE'
         )
 
         response = self.client.post(
@@ -306,12 +349,98 @@ class CadastroDocenteTests(TestCase):
 
         self.assertContains(
             response,
-            'aguardando análise da Coordenação'
+            'Confirme seu e-mail institucional'
         )
 
         self.assertNotIn(
             '_auth_user_id',
             self.client.session
+        )
+
+    def test_link_valido_confirma_email(self):
+
+        _, usuario = self.cadastrar_docente()
+
+        response = self.client.get(
+            self.url_confirmacao(
+                usuario
+            )
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('login')
+        )
+
+        usuario.refresh_from_db()
+
+        perfil = pUsuario.objects.get(
+            usuario=usuario
+        )
+
+        self.assertTrue(
+            usuario.is_active
+        )
+
+        self.assertIsNotNone(
+            perfil.data_confirmacao_email
+        )
+
+    def test_docente_confirmado_consegue_entrar(self):
+
+        _, usuario = self.cadastrar_docente()
+
+        self.client.get(
+            self.url_confirmacao(
+                usuario
+            )
+        )
+
+        response = self.client.post(
+            reverse('login'),
+            {
+                'email': usuario.email,
+                'senha': self.senha,
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+        self.assertIn(
+            '_auth_user_id',
+            self.client.session
+        )
+
+    def test_link_invalido_nao_ativa_usuario(self):
+
+        _, usuario = self.cadastrar_docente()
+
+        uid = urlsafe_base64_encode(
+            force_bytes(usuario.pk)
+        )
+
+        response = self.client.get(
+            reverse(
+                'confirmar_email_docente',
+                kwargs={
+                    'uidb64': uid,
+                    'token': 'token-invalido',
+                }
+            )
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('login')
+        )
+
+        usuario.refresh_from_db()
+
+        self.assertFalse(
+            usuario.is_active
         )
 
 

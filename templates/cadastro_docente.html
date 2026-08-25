@@ -37,10 +37,26 @@
 
             <h1>Cadastro de Docente</h1>
 
+            {% if messages %}
+
+                <div class="mensagens-flutuantes">
+
+                    {% for message in messages %}
+
+                        <div class="alerta alerta-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+            {% endif %}
+
             <p style="max-width: 560px; text-align: center;">
                 Utilize seu e-mail institucional da UFAC.
-                O acesso será liberado depois da análise
-                realizada pela Coordenação.
+                Enviaremos um link para confirmar o endereço
+                e ativar automaticamente sua conta.
             </p>
 
             <form
@@ -101,7 +117,7 @@
                 {% endfor %}
 
                 <button type="submit">
-                    Enviar cadastro
+                    Criar cadastro
                 </button>
 
             </form>

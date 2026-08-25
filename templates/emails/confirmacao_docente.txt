@@ -1,0 +1,15 @@
+Olá, {{ usuario.get_full_name }}.
+
+Foi solicitado um cadastro de docente no SGTCC utilizando este endereço institucional.
+
+Para confirmar seu e-mail e ativar a conta, acesse o link abaixo:
+
+{{ link_confirmacao }}
+
+O link é válido por 24 horas.
+
+Se você não solicitou este cadastro, ignore esta mensagem.
+
+SGTCC
+Sistema de Gerenciamento de Bancas de TCC
+Universidade Federal do Acre
