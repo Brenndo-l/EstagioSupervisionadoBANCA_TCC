@@ -497,6 +497,8 @@ class AgendamentoTests(TestCase):
             )
             + timedelta(days=30)
         ).replace(
+            hour=14,
+            minute=0,
             second=0,
             microsecond=0
         )
@@ -521,6 +523,19 @@ class AgendamentoTests(TestCase):
                 criada_por=self.usuario_docente,
             )
         )
+
+    def dados_academicos_solicitacao(self):
+
+        return {
+            'nome_discente': self.discente.nome,
+            'matricula_discente': self.discente.matricula,
+            'titulo_tcc': 'Novo Projeto Criado na Solicitação',
+            'resumo_tcc': (
+                'Resumo acadêmico criado durante a solicitação.'
+            ),
+            'semestre_letivo': '2026.1',
+        }
+
     def test_horario_fora_da_disponibilidade_e_recusado(self):
 
         self.client.force_login(
@@ -529,7 +544,7 @@ class AgendamentoTests(TestCase):
 
         inicio_fora = (
             self.disponibilidade.data_hora_fim
-            + timedelta(hours=1)
+            + timedelta(minutes=30)
         )
 
         fim_fora = (
@@ -540,7 +555,8 @@ class AgendamentoTests(TestCase):
         response = self.client.post(
             reverse('solicitar_banca'),
             {
-                'projeto_tcc': self.projeto.id,
+                **self.dados_academicos_solicitacao(),
+
                 'espaco': self.espaco.id,
 
                 'opcao_data_inicio': (
@@ -562,6 +578,8 @@ class AgendamentoTests(TestCase):
                 'nome_avaliador_externo': '',
 
                 'instituicao_avaliador_externo': '',
+
+                'arquivo_tcc': criar_pdf_teste(),
             }
         )
 
@@ -596,7 +614,7 @@ class AgendamentoTests(TestCase):
         response = self.client.post(
             reverse('solicitar_banca'),
             {
-                'projeto_tcc': self.projeto.id,
+                **self.dados_academicos_solicitacao(),
                 'espaco': self.espaco.id,
 
                 'opcao_data_inicio': (
@@ -705,7 +723,7 @@ class AgendamentoTests(TestCase):
         response = self.client.post(
             reverse('solicitar_banca'),
             {
-                'projeto_tcc': self.projeto.id,
+                **self.dados_academicos_solicitacao(),
                 'espaco': self.espaco.id,
 
                 'opcao_data_inicio': (
@@ -763,7 +781,7 @@ class AgendamentoTests(TestCase):
         response = self.client.post(
             reverse('solicitar_banca'),
             {
-                'projeto_tcc': self.projeto.id,
+                **self.dados_academicos_solicitacao(),
                 'espaco': self.espaco.id,
 
                 'opcao_data_inicio': (
@@ -837,7 +855,7 @@ class AgendamentoTests(TestCase):
         response = self.client.post(
             reverse('solicitar_banca'),
             {
-                'projeto_tcc': self.projeto.id,
+                **self.dados_academicos_solicitacao(),
                 'espaco': self.espaco.id,
 
                 'opcao_data_inicio': (
@@ -906,7 +924,7 @@ class AgendamentoTests(TestCase):
         response = self.client.post(
             reverse('solicitar_banca'),
             {
-                'projeto_tcc': self.projeto.id,
+                **self.dados_academicos_solicitacao(),
                 'espaco': self.espaco.id,
 
                 'opcao_data_inicio': (
@@ -980,15 +998,30 @@ class AgendamentoTests(TestCase):
             self.docente
         )
 
-        # Deve estar ligada ao projeto correto.
-        self.assertEqual(
+        # O projeto é criado automaticamente pela solicitação.
+        self.assertNotEqual(
             solicitacao.projeto_tcc,
             self.projeto
         )
 
+        self.assertEqual(
+            solicitacao.projeto_tcc.discente,
+            self.discente
+        )
+
+        self.assertEqual(
+            solicitacao.projeto_tcc.titulo,
+            'Novo Projeto Criado na Solicitação'
+        )
+
+        self.assertEqual(
+            solicitacao.projeto_tcc.status,
+            'EM_ANÁLISE'
+        )
+
         # A composição da banca também deve ter sido criada.
         composicao = ComposicaoBanca.objects.get(
-            projeto_tcc=self.projeto
+            solicitacao=solicitacao
         )
 
         # A composição deve pertencer exatamente
@@ -1044,15 +1077,15 @@ class AgendamentoTests(TestCase):
             self.docente
         )
 
-        # Deve estar ligada ao projeto correto
+        # Deve estar ligada ao projeto criado no novo fluxo.
         self.assertEqual(
-            solicitacao.projeto_tcc,
-            self.projeto
+            solicitacao.projeto_tcc.discente,
+            self.discente
         )
 
         # A composição da banca também deve ter sido criada
         composicao = ComposicaoBanca.objects.get(
-            projeto_tcc=self.projeto
+            solicitacao=solicitacao
         )
 
         self.assertEqual(
@@ -1064,6 +1097,173 @@ class AgendamentoTests(TestCase):
             composicao.avaliador_interno,
             self.avaliador
         )
+
+    def test_formulario_reune_discente_e_tcc_na_solicitacao(self):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.get(
+            reverse('solicitar_banca')
+        )
+
+        campos = response.context[
+            'form'
+        ].fields
+
+        self.assertIn(
+            'nome_discente',
+            campos
+        )
+
+        self.assertIn(
+            'titulo_tcc',
+            campos
+        )
+
+        self.assertNotIn(
+            'projeto_tcc',
+            campos
+        )
+
+        self.assertNotIn(
+            'status',
+            campos
+        )
+
+    def test_matricula_existente_com_nome_diferente_e_rejeitada(self):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        dados = self.dados_academicos_solicitacao()
+
+        dados.update(
+            {
+                'nome_discente': 'Outro Nome',
+                'espaco': self.espaco.id,
+                'opcao_data_inicio': (
+                    self.inicio_agendamento.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+                'opcao_data_fim': (
+                    self.fim_agendamento.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+                'orientador': self.docente.id,
+                'avaliador_interno': self.avaliador.id,
+                'arquivo_tcc': criar_pdf_teste(),
+            }
+        )
+
+        response = self.client.post(
+            reverse('solicitar_banca'),
+            dados
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
+            response,
+            'Esta matrícula já pertence ao discente'
+        )
+
+        self.assertEqual(
+            SolicitacaoAgendamento.objects.count(),
+            0
+        )
+
+        self.assertEqual(
+            ProjetoTCC.objects.count(),
+            1
+        )
+
+    def test_banca_deve_comecar_e_terminar_no_mesmo_dia(self):
+
+        inicio = self.inicio_agendamento.replace(
+            hour=23,
+            minute=0
+        )
+
+        fim = inicio + timedelta(hours=2)
+
+        self.disponibilidade.data_hora_inicio = (
+            inicio - timedelta(hours=1)
+        )
+
+        self.disponibilidade.data_hora_fim = (
+            fim + timedelta(hours=1)
+        )
+
+        self.disponibilidade.save()
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        dados = self.dados_academicos_solicitacao()
+
+        dados.update(
+            {
+                'espaco': self.espaco.id,
+                'opcao_data_inicio': inicio.strftime(
+                    '%Y-%m-%dT%H:%M'
+                ),
+                'opcao_data_fim': fim.strftime(
+                    '%Y-%m-%dT%H:%M'
+                ),
+                'orientador': self.docente.id,
+                'avaliador_interno': self.avaliador.id,
+                'arquivo_tcc': criar_pdf_teste(),
+            }
+        )
+
+        response = self.client.post(
+            reverse('solicitar_banca'),
+            dados
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
+            response,
+            'A banca deve começar e terminar no mesmo dia.'
+        )
+
+        self.assertEqual(
+            SolicitacaoAgendamento.objects.count(),
+            0
+        )
+
+    def test_rotas_antigas_redirecionam_para_solicitacao(self):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        for nome_rota in [
+            'cadastrar_aluno',
+            'cadastrar_projeto',
+        ]:
+
+            response = self.client.get(
+                reverse(nome_rota)
+            )
+
+            self.assertRedirects(
+                response,
+                reverse('solicitar_banca')
+            )
 
         # Testes da avaliação realizada pela Coordenação
 class AvaliacaoSolicitacaoTests(TestCase):

@@ -326,6 +326,65 @@ class DefinirNovaSenhaForm(SetPasswordForm):
 
 class SolicitacaoBancaForm(forms.ModelForm):
 
+    nome_discente = forms.CharField(
+        label='Nome completo do discente',
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-input',
+                'placeholder': 'Informe o nome completo do discente',
+                'autocomplete': 'off',
+            }
+        )
+    )
+
+    matricula_discente = forms.CharField(
+        label='Matrícula do discente',
+        max_length=11,
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-input',
+                'placeholder': 'Informe a matrícula',
+                'inputmode': 'numeric',
+                'autocomplete': 'off',
+            }
+        )
+    )
+
+    titulo_tcc = forms.CharField(
+        label='Título do TCC',
+        max_length=255,
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-input',
+                'placeholder': 'Informe o título completo do trabalho',
+            }
+        )
+    )
+
+    resumo_tcc = forms.CharField(
+        label='Resumo do TCC',
+        widget=forms.Textarea(
+            attrs={
+                'class': 'form-input',
+                'rows': 6,
+                'placeholder': 'Informe o resumo do trabalho',
+            }
+        )
+    )
+
+    semestre_letivo = forms.CharField(
+        label='Semestre letivo',
+        max_length=6,
+        help_text='Utilize o formato ano.semestre. Exemplo: 2026.2.',
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-input',
+                'placeholder': '2026.2',
+            }
+        )
+    )
+
     orientador = forms.ModelChoiceField(
         queryset=pUsuario.objects.none(),
         label='Professor Orientador',
@@ -390,7 +449,6 @@ class SolicitacaoBancaForm(forms.ModelForm):
         model = SolicitacaoAgendamento
 
         fields = [
-            'projeto_tcc',
             'espaco',
             'opcao_data_inicio',
             'opcao_data_fim',
@@ -398,18 +456,12 @@ class SolicitacaoBancaForm(forms.ModelForm):
         ]
 
         labels = {
-            'projeto_tcc': 'Projeto de TCC (Aluno)',
             'espaco': 'Laboratório / Sala Desejada',
             'opcao_data_inicio': 'Data e Hora de Início',
             'opcao_data_fim': 'Data e Hora de Término',
         }
 
         widgets = {
-            'projeto_tcc': forms.Select(
-                attrs={
-                    'class': 'form-input',
-                }
-            ),
             'espaco': forms.Select(
                 attrs={
                     'class': 'form-input',
@@ -472,6 +524,90 @@ class SolicitacaoBancaForm(forms.ModelForm):
             .order_by('nome')
         )
 
+    def clean_nome_discente(self):
+
+        nome = ' '.join(
+            self.cleaned_data[
+                'nome_discente'
+            ].split()
+        )
+
+        if len(nome) < 3:
+            raise forms.ValidationError(
+                'Informe o nome completo do discente.'
+            )
+
+        return nome
+
+    def clean_matricula_discente(self):
+
+        matricula = (
+            self.cleaned_data[
+                'matricula_discente'
+            ].strip()
+        )
+
+        if not matricula.isdigit():
+            raise forms.ValidationError(
+                'A matrícula deve conter somente números.'
+            )
+
+        return matricula
+
+    def clean_titulo_tcc(self):
+
+        titulo = ' '.join(
+            self.cleaned_data[
+                'titulo_tcc'
+            ].split()
+        )
+
+        if len(titulo) < 3:
+            raise forms.ValidationError(
+                'Informe um título válido para o TCC.'
+            )
+
+        return titulo
+
+    def clean_resumo_tcc(self):
+
+        resumo = (
+            self.cleaned_data[
+                'resumo_tcc'
+            ].strip()
+        )
+
+        if len(resumo) < 10:
+            raise forms.ValidationError(
+                'O resumo deve possuir pelo menos 10 caracteres.'
+            )
+
+        return resumo
+
+    def clean_semestre_letivo(self):
+
+        semestre = (
+            self.cleaned_data[
+                'semestre_letivo'
+            ].strip()
+        )
+
+        partes = semestre.split('.')
+
+        formato_valido = (
+            len(partes) == 2
+            and len(partes[0]) == 4
+            and partes[0].isdigit()
+            and partes[1] in ['1', '2']
+        )
+
+        if not formato_valido:
+            raise forms.ValidationError(
+                'Informe o semestre no formato 2026.1 ou 2026.2.'
+            )
+
+        return semestre
+
     def clean_arquivo_tcc(self):
 
         arquivo = self.cleaned_data.get(
@@ -529,6 +665,36 @@ class SolicitacaoBancaForm(forms.ModelForm):
         segundo_avaliador_interno = cleaned_data.get(
             'segundo_avaliador_interno'
         )
+
+        matricula_discente = cleaned_data.get(
+            'matricula_discente'
+        )
+
+        nome_discente = cleaned_data.get(
+            'nome_discente'
+        )
+
+        if matricula_discente and nome_discente:
+
+            discente_existente = (
+                Discente.objects
+                .filter(
+                    matricula=matricula_discente
+                )
+                .first()
+            )
+
+            if (
+                discente_existente
+                and discente_existente.nome.casefold()
+                != nome_discente.casefold()
+            ):
+
+                self.add_error(
+                    'matricula_discente',
+                    'Esta matrícula já pertence ao discente '
+                    f'"{discente_existente.nome}".'
+                )
 
         # Relação de todos os docentes internos escolhidos.
         participantes_internos = [
@@ -594,6 +760,27 @@ class SolicitacaoBancaForm(forms.ModelForm):
                     'opcao_data_fim',
                     'A data e hora de término devem ser '
                     'posteriores ao horário de início.'
+                )
+
+            inicio_local = (
+                timezone.localtime(data_inicio)
+                if timezone.is_aware(data_inicio)
+                else data_inicio
+            )
+
+            fim_local = (
+                timezone.localtime(data_fim)
+                if timezone.is_aware(data_fim)
+                else data_fim
+            )
+
+            if inicio_local.date() != fim_local.date():
+
+                periodo_em_ordem = False
+
+                self.add_error(
+                    'opcao_data_fim',
+                    'A banca deve começar e terminar no mesmo dia.'
                 )
 
             # Agora impede realmente horários no passado.
@@ -737,21 +924,32 @@ class EdicaoSolicitacaoCoordenacaoForm(
 
         super().__init__(*args, **kwargs)
 
-        # O projeto e o PDF fazem parte do envio
-        # original e não podem ser substituídos
-        # pela Coordenação.
+        # Mantido por compatibilidade com registros antigos.
         self.fields.pop(
             'projeto_tcc',
             None
         )
+
+        # Os dados acadêmicos pertencem ao envio original
+        # e não podem ser alterados pela Coordenação.
+        for nome_campo in [
+            'nome_discente',
+            'matricula_discente',
+            'titulo_tcc',
+            'resumo_tcc',
+            'semestre_letivo',
+        ]:
+
+            self.fields.pop(
+                nome_campo,
+                None
+            )
 
         self.fields.pop(
             'arquivo_tcc',
             None
         )
 
-        # Garante que os valores atuais sejam
-        # apresentados nos campos datetime-local.
         self.fields[
             'opcao_data_inicio'
         ].widget.format = '%Y-%m-%dT%H:%M'

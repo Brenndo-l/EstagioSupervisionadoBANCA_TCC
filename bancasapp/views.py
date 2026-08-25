@@ -2,16 +2,24 @@ from django.shortcuts import render, redirect, get_object_or_404
 from .forms import (
     AvaliacaoSolicitacaoForm,
     CadastroDocenteForm,
-    DiscenteForm,
     DisponibilidadeEspacoForm,
     EdicaoSolicitacaoCoordenacaoForm,
     EspacoFisicoForm,
     ModeloDocumentoForm,
-    ProjetoTCCForm,
     SolicitacaoBancaForm,
     ReenvioConfirmacaoForm,
 )
-from .models import ProjetoTCC, pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico, ComposicaoBanca, ModeloDocumento, DisponibilidadeEspaco
+from .models import (
+    BancaTCC,
+    ComposicaoBanca,
+    Discente,
+    DisponibilidadeEspaco,
+    EspacoFisico,
+    ModeloDocumento,
+    ProjetoTCC,
+    SolicitacaoAgendamento,
+    pUsuario,
+)
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.contrib import messages
@@ -678,10 +686,52 @@ def solicitar_banca(request):
 
             with transaction.atomic():
 
+                # A matrícula identifica o discente.
+                # Discente existente é reaproveitado.
+                discente, _ = (
+                    Discente.objects.get_or_create(
+                        matricula=(
+                            form.cleaned_data[
+                                'matricula_discente'
+                            ]
+                        ),
+                        defaults={
+                            'nome': (
+                                form.cleaned_data[
+                                    'nome_discente'
+                                ]
+                            ),
+                        }
+                    )
+                )
+
+                # Cada solicitação recebe seu próprio projeto.
+                # Isso preserva o histórico de tentativas.
+                projeto = ProjetoTCC.objects.create(
+                    titulo=(
+                        form.cleaned_data[
+                            'titulo_tcc'
+                        ]
+                    ),
+                    resumo=(
+                        form.cleaned_data[
+                            'resumo_tcc'
+                        ]
+                    ),
+                    semestre_letivo=(
+                        form.cleaned_data[
+                            'semestre_letivo'
+                        ]
+                    ),
+                    discente=discente,
+                    status='EM_ANÁLISE',
+                )
+
                 solicitacao = form.save(
                     commit=False
                 )
 
+                solicitacao.projeto_tcc = projeto
                 solicitacao.status = 'EM_ANÁLISE'
 
                 solicitacao.usuario_solicitante = (
@@ -690,15 +740,14 @@ def solicitar_banca(request):
 
                 solicitacao.save()
 
-                # Cada solicitação recebe sua própria composição.
-                # Assim uma nova tentativa não altera o histórico
-                # de uma solicitação anterior.
                 ComposicaoBanca.objects.create(
                     solicitacao=solicitacao,
-                    projeto_tcc=solicitacao.projeto_tcc,
+                    projeto_tcc=projeto,
 
                     orientador=(
-                        form.cleaned_data['orientador']
+                        form.cleaned_data[
+                            'orientador'
+                        ]
                     ),
 
                     coorientador=(
@@ -737,28 +786,22 @@ def solicitar_banca(request):
                 'Solicitação de banca enviada com sucesso.'
             )
 
-            return redirect('dashboard')
+            return redirect(
+                'dashboard'
+            )
 
-        else:
+        for campo, erros in form.errors.items():
 
-            # Mantém as mensagens dos bloqueios de horário,
-            # sala, orientador e avaliador.
-            for campo, erros in form.errors.items():
+            for erro in erros:
 
-                for erro in erros:
-
-                    messages.error(
-                        request,
-                        erro
-                    )
+                messages.error(
+                    request,
+                    erro
+                )
 
     else:
 
         form = SolicitacaoBancaForm()
-
-    contexto = {
-        'form': form,
-    }
 
     disponibilidades = (
         DisponibilidadeEspaco.objects
@@ -978,70 +1021,29 @@ def detalhar_solicitacao(
 @docente_required
 def cadastrar_aluno(request):
 
-    if request.method == 'POST':
-
-        form = DiscenteForm(
-            request.POST
-        )
-
-        if form.is_valid():
-
-            form.save()
-
-            return redirect(
-                'dashboard'
-            )
-
-    else:
-
-        form = DiscenteForm()
-
-    contexto = {
-        'form': form,
-        'titulo': 'Cadastrar Novo Aluno',
-    }
-
-    return render(
+    messages.info(
         request,
-        'cadastrar_dados.html',
-        contexto
+        'Os dados do discente agora são informados '
+        'diretamente na solicitação de banca.'
+    )
+
+    return redirect(
+        'solicitar_banca'
     )
 
 
 @docente_required
 def cadastrar_projeto(request):
 
-    if request.method == 'POST':
-
-        form = ProjetoTCCForm(
-            request.POST
-        )
-
-        if form.is_valid():
-
-            form.save()
-
-            return redirect(
-                'dashboard'
-            )
-
-    else:
-
-        form = ProjetoTCCForm()
-
-    contexto = {
-        'form': form,
-        'titulo': 'Cadastrar Projeto de TCC',
-    }
-
-    return render(
+    messages.info(
         request,
-        'cadastrar_dados.html',
-        contexto
+        'Os dados do TCC agora são informados '
+        'diretamente na solicitação de banca.'
     )
-    
-    contexto = {'form': form, 'titulo': 'Cadastrar Projeto de TCC'}
-    return render(request, 'cadastrar_dados.html', contexto)
+
+    return redirect(
+        'solicitar_banca'
+    )
 
 def cadastrar_docente(request):
 

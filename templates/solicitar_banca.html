@@ -69,12 +69,144 @@
 
 <div class="form-container">
 
-    <h2>Dados da solicitação</h2>
-
     <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
 
-        {{ form.as_p }}
+        <h2>Dados do discente e do TCC</h2>
+
+        <p>
+            <label for="{{ form.nome_discente.id_for_label }}">
+                <strong>{{ form.nome_discente.label }}</strong>
+            </label>
+
+            {{ form.nome_discente }}
+        </p>
+
+        <p>
+            <label for="{{ form.matricula_discente.id_for_label }}">
+                <strong>{{ form.matricula_discente.label }}</strong>
+            </label>
+
+            {{ form.matricula_discente }}
+        </p>
+
+        <p>
+            <label for="{{ form.titulo_tcc.id_for_label }}">
+                <strong>{{ form.titulo_tcc.label }}</strong>
+            </label>
+
+            {{ form.titulo_tcc }}
+        </p>
+
+        <p>
+            <label for="{{ form.resumo_tcc.id_for_label }}">
+                <strong>{{ form.resumo_tcc.label }}</strong>
+            </label>
+
+            {{ form.resumo_tcc }}
+        </p>
+
+        <p>
+            <label for="{{ form.semestre_letivo.id_for_label }}">
+                <strong>{{ form.semestre_letivo.label }}</strong>
+            </label>
+
+            {{ form.semestre_letivo }}
+        </p>
+
+        <p style="font-size: 13px; color: #666;">
+            {{ form.semestre_letivo.help_text }}
+        </p>
+
+        <h2 style="margin-top: 30px;">
+            Agendamento e composição da banca
+        </h2>
+
+        <p>
+            <label for="{{ form.espaco.id_for_label }}">
+                <strong>{{ form.espaco.label }}</strong>
+            </label>
+
+            {{ form.espaco }}
+        </p>
+
+        <p>
+            <label for="{{ form.opcao_data_inicio.id_for_label }}">
+                <strong>{{ form.opcao_data_inicio.label }}</strong>
+            </label>
+
+            {{ form.opcao_data_inicio }}
+        </p>
+
+        <p>
+            <label for="{{ form.opcao_data_fim.id_for_label }}">
+                <strong>{{ form.opcao_data_fim.label }}</strong>
+            </label>
+
+            {{ form.opcao_data_fim }}
+        </p>
+
+        <p>
+            <label for="{{ form.arquivo_tcc.id_for_label }}">
+                <strong>{{ form.arquivo_tcc.label }}</strong>
+            </label>
+
+            {{ form.arquivo_tcc }}
+        </p>
+
+        <p style="font-size: 13px; color: #666;">
+            {{ form.arquivo_tcc.help_text }}
+        </p>
+
+        <p>
+            <label for="{{ form.orientador.id_for_label }}">
+                <strong>{{ form.orientador.label }}</strong>
+            </label>
+
+            {{ form.orientador }}
+        </p>
+
+        <p>
+            <label for="{{ form.coorientador.id_for_label }}">
+                <strong>{{ form.coorientador.label }}</strong>
+            </label>
+
+            {{ form.coorientador }}
+        </p>
+
+        <p>
+            <label for="{{ form.avaliador_interno.id_for_label }}">
+                <strong>{{ form.avaliador_interno.label }}</strong>
+            </label>
+
+            {{ form.avaliador_interno }}
+        </p>
+
+        <p>
+            <label for="{{ form.segundo_avaliador_interno.id_for_label }}">
+                <strong>{{ form.segundo_avaliador_interno.label }}</strong>
+            </label>
+
+            {{ form.segundo_avaliador_interno }}
+        </p>
+
+        <p>
+            <label for="{{ form.nome_avaliador_externo.id_for_label }}">
+                <strong>{{ form.nome_avaliador_externo.label }}</strong>
+            </label>
+
+            {{ form.nome_avaliador_externo }}
+        </p>
+
+        <p>
+            <label for="{{ form.instituicao_avaliador_externo.id_for_label }}">
+                <strong>
+                    {{ form.instituicao_avaliador_externo.label }}
+                </strong>
+            </label>
+
+            {{ form.instituicao_avaliador_externo }}
+        </p>
 
         <button type="submit" class="btn-enviar">
             Solicitar Agendamento
