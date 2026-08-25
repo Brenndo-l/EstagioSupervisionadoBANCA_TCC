@@ -1,0 +1,64 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/login.css' %}"
+    >
+
+    <title>Link enviado | SGTCC</title>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <aside class="sidebar">
+
+            <img
+                src="{% static 'assets/logo_ufac.png' %}"
+                alt="Universidade Federal do Acre"
+            >
+
+            <p>SGTCC</p>
+
+        </aside>
+
+        <main class="form-login">
+
+            <h1>Verifique seu e-mail</h1>
+
+            <p style="max-width: 520px; text-align: center;">
+                Se existir uma conta ativa vinculada ao
+                endereço informado, enviaremos as instruções
+                para redefinir a senha.
+            </p>
+
+            <p style="max-width: 520px; text-align: center;">
+                Verifique também a pasta de spam ou lixo eletrônico.
+            </p>
+
+            <p style="font-size: 14px;">
+
+                <a href="{% url 'login' %}">
+                    Voltar para o login
+                </a>
+
+            </p>
+
+        </main>
+
+    </div>
+
+</body>
+
+</html>

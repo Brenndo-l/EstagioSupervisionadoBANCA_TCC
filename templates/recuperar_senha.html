@@ -1,0 +1,82 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/login.css' %}"
+    >
+
+    <title>Recuperar senha | SGTCC</title>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <aside class="sidebar">
+
+            <img
+                src="{% static 'assets/logo_ufac.png' %}"
+                alt="Universidade Federal do Acre"
+            >
+
+            <p>SGTCC</p>
+
+        </aside>
+
+        <main class="form-login">
+
+            <h1>Recuperar senha</h1>
+
+            <p style="max-width: 500px; text-align: center;">
+                Informe o e-mail vinculado à sua conta.
+                Se o cadastro estiver ativo, enviaremos um
+                link seguro para definir uma nova senha.
+            </p>
+
+            <form method="POST">
+                {% csrf_token %}
+
+                <label for="{{ form.email.id_for_label }}">
+                    <strong>{{ form.email.label }}</strong>
+                </label>
+
+                {{ form.email }}
+
+                {% for erro in form.email.errors %}
+
+                    <span class="error">
+                        {{ erro }}
+                    </span>
+
+                {% endfor %}
+
+                <button type="submit">
+                    Enviar link de recuperação
+                </button>
+            </form>
+
+            <p style="font-size: 14px;">
+
+                <a href="{% url 'login' %}">
+                    Voltar para o login
+                </a>
+
+            </p>
+
+        </main>
+
+    </div>
+
+</body>
+
+</html>

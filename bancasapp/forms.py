@@ -1,7 +1,13 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from django.conf import settings
+from django.contrib.auth.forms import (
+    PasswordResetForm,
+    SetPasswordForm,
+    UserCreationForm,
+)
 from django.contrib.auth.models import User
 from django.db.models import Q
+from django.urls import reverse
 from django.utils import timezone
 from .models import Discente,DisponibilidadeEspaco,EspacoFisico,ModeloDocumento,ProjetoTCC,SolicitacaoAgendamento,pUsuario
 
@@ -216,6 +222,107 @@ class ReenvioConfirmacaoForm(forms.Form):
             )
 
         return email
+
+class RecuperacaoSenhaForm(PasswordResetForm):
+
+    email = forms.EmailField(
+        label='E-mail institucional',
+        max_length=254,
+        widget=forms.EmailInput(
+            attrs={
+                'class': 'form-input',
+                'placeholder': 'nome.sobrenome@ufac.br',
+                'autocomplete': 'email',
+            }
+        )
+    )
+
+    def clean_email(self):
+
+        return (
+            self.cleaned_data['email']
+            .strip()
+            .lower()
+        )
+
+    def send_mail(
+        self,
+        subject_template_name,
+        email_template_name,
+        context,
+        from_email,
+        to_email,
+        html_email_template_name=None
+    ):
+
+        super().send_mail(
+            subject_template_name,
+            email_template_name,
+            context,
+            from_email,
+            to_email,
+            html_email_template_name
+        )
+
+        # Durante o desenvolvimento, apresenta uma cópia
+        # sem quebras do link para facilitar o teste local.
+        if settings.DEBUG:
+
+            caminho_redefinicao = reverse(
+                'redefinir_senha',
+                kwargs={
+                    'uidb64': context['uid'],
+                    'token': context['token'],
+                }
+            )
+
+            link_redefinicao = (
+                f"{context['protocol']}://"
+                f"{context['domain']}"
+                f'{caminho_redefinicao}'
+            )
+
+            print()
+            print('=' * 70)
+            print('LINK DE RECUPERAÇÃO DE SENHA:')
+            print(link_redefinicao)
+            print('=' * 70)
+            print()
+
+
+class DefinirNovaSenhaForm(SetPasswordForm):
+
+    def __init__(self, *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
+
+        self.fields[
+            'new_password1'
+        ].label = 'Nova senha'
+
+        self.fields[
+            'new_password1'
+        ].widget.attrs.update(
+            {
+                'class': 'form-input',
+                'placeholder': 'Digite a nova senha',
+                'autocomplete': 'new-password',
+            }
+        )
+
+        self.fields[
+            'new_password2'
+        ].label = 'Confirmação da nova senha'
+
+        self.fields[
+            'new_password2'
+        ].widget.attrs.update(
+            {
+                'class': 'form-input',
+                'placeholder': 'Digite novamente a nova senha',
+                'autocomplete': 'new-password',
+            }
+        )
 
 class SolicitacaoBancaForm(forms.ModelForm):
 

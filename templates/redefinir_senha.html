@@ -1,0 +1,132 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/login.css' %}"
+    >
+
+    <title>Definir nova senha | SGTCC</title>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <aside class="sidebar">
+
+            <img
+                src="{% static 'assets/logo_ufac.png' %}"
+                alt="Universidade Federal do Acre"
+            >
+
+            <p>SGTCC</p>
+
+        </aside>
+
+        <main class="form-login">
+
+            {% if validlink %}
+
+                <h1>Definir nova senha</h1>
+
+                <p style="max-width: 520px; text-align: center;">
+                    Escolha uma senha segura e diferente
+                    da utilizada anteriormente.
+                </p>
+
+                <form method="POST">
+                    {% csrf_token %}
+
+                    {% for erro in form.non_field_errors %}
+
+                        <p class="error">
+                            {{ erro }}
+                        </p>
+
+                    {% endfor %}
+
+                    {% for campo in form %}
+
+                        <div
+                            style="
+                                display: flex;
+                                flex-direction: column;
+                                gap: 5px;
+                            "
+                        >
+
+                            <label for="{{ campo.id_for_label }}">
+                                <strong>{{ campo.label }}</strong>
+                            </label>
+
+                            {{ campo }}
+
+                            {% if campo.help_text %}
+
+                                <small style="color: #555;">
+                                    {{ campo.help_text|safe }}
+                                </small>
+
+                            {% endif %}
+
+                            {% for erro in campo.errors %}
+
+                                <span class="error">
+                                    {{ erro }}
+                                </span>
+
+                            {% endfor %}
+
+                        </div>
+
+                    {% endfor %}
+
+                    <button type="submit">
+                        Salvar nova senha
+                    </button>
+                </form>
+
+            {% else %}
+
+                <h1>Link inválido</h1>
+
+                <p style="max-width: 520px; text-align: center;">
+                    Este link de recuperação é inválido,
+                    já foi utilizado ou expirou.
+                </p>
+
+                <p style="font-size: 14px;">
+
+                    <a href="{% url 'recuperar_senha' %}">
+                        Solicitar outro link
+                    </a>
+
+                </p>
+
+            {% endif %}
+
+            <p style="font-size: 14px;">
+
+                <a href="{% url 'login' %}">
+                    Voltar para o login
+                </a>
+
+            </p>
+
+        </main>
+
+    </div>
+
+</body>
+
+</html>

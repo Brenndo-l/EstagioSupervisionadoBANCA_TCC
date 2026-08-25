@@ -1,0 +1,15 @@
+Olá, {% firstof user.get_full_name user.username %}.
+
+Recebemos uma solicitação para redefinir a senha da sua conta no SGTCC.
+
+Acesse o link abaixo para criar uma nova senha:
+
+{{ protocol }}://{{ domain }}{% url 'redefinir_senha' uidb64=uid token=token %}
+
+O link é válido por 24 horas e deixa de funcionar depois que a senha é alterada.
+
+Se você não solicitou a recuperação, ignore esta mensagem. Sua senha atual continuará válida.
+
+SGTCC
+Sistema de Gerenciamento de Bancas de TCC
+Universidade Federal do Acre

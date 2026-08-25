@@ -1,6 +1,11 @@
-from django.urls import path
+from django.contrib.auth import views as auth_views
+from django.urls import path, reverse_lazy
 
 from . import views
+from .forms import (
+    DefinirNovaSenhaForm,
+    RecuperacaoSenhaForm,
+)
 
 
 urlpatterns = [
@@ -123,5 +128,54 @@ urlpatterns = [
         'cadastro/docente/reenviar-confirmacao/',
         views.reenviar_confirmacao_docente,
         name='reenviar_confirmacao_docente'
+    ),
+        path(
+        'senha/recuperar/',
+        auth_views.PasswordResetView.as_view(
+            template_name='recuperar_senha.html',
+            form_class=RecuperacaoSenhaForm,
+            email_template_name=(
+                'emails/recuperacao_senha.txt'
+            ),
+            html_email_template_name=(
+                'emails/recuperacao_senha.html'
+            ),
+            subject_template_name=(
+                'emails/recuperacao_senha_assunto.txt'
+            ),
+            success_url=reverse_lazy(
+                'recuperar_senha_enviada'
+            ),
+        ),
+        name='recuperar_senha'
+    ),
+    path(
+        'senha/recuperar/enviado/',
+        auth_views.PasswordResetDoneView.as_view(
+            template_name=(
+                'recuperar_senha_enviada.html'
+            ),
+        ),
+        name='recuperar_senha_enviada'
+    ),
+    path(
+        'senha/redefinir/<uidb64>/<token>/',
+        auth_views.PasswordResetConfirmView.as_view(
+            template_name='redefinir_senha.html',
+            form_class=DefinirNovaSenhaForm,
+            success_url=reverse_lazy(
+                'redefinir_senha_concluida'
+            ),
+        ),
+        name='redefinir_senha'
+    ),
+    path(
+        'senha/redefinir/concluida/',
+        auth_views.PasswordResetCompleteView.as_view(
+            template_name=(
+                'redefinir_senha_concluida.html'
+            ),
+        ),
+        name='redefinir_senha_concluida'
     ),
 ]

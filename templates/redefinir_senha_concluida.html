@@ -1,0 +1,59 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/login.css' %}"
+    >
+
+    <title>Senha alterada | SGTCC</title>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <aside class="sidebar">
+
+            <img
+                src="{% static 'assets/logo_ufac.png' %}"
+                alt="Universidade Federal do Acre"
+            >
+
+            <p>SGTCC</p>
+
+        </aside>
+
+        <main class="form-login">
+
+            <h1>Senha alterada</h1>
+
+            <p style="max-width: 520px; text-align: center;">
+                Sua nova senha foi salva com sucesso.
+                Você já pode entrar no SGTCC.
+            </p>
+
+            <p style="font-size: 14px;">
+
+                <a href="{% url 'login' %}">
+                    Ir para o login
+                </a>
+
+            </p>
+
+        </main>
+
+    </div>
+
+</body>
+
+</html>

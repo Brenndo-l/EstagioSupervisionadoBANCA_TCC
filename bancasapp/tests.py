@@ -1,4 +1,5 @@
 from django.test import TestCase
+from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.models import User
 from django.urls import reverse
 from datetime import timedelta
@@ -2282,4 +2283,263 @@ class ReenvioConfirmacaoTests(TestCase):
         self.assertEqual(
             len(mail.outbox),
             1
+        )
+
+class RecuperacaoSenhaTests(TestCase):
+
+    def setUp(self):
+
+        self.url_recuperacao = reverse(
+            'recuperar_senha'
+        )
+
+        self.email = 'docente.senha@ufac.br'
+        self.senha_antiga = 'T9!qZ4@mP7#vL2'
+        self.senha_nova = 'N8@vaSenha#2026'
+
+        self.usuario = User.objects.create_user(
+            username=self.email,
+            email=self.email,
+            password=self.senha_antiga,
+            first_name='Docente',
+            last_name='Teste',
+            is_active=True
+        )
+
+        pUsuario.objects.create(
+            usuario=self.usuario,
+            perfil='DOCENTE'
+        )
+
+    def criar_url_redefinicao(self):
+
+        uid = urlsafe_base64_encode(
+            force_bytes(
+                self.usuario.pk
+            )
+        )
+
+        token = default_token_generator.make_token(
+            self.usuario
+        )
+
+        return reverse(
+            'redefinir_senha',
+            kwargs={
+                'uidb64': uid,
+                'token': token,
+            }
+        )
+
+    def test_tela_recuperacao_senha_abre(self):
+
+        response = self.client.get(
+            self.url_recuperacao
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertTemplateUsed(
+            response,
+            'recuperar_senha.html'
+        )
+
+    def test_conta_ativa_recebe_link_recuperacao(self):
+
+        response = self.client.post(
+            self.url_recuperacao,
+            {
+                'email': self.email.upper(),
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                'recuperar_senha_enviada'
+            )
+        )
+
+        self.assertEqual(
+            len(mail.outbox),
+            1
+        )
+
+        self.assertEqual(
+            mail.outbox[0].to,
+            [
+                self.email,
+            ]
+        )
+
+        self.assertIn(
+            '/senha/redefinir/',
+            mail.outbox[0].body
+        )
+
+    def test_conta_inativa_nao_recebe_link(self):
+
+        self.usuario.is_active = False
+
+        self.usuario.save(
+            update_fields=[
+                'is_active',
+            ]
+        )
+
+        response = self.client.post(
+            self.url_recuperacao,
+            {
+                'email': self.email,
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                'recuperar_senha_enviada'
+            )
+        )
+
+        self.assertEqual(
+            len(mail.outbox),
+            0
+        )
+
+    def test_email_inexistente_nao_revela_cadastro(self):
+
+        response = self.client.post(
+            self.url_recuperacao,
+            {
+                'email': 'nao.existe@ufac.br',
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                'recuperar_senha_enviada'
+            )
+        )
+
+        self.assertEqual(
+            len(mail.outbox),
+            0
+        )
+
+    def test_link_valido_permite_alterar_senha(self):
+
+        url_original = (
+            self.criar_url_redefinicao()
+        )
+
+        primeira_resposta = self.client.get(
+            url_original
+        )
+
+        self.assertEqual(
+            primeira_resposta.status_code,
+            302
+        )
+
+        response = self.client.post(
+            primeira_resposta.url,
+            {
+                'new_password1': self.senha_nova,
+                'new_password2': self.senha_nova,
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse(
+                'redefinir_senha_concluida'
+            )
+        )
+
+        self.usuario.refresh_from_db()
+
+        self.assertTrue(
+            self.usuario.check_password(
+                self.senha_nova
+            )
+        )
+
+        self.assertFalse(
+            self.usuario.check_password(
+                self.senha_antiga
+            )
+        )
+
+    def test_link_utilizado_nao_pode_ser_reutilizado(self):
+
+        url_original = (
+            self.criar_url_redefinicao()
+        )
+
+        primeira_resposta = self.client.get(
+            url_original
+        )
+
+        self.client.post(
+            primeira_resposta.url,
+            {
+                'new_password1': self.senha_nova,
+                'new_password2': self.senha_nova,
+            }
+        )
+
+        response = self.client.get(
+            url_original
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
+            response,
+            'Link inválido'
+        )
+
+        self.assertContains(
+            response,
+            'Solicitar outro link'
+        )
+
+    def test_token_invalido_e_rejeitado(self):
+
+        uid = urlsafe_base64_encode(
+            force_bytes(
+                self.usuario.pk
+            )
+        )
+
+        response = self.client.get(
+            reverse(
+                'redefinir_senha',
+                kwargs={
+                    'uidb64': uid,
+                    'token': 'token-invalido',
+                }
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
+            response,
+            'Link inválido'
+        )
+
+        self.assertContains(
+            response,
+            'Solicitar outro link'
         )

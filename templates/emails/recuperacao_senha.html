@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Recuperação de senha do SGTCC</title>
+</head>
+
+<body style="font-family: Arial, sans-serif; color: #333;">
+
+    <div
+        style="
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 30px;
+        "
+    >
+
+        <h1 style="color: #2b3990;">
+            Recuperação de senha
+        </h1>
+
+        <p>
+            Olá,
+            <strong>{% firstof user.get_full_name user.username %}</strong>.
+        </p>
+
+        <p>
+            Recebemos uma solicitação para redefinir
+            a senha da sua conta no SGTCC.
+        </p>
+
+        <p style="margin: 30px 0;">
+
+            <a
+                href="{{ protocol }}://{{ domain }}{% url 'redefinir_senha' uidb64=uid token=token %}"
+                style="
+                    background-color: #2b3990;
+                    border-radius: 5px;
+                    color: white;
+                    display: inline-block;
+                    font-weight: bold;
+                    padding: 12px 22px;
+                    text-decoration: none;
+                "
+            >
+                Definir nova senha
+            </a>
+
+        </p>
+
+        <p>
+            O link é válido por 24 horas e deixa de
+            funcionar depois que a senha é alterada.
+        </p>
+
+        <p>
+            Se você não solicitou a recuperação,
+            ignore esta mensagem. Sua senha atual
+            continuará válida.
+        </p>
+
+        <hr style="border: 0; border-top: 1px solid #ddd;">
+
+        <p style="color: #666; font-size: 13px;">
+            SGTCC — Sistema de Gerenciamento de Bancas de TCC<br>
+            Universidade Federal do Acre
+        </p>
+
+    </div>
+
+</body>
+
+</html>
