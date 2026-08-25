@@ -27,6 +27,7 @@
                         <th>Local</th>
                         <th>Data/Hora</th>
                         <th>Status</th>
+                        <th>Ação</th>
                     </tr>
                 </thead>
 
@@ -58,6 +59,15 @@
                                 {% else %}
                                     <span class="status-badge status-analise">Em Análise</span>
                                 {% endif %}
+                            </td>
+                            
+                            <td>
+                                <a
+                                    href="{% url 'detalhar_solicitacao' resultado.id %}"
+                                    class="btn-download"
+                                >
+                                    VER DETALHES
+                                </a>
                             </td>
                         </tr>
 

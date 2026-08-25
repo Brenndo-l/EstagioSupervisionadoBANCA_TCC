@@ -38,6 +38,59 @@ from django.utils.http import urlsafe_base64_decode
 from .emails import enviar_email_confirmacao_docente
 from .tokens import token_confirmacao_email
 
+def usuario_pode_acessar_solicitacao(
+    user,
+    solicitacao,
+    composicao=None
+):
+    # A Coordenação pode consultar todas as solicitações.
+    if usuario_e_coordenacao(user):
+        return True
+
+    perfil_logado = (
+        pUsuario.objects
+        .filter(
+            usuario=user,
+            perfil='DOCENTE',
+            usuario__is_active=True,
+        )
+        .first()
+    )
+
+    if perfil_logado is None:
+        return False
+
+    # O docente responsável pelo envio sempre pode
+    # acompanhar a solicitação.
+    if (
+        perfil_logado.id
+        == solicitacao.usuario_solicitante_id
+    ):
+        return True
+
+    if composicao is None:
+        composicao = (
+            ComposicaoBanca.objects
+            .filter(
+                solicitacao=solicitacao
+            )
+            .first()
+        )
+
+    if composicao is None:
+        return False
+
+    participantes_ids = {
+        composicao.orientador_id,
+        composicao.coorientador_id,
+        composicao.avaliador_interno_id,
+        composicao.segundo_avaliador_interno_id,
+    }
+
+    participantes_ids.discard(None)
+
+    return perfil_logado.id in participantes_ids
+
 
 
 # 1. Tela inicial do sistema (Dashboard com os botões principais)
@@ -848,6 +901,78 @@ def baixar_tcc_solicitacao(
         as_attachment=True,
         filename=nome_arquivo,
         content_type='application/pdf'
+    )
+
+@usuario_interno_required
+def detalhar_solicitacao(
+    request,
+    solicitacao_id
+):
+    expirar_solicitacoes_vencidas()
+
+    solicitacao = get_object_or_404(
+        SolicitacaoAgendamento.objects.select_related(
+            'projeto_tcc',
+            'projeto_tcc__discente',
+            'espaco',
+            'usuario_solicitante',
+            'usuario_solicitante__usuario',
+            'decidida_por',
+        ),
+        pk=solicitacao_id
+    )
+
+    composicao = (
+        ComposicaoBanca.objects
+        .select_related(
+            'orientador__usuario',
+            'coorientador__usuario',
+            'avaliador_interno__usuario',
+            'segundo_avaliador_interno__usuario',
+        )
+        .filter(
+            solicitacao=solicitacao
+        )
+        .first()
+    )
+
+    is_coordenacao = usuario_e_coordenacao(
+        request.user
+    )
+
+    if not usuario_pode_acessar_solicitacao(
+        request.user,
+        solicitacao,
+        composicao
+    ):
+        messages.error(
+            request,
+            'Você não possui permissão para consultar '
+            'esta solicitação.'
+        )
+
+        return redirect(
+            'visualizar_bancas'
+        )
+
+    contexto = {
+        'solicitacao': solicitacao,
+        'composicao': composicao,
+        'is_coordenacao': is_coordenacao,
+        'pode_avaliar': (
+            is_coordenacao
+            and solicitacao.status == 'EM_ANÁLISE'
+        ),
+        'pode_gerar_documento': (
+            solicitacao.status == 'APROVADA'
+            and composicao is not None
+        ),
+    }
+
+    return render(
+        request,
+        'detalhar_solicitacao.html',
+        contexto
     )
 
 @docente_required
@@ -1971,41 +2096,22 @@ def gerar_pdf_banca(request, solicitacao_id):
 
         return redirect('documentos')
 
-    # A Coordenação pode gerar qualquer minuta.
-    # Docentes só podem gerar minutas das bancas
-    # das quais participam oficialmente.
-    if not usuario_e_coordenacao(request.user):
+        # A Coordenação, o solicitante e os integrantes
+    # da banca podem gerar o documento aprovado.
+    if not usuario_pode_acessar_solicitacao(
+        request.user,
+        solicitacao,
+        composicao
+    ):
+        messages.error(
+            request,
+            'Você não possui permissão para gerar '
+            'o documento desta banca.'
+        )
 
-        perfil_logado = pUsuario.objects.filter(
-            usuario=request.user,
-            perfil='DOCENTE',
-        ).first()
-
-        participantes_ids = {
-            composicao.orientador_id,
-            composicao.coorientador_id,
-            composicao.avaliador_interno_id,
-            composicao.segundo_avaliador_interno_id,
-        }
-
-        # Coorientador e segundo avaliador são opcionais,
-        # portanto seus valores podem ser None.
-        participantes_ids.discard(None)
-
-        if (
-            perfil_logado is None
-            or perfil_logado.id not in participantes_ids
-        ):
-
-            messages.error(
-                request,
-                (
-                    'Você não participa desta banca e não '
-                    'pode gerar a minuta.'
-                )
-            )
-
-            return redirect('documentos')
+        return redirect(
+            'documentos'
+        )
 
     # Retorna o nome completo do docente.
     # Caso ele não tenha nome completo cadastrado,

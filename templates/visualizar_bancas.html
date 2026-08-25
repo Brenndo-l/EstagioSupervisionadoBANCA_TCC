@@ -60,6 +60,7 @@
                     <th>Data/Hora Término</th>
                     <th>Status</th>
                     <th>Arquivo do TCC</th>
+                    <th>Detalhes</th>
                 </tr>
             </thead>
 
@@ -134,13 +135,22 @@
 
                         </td>
 
+                        <td>
+                            <a
+                                href="{% url 'detalhar_solicitacao' solicitacao.id %}"
+                                class="btn-download"
+                            >
+                                VER DETALHES
+                            </a>
+                        </td>
+
                     </tr>
 
                 {% empty %}
 
                     <tr>
                         <td
-                            colspan="6"
+                            colspan="7"
                             style="text-align: center; padding: 20px;"
                         >
                             Nenhuma solicitação encontrada.

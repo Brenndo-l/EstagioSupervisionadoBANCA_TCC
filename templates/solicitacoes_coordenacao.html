@@ -100,7 +100,7 @@
                     <th>Data da defesa</th>
                     <th>Solicitada em</th>
                     <th>Status</th>
-                    <th>Ação</th>
+                    <th>Ações</th>
                 </tr>
 
             </thead>
@@ -141,33 +141,25 @@
 
                             {% if solicitacao.status == 'EM_ANÁLISE' %}
 
-                                <span
-                                    class="status-badge status-analise"
-                                >
+                                <span class="status-badge status-analise">
                                     Em Análise
                                 </span>
 
                             {% elif solicitacao.status == 'APROVADA' %}
 
-                                <span
-                                    class="status-badge status-aprovada"
-                                >
+                                <span class="status-badge status-aprovada">
                                     Aprovada
                                 </span>
 
                             {% elif solicitacao.status == 'RECUSADA' %}
 
-                                <span
-                                    class="status-badge status-recusada"
-                                >
+                                <span class="status-badge status-recusada">
                                     Recusada
                                 </span>
 
                             {% elif solicitacao.status == 'EXPIRADA' %}
 
-                                <span
-                                    class="status-badge status-expirada"
-                                >
+                                <span class="status-badge status-expirada">
                                     Expirada
                                 </span>
 
@@ -176,6 +168,14 @@
                         </td>
 
                         <td>
+
+                            <a
+                                href="{% url 'detalhar_solicitacao' solicitacao.id %}"
+                                class="btn-download"
+                                style="margin-right: 6px;"
+                            >
+                                DETALHES
+                            </a>
 
                             {% if solicitacao.status == 'EM_ANÁLISE' %}
 
@@ -193,18 +193,6 @@
                                 >
                                     AVALIAR
                                 </a>
-
-                            {% elif solicitacao.status == 'EXPIRADA' %}
-
-                                <span style="color: #666;">
-                                    Prazo expirado
-                                </span>
-
-                            {% else %}
-
-                                <span style="color: #666;">
-                                    Decisão finalizada
-                                </span>
 
                             {% endif %}
 

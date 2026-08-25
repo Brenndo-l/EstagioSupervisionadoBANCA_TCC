@@ -1,0 +1,323 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="dashboard-header">
+    <h1>Detalhes da Solicitação</h1>
+
+    <p>
+        Consulte o agendamento, a composição da banca
+        e a decisão registrada pela Coordenação.
+    </p>
+</div>
+
+<div class="table-container">
+
+    <div style="
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+    ">
+        <h2 style="margin: 0;">
+            Dados da solicitação
+        </h2>
+
+        {% if solicitacao.status == 'EM_ANÁLISE' %}
+            <span class="status-badge status-analise">
+                Em Análise
+            </span>
+
+        {% elif solicitacao.status == 'APROVADA' %}
+            <span class="status-badge status-aprovada">
+                Aprovada
+            </span>
+
+        {% elif solicitacao.status == 'RECUSADA' %}
+            <span class="status-badge status-recusada">
+                Recusada
+            </span>
+
+        {% else %}
+            <span class="status-badge status-expirada">
+                Expirada
+            </span>
+        {% endif %}
+    </div>
+
+    <table>
+        <tbody>
+            <tr>
+                <th>Discente</th>
+                <td>
+                    {{ solicitacao.projeto_tcc.discente.nome }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>Matrícula</th>
+                <td>
+                    {{ solicitacao.projeto_tcc.discente.matricula }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>Título do TCC</th>
+                <td>
+                    {{ solicitacao.projeto_tcc.titulo }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>Resumo</th>
+                <td>
+                    {{ solicitacao.projeto_tcc.resumo|linebreaksbr }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>Semestre letivo</th>
+                <td>
+                    {{ solicitacao.projeto_tcc.semestre_letivo }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>Docente solicitante</th>
+                <td>
+                    {{ solicitacao.usuario_solicitante }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>Local</th>
+                <td>
+                    {{ solicitacao.espaco.nome }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>Data e hora de início</th>
+                <td>
+                    {{ solicitacao.opcao_data_inicio|date:"d/m/Y H:i" }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>Data e hora de término</th>
+                <td>
+                    {{ solicitacao.opcao_data_fim|date:"d/m/Y H:i" }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>Solicitada em</th>
+                <td>
+                    {{ solicitacao.data_solicitacao|date:"d/m/Y H:i" }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>Arquivo do TCC</th>
+                <td>
+                    {% if solicitacao.arquivo_tcc %}
+                        <a
+                            href="{% url 'baixar_tcc_solicitacao' solicitacao.id %}"
+                            class="btn-download"
+                        >
+                            BAIXAR PDF DO TCC
+                        </a>
+                    {% else %}
+                        Não anexado — registro antigo
+                    {% endif %}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+</div>
+
+<div
+    class="table-container"
+    style="margin-top: 30px;"
+>
+    <h2>Composição da banca</h2>
+
+    {% if composicao %}
+
+        <table>
+            <tbody>
+                <tr>
+                    <th>Professor orientador</th>
+                    <td>{{ composicao.orientador }}</td>
+                </tr>
+
+                {% if composicao.coorientador %}
+                    <tr>
+                        <th>Professor coorientador</th>
+                        <td>{{ composicao.coorientador }}</td>
+                    </tr>
+                {% endif %}
+
+                <tr>
+                    <th>Avaliador interno</th>
+                    <td>{{ composicao.avaliador_interno }}</td>
+                </tr>
+
+                {% if composicao.segundo_avaliador_interno %}
+                    <tr>
+                        <th>Segundo avaliador interno</th>
+                        <td>
+                            {{ composicao.segundo_avaliador_interno }}
+                        </td>
+                    </tr>
+                {% endif %}
+
+                {% if composicao.nome_avaliador_externo %}
+                    <tr>
+                        <th>Avaliador externo</th>
+                        <td>
+                            {{ composicao.nome_avaliador_externo }}
+                        </td>
+                    </tr>
+                {% endif %}
+
+                {% if composicao.instituicao_avaliador_externo %}
+                    <tr>
+                        <th>Instituição externa</th>
+                        <td>
+                            {{ composicao.instituicao_avaliador_externo }}
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+
+    {% else %}
+
+        <p style="color: #d9534f;">
+            A composição desta solicitação não foi encontrada.
+        </p>
+
+    {% endif %}
+
+</div>
+
+{% if solicitacao.status == 'APROVADA' or solicitacao.status == 'RECUSADA' %}
+
+    <div
+        class="table-container"
+        style="margin-top: 30px;"
+    >
+        <h2>Decisão da Coordenação</h2>
+
+        <table>
+            <tbody>
+                <tr>
+                    <th>Resultado</th>
+                    <td>
+                        {{ solicitacao.get_status_display }}
+                    </td>
+                </tr>
+
+                <tr>
+                    <th>Justificativa</th>
+                    <td>
+                        {{ solicitacao.motivo_decisao|default:"Não informada."|linebreaksbr }}
+                    </td>
+                </tr>
+
+                <tr>
+                    <th>Data da decisão</th>
+                    <td>
+                        {% if solicitacao.data_decisao %}
+                            {{ solicitacao.data_decisao|date:"d/m/Y H:i" }}
+                        {% else %}
+                            Não registrada
+                        {% endif %}
+                    </td>
+                </tr>
+
+                <tr>
+                    <th>Decidida por</th>
+                    <td>
+                        {% if solicitacao.decidida_por %}
+                            {{ solicitacao.decidida_por.get_full_name|default:solicitacao.decidida_por.username }}
+                        {% else %}
+                            Não registrado
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+{% elif solicitacao.status == 'EXPIRADA' %}
+
+    <div
+        class="sem-resultados"
+        style="margin-top: 30px;"
+    >
+        <h3>Solicitação expirada</h3>
+
+        <p>
+            O horário solicitado passou antes que a Coordenação
+            registrasse uma decisão.
+        </p>
+    </div>
+
+{% endif %}
+
+<div style="
+    display: flex;
+    gap: 10px;
+    margin-top: 30px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+">
+
+    {% if pode_avaliar %}
+        <a
+            href="{% url 'editar_solicitacao_coordenacao' solicitacao.id %}"
+            class="btn-download"
+        >
+            EDITAR SOLICITAÇÃO
+        </a>
+
+        <a
+            href="{% url 'avaliar_solicitacao' solicitacao.id %}"
+            class="btn-download"
+        >
+            AVALIAR SOLICITAÇÃO
+        </a>
+    {% endif %}
+
+    {% if pode_gerar_documento %}
+        <a
+            href="{% url 'gerar_pdf_banca' solicitacao.id %}"
+            class="btn-download"
+        >
+            GERAR DOCUMENTO DA BANCA
+        </a>
+    {% endif %}
+
+    {% if is_coordenacao %}
+        <a
+            href="{% url 'solicitacoes_coordenacao' %}"
+            class="btn-filter"
+        >
+            VOLTAR ÀS SOLICITAÇÕES
+        </a>
+    {% else %}
+        <a
+            href="{% url 'visualizar_bancas' %}"
+            class="btn-filter"
+        >
+            VOLTAR ÀS MINHAS SOLICITAÇÕES
+        </a>
+    {% endif %}
+
+</div>
+
+{% endblock %}

@@ -178,4 +178,9 @@ urlpatterns = [
         ),
         name='redefinir_senha_concluida'
     ),
+        path(
+        'solicitacoes/<int:solicitacao_id>/',
+        views.detalhar_solicitacao,
+        name='detalhar_solicitacao'
+    ),
 ]

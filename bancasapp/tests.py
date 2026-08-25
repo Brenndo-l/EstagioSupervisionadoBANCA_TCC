@@ -2894,3 +2894,275 @@ class PermissoesPerfilTests(TestCase):
             '_auth_user_id',
             self.client.session
         )
+
+class DetalhesSolicitacaoTests(TestCase):
+
+    def setUp(self):
+        self.senha = 'T9!qZ4@mP7#vL2'
+
+        self.usuario_coordenacao = User.objects.create_user(
+            username='coordenacao.detalhes@ufac.br',
+            password=self.senha,
+            is_active=True
+        )
+
+        pUsuario.objects.create(
+            usuario=self.usuario_coordenacao,
+            perfil='COORDENACAO'
+        )
+
+        self.usuario_solicitante = User.objects.create_user(
+            username='solicitante.detalhes@ufac.br',
+            password=self.senha,
+            is_active=True
+        )
+
+        self.solicitante = pUsuario.objects.create(
+            usuario=self.usuario_solicitante,
+            perfil='DOCENTE'
+        )
+
+        self.usuario_orientador = User.objects.create_user(
+            username='orientador.detalhes@ufac.br',
+            password=self.senha,
+            is_active=True
+        )
+
+        self.orientador = pUsuario.objects.create(
+            usuario=self.usuario_orientador,
+            perfil='DOCENTE'
+        )
+
+        self.usuario_avaliador = User.objects.create_user(
+            username='avaliador.detalhes@ufac.br',
+            password=self.senha,
+            is_active=True
+        )
+
+        self.avaliador = pUsuario.objects.create(
+            usuario=self.usuario_avaliador,
+            perfil='DOCENTE'
+        )
+
+        self.usuario_sem_vinculo = User.objects.create_user(
+            username='sem.vinculo.detalhes@ufac.br',
+            password=self.senha,
+            is_active=True
+        )
+
+        pUsuario.objects.create(
+            usuario=self.usuario_sem_vinculo,
+            perfil='DOCENTE'
+        )
+
+        self.discente = Discente.objects.create(
+            nome='Discente dos Detalhes',
+            matricula='20260000041'
+        )
+
+        self.projeto = ProjetoTCC.objects.create(
+            titulo='Projeto da Tela de Detalhes',
+            resumo='Resumo exibido na tela de detalhes.',
+            semestre_letivo='2026.2',
+            discente=self.discente
+        )
+
+        self.espaco = EspacoFisico.objects.create(
+            nome='Sala dos Detalhes',
+            ativo=True
+        )
+
+        inicio = timezone.now() + timedelta(days=30)
+
+        self.solicitacao = SolicitacaoAgendamento.objects.create(
+            usuario_solicitante=self.solicitante,
+            projeto_tcc=self.projeto,
+            espaco=self.espaco,
+            opcao_data_inicio=inicio,
+            opcao_data_fim=inicio + timedelta(hours=2),
+            status='EM_ANÁLISE'
+        )
+
+        self.composicao = ComposicaoBanca.objects.create(
+            projeto_tcc=self.projeto,
+            solicitacao=self.solicitacao,
+            orientador=self.orientador,
+            avaliador_interno=self.avaliador
+        )
+
+        self.url_detalhes = reverse(
+            'detalhar_solicitacao',
+            args=[self.solicitacao.id]
+        )
+
+    def test_coordenacao_acessa_detalhes(self):
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.get(
+            self.url_detalhes
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertTemplateUsed(
+            response,
+            'detalhar_solicitacao.html'
+        )
+
+        self.assertContains(
+            response,
+            'AVALIAR SOLICITAÇÃO'
+        )
+
+    def test_solicitante_acessa_detalhes(self):
+        self.client.force_login(
+            self.usuario_solicitante
+        )
+
+        response = self.client.get(
+            self.url_detalhes
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
+            response,
+            self.projeto.titulo
+        )
+
+        self.assertNotContains(
+            response,
+            'AVALIAR SOLICITAÇÃO'
+        )
+
+    def test_integrante_da_banca_acessa_detalhes(self):
+        self.client.force_login(
+            self.usuario_orientador
+        )
+
+        response = self.client.get(
+            self.url_detalhes
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
+            response,
+            self.projeto.titulo
+        )
+
+    def test_docente_sem_vinculo_nao_acessa_detalhes(self):
+        self.client.force_login(
+            self.usuario_sem_vinculo
+        )
+
+        response = self.client.get(
+            self.url_detalhes
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('visualizar_bancas')
+        )
+
+    def test_lista_docente_exibe_link_de_detalhes(self):
+        self.client.force_login(
+            self.usuario_solicitante
+        )
+
+        response = self.client.get(
+            reverse('visualizar_bancas')
+        )
+
+        self.assertContains(
+            response,
+            self.url_detalhes
+        )
+
+    def test_pesquisa_exibe_link_de_detalhes(self):
+        self.client.force_login(
+            self.usuario_solicitante
+        )
+
+        response = self.client.get(
+            reverse('pesquisar'),
+            {
+                'q': self.projeto.titulo,
+            }
+        )
+
+        self.assertContains(
+            response,
+            self.url_detalhes
+        )
+
+    def test_solicitacao_recusada_exibe_justificativa(self):
+        self.solicitacao.status = 'RECUSADA'
+
+        self.solicitacao.motivo_decisao = (
+            'A composição precisa ser corrigida.'
+        )
+
+        self.solicitacao.data_decisao = timezone.now()
+
+        self.solicitacao.save(
+            update_fields=[
+                'status',
+                'motivo_decisao',
+                'data_decisao',
+            ]
+        )
+
+        self.client.force_login(
+            self.usuario_solicitante
+        )
+
+        response = self.client.get(
+            self.url_detalhes
+        )
+
+        self.assertContains(
+            response,
+            'A composição precisa ser corrigida.'
+        )
+
+    def test_solicitante_nao_membro_gera_documento_aprovado(
+        self
+    ):
+        self.solicitacao.status = 'APROVADA'
+
+        self.solicitacao.save(
+            update_fields=['status']
+        )
+
+        self.client.force_login(
+            self.usuario_solicitante
+        )
+
+        response = self.client.get(
+            reverse(
+                'gerar_pdf_banca',
+                args=[self.solicitacao.id]
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertEqual(
+            response['Content-Type'],
+            'application/pdf'
+        )
