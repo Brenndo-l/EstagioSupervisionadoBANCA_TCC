@@ -14,7 +14,6 @@ from .forms import (
 from .models import ProjetoTCC, pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico, ComposicaoBanca, ModeloDocumento, DisponibilidadeEspaco
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
-from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q
 from django.http import FileResponse, HttpResponse
@@ -515,7 +514,7 @@ def editar_solicitacao_coordenacao(
     )
 
 # 2. Tela onde aparecem as bancas já marcadas
-@usuario_interno_required
+@docente_required
 def visualizar_bancas(request):
 
     expirar_solicitacoes_vencidas()
@@ -531,50 +530,51 @@ def visualizar_bancas(request):
         )
     )
 
-    if usuario_e_coordenacao(request.user):
+    # Esta tela pertence ao fluxo do docente.
+    # A Coordenação possui a tela administrativa
+    # "Analisar Solicitações".
+    perfil_logado = pUsuario.objects.get(
+        usuario=request.user,
+        perfil='DOCENTE'
+    )
 
-        # A Coordenação visualiza todas as solicitações.
-        solicitacoes = consulta.all()
-
-    else:
-
-        # O docente visualiza apenas as próprias solicitações.
-        perfil_logado = pUsuario.objects.get(
-            usuario=request.user,
-            perfil='DOCENTE'
-        )
-
-        solicitacoes = (
-            consulta
-            .filter(
-                Q(
-                    usuario_solicitante=perfil_logado
-                )
-                | Q(
-                    composicao_banca__orientador=(
-                        perfil_logado
-                    )
-                )
-                | Q(
-                    composicao_banca__coorientador=(
-                        perfil_logado
-                    )
-                )
-                | Q(
-                    composicao_banca__avaliador_interno=(
-                        perfil_logado
-                    )
-                )
-                | Q(
-                    composicao_banca__segundo_avaliador_interno=(
-                        perfil_logado
-                    )
+    solicitacoes = (
+        consulta
+        .filter(
+            Q(
+                usuario_solicitante=perfil_logado
+            )
+            | Q(
+                composicao_banca__orientador=(
+                    perfil_logado
                 )
             )
-            .distinct()
+            | Q(
+                composicao_banca__coorientador=(
+                    perfil_logado
+                )
+            )
+            | Q(
+                composicao_banca__avaliador_interno=(
+                    perfil_logado
+                )
+            )
+            | Q(
+                composicao_banca__segundo_avaliador_interno=(
+                    perfil_logado
+                )
+            )
         )
+        .distinct()
+        .order_by(
+            '-data_solicitacao',
+            '-id'
+        )
+    )
 
-    status_filtro = request.GET.get('status')
+    status_filtro = request.GET.get(
+        'status'
+    )
 
     status_validos = {
         valor
@@ -590,8 +590,6 @@ def visualizar_bancas(request):
 
     else:
 
-        # Impede valores inexistentes passados manualmente
-        # pela URL.
         status_filtro = None
 
     contexto = {
@@ -852,29 +850,70 @@ def baixar_tcc_solicitacao(
         content_type='application/pdf'
     )
 
-@login_required(login_url='login')
+@docente_required
 def cadastrar_aluno(request):
-    if request.method == 'POST':
-        form = DiscenteForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return redirect('dashboard') # Salva e volta pro início
-    else:
-        form = DiscenteForm()
-    
-    # Enviamos o form e um título dinâmico para reaproveitarmos o HTML
-    contexto = {'form': form, 'titulo': 'Cadastrar Novo Aluno'}
-    return render(request, 'cadastrar_dados.html', contexto)
 
-@login_required(login_url='login')
-def cadastrar_projeto(request):
     if request.method == 'POST':
-        form = ProjetoTCCForm(request.POST)
+
+        form = DiscenteForm(
+            request.POST
+        )
+
         if form.is_valid():
+
             form.save()
-            return redirect('dashboard')
+
+            return redirect(
+                'dashboard'
+            )
+
     else:
+
+        form = DiscenteForm()
+
+    contexto = {
+        'form': form,
+        'titulo': 'Cadastrar Novo Aluno',
+    }
+
+    return render(
+        request,
+        'cadastrar_dados.html',
+        contexto
+    )
+
+
+@docente_required
+def cadastrar_projeto(request):
+
+    if request.method == 'POST':
+
+        form = ProjetoTCCForm(
+            request.POST
+        )
+
+        if form.is_valid():
+
+            form.save()
+
+            return redirect(
+                'dashboard'
+            )
+
+    else:
+
         form = ProjetoTCCForm()
+
+    contexto = {
+        'form': form,
+        'titulo': 'Cadastrar Projeto de TCC',
+    }
+
+    return render(
+        request,
+        'cadastrar_dados.html',
+        contexto
+    )
     
     contexto = {'form': form, 'titulo': 'Cadastrar Projeto de TCC'}
     return render(request, 'cadastrar_dados.html', contexto)
@@ -1624,44 +1663,115 @@ def avaliar_solicitacao(
         contexto
     )
 
-@login_required(login_url='login')
+@docente_required
 def meus_tccs(request):
-    projetos = ProjetoTCC.objects.select_related('discente').all()
-    contexto = {
-        'projetos': projetos
-    }
-    return render(request, 'meus_tccs.html', contexto)
 
-@login_required(login_url='login')
+    # Mantém a URL antiga funcionando, mas direciona
+    # o docente para a tela correta de acompanhamento.
+    return redirect(
+        'visualizar_bancas'
+    )
+
+@usuario_interno_required
 def pesquisar(request):
 
     expirar_solicitacoes_vencidas()
 
-    termo = request.GET.get('q', '').strip()
-    resultados = SolicitacaoAgendamento.objects.none()
+    termo = request.GET.get(
+        'q',
+        ''
+    ).strip()
 
-    if termo:
-        resultados = SolicitacaoAgendamento.objects.select_related(
+    consulta = (
+        SolicitacaoAgendamento.objects
+        .select_related(
             'projeto_tcc',
             'projeto_tcc__discente',
-            'espaco'
-        ).filter(
-            Q(projeto_tcc__titulo__icontains=termo) |
-            Q(projeto_tcc__discente__nome__icontains=termo)
-        ).order_by('-id')
+            'espaco',
+            'usuario_solicitante',
+            'usuario_solicitante__usuario',
+        )
+    )
+
+    is_coordenacao = usuario_e_coordenacao(
+        request.user
+    )
+
+    # A Coordenação pesquisa todo o sistema.
+    # O docente pesquisa apenas solicitações relacionadas a ele.
+    if not is_coordenacao:
+
+        perfil_logado = pUsuario.objects.get(
+            usuario=request.user,
+            perfil='DOCENTE'
+        )
+
+        consulta = (
+            consulta
+            .filter(
+                Q(
+                    usuario_solicitante=perfil_logado
+                )
+                | Q(
+                    composicao_banca__orientador=(
+                        perfil_logado
+                    )
+                )
+                | Q(
+                    composicao_banca__coorientador=(
+                        perfil_logado
+                    )
+                )
+                | Q(
+                    composicao_banca__avaliador_interno=(
+                        perfil_logado
+                    )
+                )
+                | Q(
+                    composicao_banca__segundo_avaliador_interno=(
+                        perfil_logado
+                    )
+                )
+            )
+            .distinct()
+        )
+
+    resultados = (
+        SolicitacaoAgendamento.objects.none()
+    )
+
+    if termo:
+
+        resultados = (
+            consulta
+            .filter(
+                Q(
+                    projeto_tcc__titulo__icontains=termo
+                )
+                | Q(
+                    projeto_tcc__discente__nome__icontains=termo
+                )
+            )
+            .order_by('-id')
+        )
 
     contexto = {
         'termo': termo,
         'resultados': resultados,
+        'is_coordenacao': is_coordenacao,
     }
 
-    return render(request, 'pesquisa.html', contexto)
+    return render(
+        request,
+        'pesquisa.html',
+        contexto
+    )
 
-@login_required(login_url='login')
+@usuario_interno_required
 def documentos(request):
 
-    eh_coordenacao = (
-        request.user.is_superuser or
+    eh_coordenacao = usuario_e_coordenacao(
+        request.user or
         pUsuario.objects.filter(
             usuario=request.user,
             perfil='COORDENACAO'
@@ -1784,7 +1894,7 @@ def documentos(request):
         contexto
     )
 
-@login_required(login_url='login')
+@usuario_interno_required
 def baixar_documento(request, modelo_id):
 
     # Procura o documento pelo ID ou retorna erro 404
