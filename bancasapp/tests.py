@@ -2543,3 +2543,354 @@ class RecuperacaoSenhaTests(TestCase):
             response,
             'Solicitar outro link'
         )
+
+class PermissoesPerfilTests(TestCase):
+
+    def setUp(self):
+
+        self.senha = 'T9!qZ4@mP7#vL2'
+
+        self.usuario_coordenacao = User.objects.create_user(
+            username='coordenacao.permissoes@ufac.br',
+            email='coordenacao.permissoes@ufac.br',
+            password=self.senha,
+            is_active=True
+        )
+
+        self.coordenacao = pUsuario.objects.create(
+            usuario=self.usuario_coordenacao,
+            perfil='COORDENACAO'
+        )
+
+        self.usuario_docente = User.objects.create_user(
+            username='docente.permissoes@ufac.br',
+            email='docente.permissoes@ufac.br',
+            password=self.senha,
+            is_active=True
+        )
+
+        self.docente = pUsuario.objects.create(
+            usuario=self.usuario_docente,
+            perfil='DOCENTE'
+        )
+
+        self.usuario_outro_docente = User.objects.create_user(
+            username='outro.docente@ufac.br',
+            email='outro.docente@ufac.br',
+            password=self.senha,
+            is_active=True
+        )
+
+        self.outro_docente = pUsuario.objects.create(
+            usuario=self.usuario_outro_docente,
+            perfil='DOCENTE'
+        )
+
+        self.espaco = EspacoFisico.objects.create(
+            nome='Sala de Teste de Permissões',
+            ativo=True
+        )
+
+        self.discente_docente = Discente.objects.create(
+            nome='Aluno do Docente Logado',
+            matricula='20260000031'
+        )
+
+        self.projeto_docente = ProjetoTCC.objects.create(
+            titulo='Projeto Visível do Docente',
+            resumo='Projeto pertencente ao docente logado.',
+            semestre_letivo='2026.2',
+            discente=self.discente_docente
+        )
+
+        self.discente_outro = Discente.objects.create(
+            nome='Aluno de Outro Docente',
+            matricula='20260000032'
+        )
+
+        self.projeto_outro = ProjetoTCC.objects.create(
+            titulo='Projeto Privado de Outro Docente',
+            resumo='Projeto que não pertence ao docente logado.',
+            semestre_letivo='2026.2',
+            discente=self.discente_outro
+        )
+
+        inicio = timezone.now() + timedelta(
+            days=30
+        )
+
+        fim = inicio + timedelta(
+            hours=2
+        )
+
+        self.solicitacao_docente = (
+            SolicitacaoAgendamento.objects.create(
+                usuario_solicitante=self.docente,
+                projeto_tcc=self.projeto_docente,
+                espaco=self.espaco,
+                opcao_data_inicio=inicio,
+                opcao_data_fim=fim,
+                status='EM_ANÁLISE'
+            )
+        )
+
+        self.solicitacao_outro = (
+            SolicitacaoAgendamento.objects.create(
+                usuario_solicitante=self.outro_docente,
+                projeto_tcc=self.projeto_outro,
+                espaco=self.espaco,
+                opcao_data_inicio=(
+                    inicio + timedelta(days=1)
+                ),
+                opcao_data_fim=(
+                    fim + timedelta(days=1)
+                ),
+                status='EM_ANÁLISE'
+            )
+        )
+
+    def test_menu_coordenacao_exibe_apenas_funcoes_administrativas(
+        self
+    ):
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.get(
+            reverse('dashboard')
+        )
+
+        self.assertContains(
+            response,
+            'ANALISAR SOLICITAÇÕES'
+        )
+
+        self.assertContains(
+            response,
+            'GERENCIAR SALAS'
+        )
+
+        for texto_indisponivel in [
+            'MINHAS SOLICITAÇÕES',
+            'SOLICITAR BANCA',
+            'CADASTRAR ALUNO',
+            'CADASTRAR PROJETO',
+            'BANCAS CADASTRADAS',
+        ]:
+
+            self.assertNotContains(
+                response,
+                texto_indisponivel
+            )
+
+    def test_menu_docente_nao_exibe_funcoes_administrativas(
+        self
+    ):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.get(
+            reverse('dashboard')
+        )
+
+        self.assertContains(
+            response,
+            'MINHAS SOLICITAÇÕES'
+        )
+
+        self.assertContains(
+            response,
+            'SOLICITAR BANCA'
+        )
+
+        self.assertNotContains(
+            response,
+            'ANALISAR SOLICITAÇÕES'
+        )
+
+        self.assertNotContains(
+            response,
+            'GERENCIAR SALAS'
+        )
+
+        self.assertNotContains(
+            response,
+            'BANCAS CADASTRADAS'
+        )
+
+    def test_coordenacao_nao_acessa_rotas_exclusivas_docente(
+        self
+    ):
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        rotas_docente = [
+            'visualizar_bancas',
+            'solicitar_banca',
+            'cadastrar_aluno',
+            'cadastrar_projeto',
+            'meus_tccs',
+        ]
+
+        for nome_rota in rotas_docente:
+
+            response = self.client.get(
+                reverse(nome_rota)
+            )
+
+            self.assertRedirects(
+                response,
+                reverse('dashboard')
+            )
+
+    def test_docente_nao_acessa_rotas_exclusivas_coordenacao(
+        self
+    ):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        rotas_coordenacao = [
+            'solicitacoes_coordenacao',
+            'gerenciar_espacos',
+        ]
+
+        for nome_rota in rotas_coordenacao:
+
+            response = self.client.get(
+                reverse(nome_rota)
+            )
+
+            self.assertRedirects(
+                response,
+                reverse('dashboard')
+            )
+
+    def test_url_antiga_meus_tccs_redireciona_docente(
+        self
+    ):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.get(
+            reverse('meus_tccs')
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('visualizar_bancas')
+        )
+
+    def test_pesquisa_docente_nao_exibe_solicitacao_alheia(
+        self
+    ):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.get(
+            reverse('pesquisar'),
+            {
+                'q': 'Projeto',
+            }
+        )
+
+        self.assertContains(
+            response,
+            self.projeto_docente.titulo
+        )
+
+        self.assertNotContains(
+            response,
+            self.projeto_outro.titulo
+        )
+
+    def test_pesquisa_docente_exibe_banca_em_que_participa(
+        self
+    ):
+
+        ComposicaoBanca.objects.create(
+            projeto_tcc=self.projeto_outro,
+            solicitacao=self.solicitacao_outro,
+            orientador=self.outro_docente,
+            avaliador_interno=self.docente
+        )
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.get(
+            reverse('pesquisar'),
+            {
+                'q': self.projeto_outro.titulo,
+            }
+        )
+
+        self.assertContains(
+            response,
+            self.projeto_outro.titulo
+        )
+
+    def test_pesquisa_coordenacao_exibe_todas_solicitacoes(
+        self
+    ):
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.get(
+            reverse('pesquisar'),
+            {
+                'q': 'Projeto',
+            }
+        )
+
+        self.assertContains(
+            response,
+            self.projeto_docente.titulo
+        )
+
+        self.assertContains(
+            response,
+            self.projeto_outro.titulo
+        )
+
+    def test_usuario_sem_perfil_nao_acessa_area_interna(
+        self
+    ):
+
+        usuario_sem_perfil = User.objects.create_user(
+            username='sem.perfil@ufac.br',
+            email='sem.perfil@ufac.br',
+            password=self.senha,
+            is_active=True
+        )
+
+        self.client.force_login(
+            usuario_sem_perfil
+        )
+
+        response = self.client.get(
+            reverse('documentos')
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('login')
+        )
+
+        self.assertNotIn(
+            '_auth_user_id',
+            self.client.session
+        )
