@@ -119,4 +119,9 @@ urlpatterns = [
         views.confirmar_email_docente,
         name='confirmar_email_docente'
     ),
+    path(
+        'cadastro/docente/reenviar-confirmacao/',
+        views.reenviar_confirmacao_docente,
+        name='reenviar_confirmacao_docente'
+    ),
 ]

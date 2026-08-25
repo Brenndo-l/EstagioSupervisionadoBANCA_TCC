@@ -182,6 +182,41 @@ class CadastroDocenteForm(UserCreationForm):
 
         return usuario
 
+class ReenvioConfirmacaoForm(forms.Form):
+
+    email = forms.EmailField(
+        label='E-mail institucional',
+        max_length=254,
+        widget=forms.EmailInput(
+            attrs={
+                'class': 'form-input',
+                'placeholder': 'nome.sobrenome@ufac.br',
+                'autocomplete': 'email',
+            }
+        )
+    )
+
+    def clean_email(self):
+
+        email = (
+            self.cleaned_data['email']
+            .strip()
+            .lower()
+        )
+
+        dominio = email.rsplit(
+            '@',
+            1
+        )[-1]
+
+        if dominio != 'ufac.br':
+            raise forms.ValidationError(
+                'Utilize um endereço institucional '
+                'terminado em @ufac.br.'
+            )
+
+        return email
+
 class SolicitacaoBancaForm(forms.ModelForm):
 
     orientador = forms.ModelChoiceField(

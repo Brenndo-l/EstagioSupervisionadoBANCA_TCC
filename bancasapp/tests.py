@@ -2107,3 +2107,179 @@ class DownloadTCCPermissionsTests(TestCase):
             response,
             reverse('dashboard')
         )
+
+class ReenvioConfirmacaoTests(TestCase):
+
+    def setUp(self):
+
+        self.url_reenvio = reverse(
+            'reenviar_confirmacao_docente'
+        )
+
+        self.email = (
+            'docente.reenvio@ufac.br'
+        )
+
+        self.senha = (
+            'T9!qZ4@mP7#vL2'
+        )
+
+    def criar_docente(
+        self,
+        ativo=False
+    ):
+
+        usuario = User.objects.create_user(
+            username=self.email,
+            email=self.email,
+            password=self.senha,
+            is_active=ativo
+        )
+
+        pUsuario.objects.create(
+            usuario=usuario,
+            perfil='DOCENTE'
+        )
+
+        return usuario
+
+    def test_tela_reenvio_abre(self):
+
+        response = self.client.get(
+            self.url_reenvio
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertTemplateUsed(
+            response,
+            'reenviar_confirmacao.html'
+        )
+
+    def test_reenvio_para_docente_nao_confirmado(
+        self
+    ):
+
+        self.criar_docente(
+            ativo=False
+        )
+
+        response = self.client.post(
+            self.url_reenvio,
+            {
+                'email': self.email,
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('login')
+        )
+
+        self.assertEqual(
+            len(mail.outbox),
+            1
+        )
+
+        self.assertEqual(
+            mail.outbox[0].to,
+            [
+                self.email,
+            ]
+        )
+
+        self.assertIn(
+            '/cadastro/docente/confirmar/',
+            mail.outbox[0].body
+        )
+
+    def test_conta_confirmada_nao_recebe_novo_link(
+        self
+    ):
+
+        self.criar_docente(
+            ativo=True
+        )
+
+        response = self.client.post(
+            self.url_reenvio,
+            {
+                'email': self.email,
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('login')
+        )
+
+        self.assertEqual(
+            len(mail.outbox),
+            0
+        )
+
+    def test_email_inexistente_nao_revela_cadastro(
+        self
+    ):
+
+        response = self.client.post(
+            self.url_reenvio,
+            {
+                'email': 'inexistente@ufac.br',
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('login')
+        )
+
+        self.assertEqual(
+            len(mail.outbox),
+            0
+        )
+
+    def test_reenvio_respeita_intervalo_de_60_segundos(
+        self
+    ):
+
+        self.criar_docente(
+            ativo=False
+        )
+
+        primeiro_reenvio = self.client.post(
+            self.url_reenvio,
+            {
+                'email': self.email,
+            }
+        )
+
+        self.assertRedirects(
+            primeiro_reenvio,
+            reverse('login')
+        )
+
+        segundo_reenvio = self.client.post(
+            self.url_reenvio,
+            {
+                'email': self.email,
+            }
+        )
+
+        self.assertEqual(
+            segundo_reenvio.status_code,
+            200
+        )
+
+        self.assertContains(
+            segundo_reenvio,
+            'Aguarde 60 segundos'
+        )
+
+        self.assertEqual(
+            len(mail.outbox),
+            1
+        )

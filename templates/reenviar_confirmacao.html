@@ -1,0 +1,109 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <link
+        rel="stylesheet"
+        href="{% static 'css/login.css' %}"
+    >
+
+    <title>Reenviar confirmação | SGTCC</title>
+</head>
+
+<body>
+
+    <div class="container">
+
+        <aside class="sidebar">
+
+            <img
+                src="{% static 'assets/logo_ufac.png' %}"
+                alt="Universidade Federal do Acre"
+            >
+
+            <p>SGTCC</p>
+
+        </aside>
+
+        <main class="form-login">
+
+            <h1>Reenviar confirmação</h1>
+
+            {% if messages %}
+
+                <div class="mensagens-flutuantes">
+
+                    {% for message in messages %}
+
+                        <div class="alerta alerta-{{ message.tags }}">
+                            {{ message }}
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+            {% endif %}
+
+            <p style="max-width: 500px; text-align: center;">
+                Informe o e-mail institucional utilizado
+                no cadastro. Se a conta ainda não estiver
+                confirmada, enviaremos um novo link.
+            </p>
+
+            <form
+                method="POST"
+                style="
+                    width: 100%;
+                    max-width: 500px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                "
+            >
+
+                {% csrf_token %}
+
+                <label for="{{ form.email.id_for_label }}">
+                    <strong>{{ form.email.label }}</strong>
+                </label>
+
+                {{ form.email }}
+
+                {% for erro in form.email.errors %}
+
+                    <span class="error">
+                        {{ erro }}
+                    </span>
+
+                {% endfor %}
+
+                <button type="submit">
+                    Reenviar link
+                </button>
+
+            </form>
+
+            <p style="font-size: 14px;">
+
+                <a href="{% url 'login' %}">
+                    Voltar para o login
+                </a>
+
+            </p>
+
+        </main>
+
+    </div>
+
+</body>
+
+</html>

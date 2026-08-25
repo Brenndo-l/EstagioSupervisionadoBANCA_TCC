@@ -9,6 +9,7 @@ from .forms import (
     ModeloDocumentoForm,
     ProjetoTCCForm,
     SolicitacaoBancaForm,
+    ReenvioConfirmacaoForm,
 )
 from .models import ProjetoTCC, pUsuario, SolicitacaoAgendamento, BancaTCC, EspacoFisico, ComposicaoBanca, ModeloDocumento, DisponibilidadeEspaco
 from django.contrib.auth import authenticate, login, logout
@@ -942,11 +943,7 @@ def cadastrar_docente(request):
         contexto
     )
 
-def confirmar_email_docente(
-    request,
-    uidb64,
-    token
-):
+def confirmar_email_docente(request, uidb64, token):
 
     try:
 
@@ -1041,6 +1038,121 @@ def confirmar_email_docente(
     )
 
     return redirect('login')
+
+def reenviar_confirmacao_docente(request):
+
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+
+    if request.method == 'POST':
+
+        form = ReenvioConfirmacaoForm(
+            request.POST
+        )
+
+        if form.is_valid():
+
+            agora = int(
+                timezone.now().timestamp()
+            )
+
+            ultimo_reenvio = request.session.get(
+                'ultimo_reenvio_confirmacao'
+            )
+
+            # Evita vários envios consecutivos
+            # realizados pela mesma sessão.
+            if (
+                ultimo_reenvio is not None
+                and agora - ultimo_reenvio < 60
+            ):
+
+                messages.warning(
+                    request,
+                    'Aguarde 60 segundos antes de '
+                    'solicitar outro link.'
+                )
+
+                return render(
+                    request,
+                    'reenviar_confirmacao.html',
+                    {
+                        'form': form,
+                    }
+                )
+
+            request.session[
+                'ultimo_reenvio_confirmacao'
+            ] = agora
+
+            email = form.cleaned_data[
+                'email'
+            ]
+
+            usuario = (
+                User.objects
+                .filter(
+                    email__iexact=email,
+                    is_active=False
+                )
+                .first()
+            )
+
+            docente_nao_confirmado = (
+                usuario is not None
+                and pUsuario.objects.filter(
+                    usuario=usuario,
+                    perfil='DOCENTE'
+                ).exists()
+            )
+
+            if docente_nao_confirmado:
+
+                try:
+
+                    enviar_email_confirmacao_docente(
+                        request,
+                        usuario
+                    )
+
+                except Exception:
+
+                    messages.error(
+                        request,
+                        'Não foi possível enviar o e-mail '
+                        'neste momento. Tente novamente.'
+                    )
+
+                    return render(
+                        request,
+                        'reenviar_confirmacao.html',
+                        {
+                            'form': form,
+                        }
+                    )
+
+            # A resposta é igual mesmo quando o endereço
+            # não existe ou já foi confirmado. Isso evita
+            # expor quais e-mails possuem cadastro.
+            messages.success(
+                request,
+                'Se existir uma conta ainda não confirmada '
+                'para este endereço, enviaremos um novo link.'
+            )
+
+            return redirect('login')
+
+    else:
+
+        form = ReenvioConfirmacaoForm()
+
+    return render(
+        request,
+        'reenviar_confirmacao.html',
+        {
+            'form': form,
+        }
+    )
 
 def login_view(request):
 
