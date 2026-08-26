@@ -188,6 +188,130 @@ class CadastroDocenteForm(UserCreationForm):
 
         return usuario
 
+class PerfilDocenteForm(forms.ModelForm):
+
+    first_name = forms.CharField(
+        label='Nome',
+        max_length=150,
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-input',
+                'autocomplete': 'given-name',
+            }
+        )
+    )
+
+    last_name = forms.CharField(
+        label='Sobrenome',
+        max_length=150,
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-input',
+                'autocomplete': 'family-name',
+            }
+        )
+    )
+
+    class Meta:
+
+        model = pUsuario
+
+        fields = [
+            'first_name',
+            'last_name',
+            'titulacao',
+        ]
+
+        labels = {
+            'titulacao': 'Titulação acadêmica',
+        }
+
+        help_texts = {
+            'titulacao': (
+                'Campo opcional utilizado somente nos '
+                'documentos institucionais da banca.'
+            ),
+        }
+
+        widgets = {
+            'titulacao': forms.Select(
+                attrs={
+                    'class': 'form-input',
+                }
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
+
+        if self.instance and self.instance.usuario_id:
+
+            self.fields['first_name'].initial = (
+                self.instance.usuario.first_name
+            )
+
+            self.fields['last_name'].initial = (
+                self.instance.usuario.last_name
+            )
+
+    def clean_first_name(self):
+
+        nome = ' '.join(
+            self.cleaned_data['first_name'].split()
+        )
+
+        if len(nome) < 2:
+            raise forms.ValidationError(
+                'Informe um nome válido.'
+            )
+
+        return nome
+
+    def clean_last_name(self):
+
+        sobrenome = ' '.join(
+            self.cleaned_data['last_name'].split()
+        )
+
+        if len(sobrenome) < 2:
+            raise forms.ValidationError(
+                'Informe um sobrenome válido.'
+            )
+
+        return sobrenome
+
+    def save(self, commit=True):
+
+        perfil = super().save(
+            commit=False
+        )
+
+        perfil.usuario.first_name = (
+            self.cleaned_data['first_name']
+        )
+
+        perfil.usuario.last_name = (
+            self.cleaned_data['last_name']
+        )
+
+        if commit:
+
+            perfil.usuario.save(
+                update_fields=[
+                    'first_name',
+                    'last_name',
+                ]
+            )
+
+            perfil.save(
+                update_fields=[
+                    'titulacao',
+                ]
+            )
+
+        return perfil
+
 class ReenvioConfirmacaoForm(forms.Form):
 
     email = forms.EmailField(

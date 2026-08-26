@@ -13,6 +13,17 @@ class pUsuario(models.Model):
         ('DOCENTE', 'Docente'),
     )
 
+    TITULACOES_ACADEMICAS = (
+        ('PROF', 'Prof.'),
+        ('PROFA', 'Profa.'),
+        ('PROF_ESP', 'Prof. Esp.'),
+        ('PROFA_ESP', 'Profa. Esp.'),
+        ('PROF_ME', 'Prof. Me.'),
+        ('PROFA_MA', 'Profa. Ma.'),
+        ('PROF_DR', 'Prof. Dr.'),
+        ('PROFA_DRA', 'Profa. Dra.'),
+    )
+
     usuario = models.OneToOneField(
         User,
         on_delete=models.CASCADE
@@ -21,6 +32,14 @@ class pUsuario(models.Model):
     perfil = models.CharField(
         max_length=15,
         choices=Tipos_Perfil
+    )
+
+    titulacao = models.CharField(
+        max_length=12,
+        choices=TITULACOES_ACADEMICAS,
+        blank=True,
+        default='',
+        verbose_name='Titulação acadêmica'
     )
 
     data_cadastro = models.DateTimeField(
@@ -34,6 +53,22 @@ class pUsuario(models.Model):
         editable=False,
         verbose_name='Data de confirmação do e-mail'
     )
+
+    @property
+    def nome_para_documento(self):
+
+        nome = (
+            self.usuario.get_full_name().strip()
+            or self.usuario.username
+        )
+
+        if not self.titulacao:
+            return nome
+
+        return (
+            f'{self.get_titulacao_display()} '
+            f'{nome}'
+        )
 
     def __str__(self):
 

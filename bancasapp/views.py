@@ -6,6 +6,7 @@ from .forms import (
     EdicaoSolicitacaoCoordenacaoForm,
     EspacoFisicoForm,
     ModeloDocumentoForm,
+    PerfilDocenteForm,
     SolicitacaoBancaForm,
     ReenvioConfirmacaoForm,
 )
@@ -1128,6 +1129,53 @@ def cadastrar_docente(request):
         request,
         'cadastro_docente.html',
         contexto
+    )
+
+@docente_required
+def meu_perfil(request):
+
+    perfil = get_object_or_404(
+        pUsuario.objects.select_related(
+            'usuario'
+        ),
+        usuario=request.user,
+        perfil='DOCENTE'
+    )
+
+    if request.method == 'POST':
+
+        form = PerfilDocenteForm(
+            request.POST,
+            instance=perfil
+        )
+
+        if form.is_valid():
+
+            with transaction.atomic():
+                form.save()
+
+            messages.success(
+                request,
+                'Perfil atualizado com sucesso.'
+            )
+
+            return redirect(
+                'meu_perfil'
+            )
+
+    else:
+
+        form = PerfilDocenteForm(
+            instance=perfil
+        )
+
+    return render(
+        request,
+        'meu_perfil.html',
+        {
+            'form': form,
+            'perfil': perfil,
+        }
     )
 
 def confirmar_email_docente(request, uidb64, token):

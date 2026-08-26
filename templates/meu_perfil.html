@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="dashboard-header">
+
+    <h1>Meu Perfil</h1>
+
+    <p>
+        Atualize seus dados pessoais. A titulação acadêmica
+        será utilizada somente nos documentos institucionais.
+    </p>
+
+</div>
+
+<div class="form-container">
+
+    <p>
+        <strong>E-mail institucional:</strong>
+        {{ perfil.usuario.email }}
+    </p>
+
+    <form method="POST">
+
+        {% csrf_token %}
+
+        {{ form.as_p }}
+
+        <button
+            type="submit"
+            class="btn-enviar"
+        >
+            SALVAR PERFIL
+        </button>
+
+    </form>
+
+</div>
+
+{% endblock %}

@@ -3549,3 +3549,142 @@ class DetalhesSolicitacaoTests(TestCase):
             response['Content-Type'],
             'application/pdf'
         )
+
+class PerfilDocenteTests(TestCase):
+
+    def setUp(self):
+
+        self.usuario_docente = User.objects.create_user(
+            username='perfil.docente@ufac.br',
+            email='perfil.docente@ufac.br',
+            password='Senha123!',
+            first_name='Maria',
+            last_name='Silva',
+            is_active=True
+        )
+
+        self.perfil_docente = pUsuario.objects.create(
+            usuario=self.usuario_docente,
+            perfil='DOCENTE'
+        )
+
+        self.usuario_coordenacao = User.objects.create_user(
+            username='coordenacao.perfil@ufac.br',
+            email='coordenacao.perfil@ufac.br',
+            password='Senha123!',
+            is_active=True
+        )
+
+        pUsuario.objects.create(
+            usuario=self.usuario_coordenacao,
+            perfil='COORDENACAO'
+        )
+
+        self.url = reverse(
+            'meu_perfil'
+        )
+
+    def test_docente_consegue_abrir_meu_perfil(self):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.get(
+            self.url
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertTemplateUsed(
+            response,
+            'meu_perfil.html'
+        )
+
+    def test_docente_consegue_salvar_titulacao(self):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.post(
+            self.url,
+            {
+                'first_name': 'Maria',
+                'last_name': 'Souza',
+                'titulacao': 'PROFA_DRA',
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            self.url
+        )
+
+        self.perfil_docente.refresh_from_db()
+        self.usuario_docente.refresh_from_db()
+
+        self.assertEqual(
+            self.perfil_docente.titulacao,
+            'PROFA_DRA'
+        )
+
+        self.assertEqual(
+            self.usuario_docente.last_name,
+            'Souza'
+        )
+
+        self.assertEqual(
+            self.perfil_docente.nome_para_documento,
+            'Profa. Dra. Maria Souza'
+        )
+
+    def test_titulacao_continua_opcional(self):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.post(
+            self.url,
+            {
+                'first_name': 'Maria',
+                'last_name': 'Silva',
+                'titulacao': '',
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            self.url
+        )
+
+        self.perfil_docente.refresh_from_db()
+
+        self.assertEqual(
+            self.perfil_docente.titulacao,
+            ''
+        )
+
+        self.assertEqual(
+            str(self.perfil_docente),
+            'Maria Silva (Docente)'
+        )
+
+    def test_coordenacao_nao_acessa_meu_perfil_docente(self):
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.get(
+            self.url
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
