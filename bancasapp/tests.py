@@ -1245,6 +1245,62 @@ class AgendamentoTests(TestCase):
             0
         )
 
+    def test_titulacao_do_avaliador_externo_e_salva(self):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.post(
+            reverse('solicitar_banca'),
+            {
+                **self.dados_academicos_solicitacao(),
+                'espaco': self.espaco.id,
+                'opcao_data_inicio': (
+                    self.inicio_agendamento.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+                'opcao_data_fim': (
+                    self.fim_agendamento.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+                'orientador': self.docente.id,
+                'avaliador_interno': self.avaliador.id,
+                'nome_avaliador_externo': 'Carlos Souza',
+                'titulacao_avaliador_externo': 'PROF_DR',
+                'instituicao_avaliador_externo': (
+                    'Outra Universidade'
+                ),
+                'arquivo_tcc': criar_pdf_teste(),
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+        composicao = ComposicaoBanca.objects.get(
+            solicitacao__usuario_solicitante=self.docente
+        )
+
+        self.assertEqual(
+            composicao.titulacao_avaliador_externo,
+            'PROF_DR'
+        )
+
+        self.assertEqual(
+            composicao.get_titulacao_avaliador_externo_display(),
+            'Prof. Dr.'
+        )
+
+        self.addCleanup(
+            composicao.solicitacao.arquivo_tcc.delete,
+            save=False
+        )
+
     def test_rotas_antigas_redirecionam_para_solicitacao(self):
 
         self.client.force_login(
@@ -3621,7 +3677,7 @@ class PerfilDocenteTests(TestCase):
 
         self.assertRedirects(
             response,
-            self.url
+            reverse('dashboard')
         )
 
         self.perfil_docente.refresh_from_db()
@@ -3659,7 +3715,7 @@ class PerfilDocenteTests(TestCase):
 
         self.assertRedirects(
             response,
-            self.url
+            reverse('dashboard')
         )
 
         self.perfil_docente.refresh_from_db()

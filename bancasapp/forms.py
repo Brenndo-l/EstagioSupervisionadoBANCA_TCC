@@ -548,6 +548,19 @@ class SolicitacaoBancaForm(forms.ModelForm):
         label='Nome do Avaliador Externo (Opcional)'
     )
 
+    titulacao_avaliador_externo = forms.ChoiceField(
+        choices=(
+            ('', 'Selecione a titulação'),
+        ) + pUsuario.TITULACOES_ACADEMICAS,
+        required=False,
+        label='Titulação do Avaliador Externo (Opcional)',
+        widget=forms.Select(
+            attrs={
+                'class': 'form-input',
+            }
+        )
+    )
+
     instituicao_avaliador_externo = forms.CharField(
         max_length=100,
         required=False,

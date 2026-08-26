@@ -12,6 +12,26 @@
 
         <h2>UFAC<br>SGTCC</h2>
 
+        {% if request.user.is_authenticated %}
+
+            <div class="usuario-logado">
+
+                <strong>
+                    {{ request.user.get_full_name|default:request.user.username }}
+                </strong>
+
+                <span>
+                    {% if request.user.is_superuser %}
+                        Coordenação
+                    {% else %}
+                        {{ request.user.pusuario.get_perfil_display }}
+                    {% endif %}
+                </span>
+
+            </div>
+
+        {% endif %}
+
         <a href="{% url 'dashboard' %}">
             INÍCIO / PAINEL
         </a>

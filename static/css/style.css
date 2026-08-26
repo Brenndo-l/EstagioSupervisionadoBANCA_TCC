@@ -25,6 +25,25 @@ body {
     margin-bottom: 40px;
 }
 
+.usuario-logado {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+    margin-bottom: 24px;
+    padding: 0 4px 16px;
+    text-align: center;
+}
+
+.usuario-logado strong,
+.usuario-logado span {
+    display: block;
+    overflow-wrap: anywhere;
+}
+
+.usuario-logado span {
+    font-size: 13px;
+    margin-top: 4px;
+    opacity: 0.85;
+}
+
 .sidebar a {
     color: white;
     text-decoration: none;

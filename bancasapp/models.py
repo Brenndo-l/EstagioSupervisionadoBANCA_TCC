@@ -398,6 +398,7 @@ class ComposicaoBanca(models.Model):
     segundo_avaliador_interno = models.ForeignKey(pUsuario,on_delete=models.PROTECT,related_name='bancas_segundo_avaliador_interno',verbose_name='Segundo Avaliador Interno (UFAC)',null=True,blank=True)
     presidente = models.ForeignKey(pUsuario,on_delete=models.PROTECT,related_name='bancas_presididas',verbose_name='Presidente da banca',null=True,blank=True)
     nome_avaliador_externo = models.CharField(max_length=150, verbose_name="Nome do Avaliador Externo", blank=True, null=True)
+    titulacao_avaliador_externo = models.CharField(max_length=12,choices=pUsuario.TITULACOES_ACADEMICAS,blank=True,default='',verbose_name='Titulação do Avaliador Externo')
     instituicao_avaliador_externo = models.CharField(max_length=100, verbose_name="Instituição Externa", blank=True, null=True)
 
     def __str__(self):

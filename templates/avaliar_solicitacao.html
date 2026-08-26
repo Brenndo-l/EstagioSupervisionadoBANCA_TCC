@@ -128,6 +128,10 @@
                     <tr>
                         <th>Avaliador externo</th>
                         <td>
+                            {% if composicao.titulacao_avaliador_externo %}
+                                {{ composicao.get_titulacao_avaliador_externo_display }}
+                            {% endif %}
+
                             {{ composicao.nome_avaliador_externo }}
                         </td>
                     </tr>

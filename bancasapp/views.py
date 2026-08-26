@@ -380,6 +380,7 @@ def editar_solicitacao_coordenacao(
             'coorientador__usuario',
             'avaliador_interno__usuario',
             'segundo_avaliador_interno__usuario',
+            'presidente__usuario',
         )
         .filter(
             solicitacao=solicitacao
@@ -423,6 +424,10 @@ def editar_solicitacao_coordenacao(
 
         'nome_avaliador_externo': (
             composicao.nome_avaliador_externo
+        ),
+
+        'titulacao_avaliador_externo': (
+            composicao.titulacao_avaliador_externo
         ),
 
         'instituicao_avaliador_externo': (
@@ -503,11 +508,15 @@ def editar_solicitacao_coordenacao(
                 )
 
                 composicao_bloqueada.orientador = (
-                    form.cleaned_data['orientador']
+                    form.cleaned_data[
+                        'orientador'
+                    ]
                 )
 
                 composicao_bloqueada.coorientador = (
-                    form.cleaned_data['coorientador']
+                    form.cleaned_data[
+                        'coorientador'
+                    ]
                 )
 
                 composicao_bloqueada.avaliador_interno = (
@@ -534,6 +543,12 @@ def editar_solicitacao_coordenacao(
                     ]
                 )
 
+                composicao_bloqueada.titulacao_avaliador_externo = (
+                    form.cleaned_data[
+                        'titulacao_avaliador_externo'
+                    ]
+                )
+
                 composicao_bloqueada.instituicao_avaliador_externo = (
                     form.cleaned_data[
                         'instituicao_avaliador_externo'
@@ -548,6 +563,7 @@ def editar_solicitacao_coordenacao(
                         'segundo_avaliador_interno',
                         'presidente',
                         'nome_avaliador_externo',
+                        'titulacao_avaliador_externo',
                         'instituicao_avaliador_externo',
                     ]
                 )
@@ -792,6 +808,12 @@ def solicitar_banca(request):
                     nome_avaliador_externo=(
                         form.cleaned_data[
                             'nome_avaliador_externo'
+                        ]
+                    ),
+
+                    titulacao_avaliador_externo=(
+                        form.cleaned_data[
+                            'titulacao_avaliador_externo'
                         ]
                     ),
 
@@ -1160,7 +1182,7 @@ def meu_perfil(request):
             )
 
             return redirect(
-                'meu_perfil'
+                'dashboard'
             )
 
     else:
@@ -1554,6 +1576,11 @@ def criar_formulario_revalidacao(
 
         'nome_avaliador_externo': (
             composicao.nome_avaliador_externo
+            or ''
+        ),
+
+        'titulacao_avaliador_externo': (
+            composicao.titulacao_avaliador_externo
             or ''
         ),
 
@@ -2192,6 +2219,7 @@ def gerar_pdf_banca(request, solicitacao_id):
             'coorientador__usuario',
             'avaliador_interno__usuario',
             'segundo_avaliador_interno__usuario',
+            'presidente__usuario',
         )
         .filter(
             solicitacao=solicitacao
@@ -2232,15 +2260,15 @@ def gerar_pdf_banca(request, solicitacao_id):
     # Retorna o nome completo do docente.
     # Caso ele não tenha nome completo cadastrado,
     # utiliza seu username.
+    # A titulação é acrescentada exclusivamente
+# ao nome utilizado no documento.
     def nome_docente(perfil):
 
         if perfil is None:
             return ''
 
-        return (
-            perfil.usuario.get_full_name()
-            or perfil.usuario.username
-        )
+        return perfil.nome_para_documento
+
 
     nome_orientador = nome_docente(
         composicao.orientador
@@ -2257,6 +2285,25 @@ def gerar_pdf_banca(request, solicitacao_id):
     nome_segundo_avaliador = nome_docente(
         composicao.segundo_avaliador_interno
     )
+
+    nome_presidente = nome_docente(
+        composicao.presidente
+    )
+
+    nome_avaliador_externo = (
+        composicao.nome_avaliador_externo
+        or ''
+    )
+
+    if (
+        nome_avaliador_externo
+        and composicao.titulacao_avaliador_externo
+    ):
+
+        nome_avaliador_externo = (
+            f'{composicao.get_titulacao_avaliador_externo_display()} '
+            f'{nome_avaliador_externo}'
+        )
 
     contexto = {
         # Objetos completos, caso o template precise
@@ -2281,8 +2328,9 @@ def gerar_pdf_banca(request, solicitacao_id):
         'segundo_avaliador_interno': (
             nome_segundo_avaliador
         ),
+        'presidente': nome_presidente,
         'avaliador_externo': (
-            composicao.nome_avaliador_externo
+            nome_avaliador_externo
         ),
         'instituicao_externa': (
             composicao.instituicao_avaliador_externo

@@ -204,7 +204,7 @@
 
                     <br>
 
-                    Avaliador(a) interno(a)
+                    Membro
 
                 </div>
 
@@ -218,7 +218,23 @@
 
                         <br>
 
-                        Segundo(a) avaliador(a) interno(a)
+                        Membro
+
+                    </div>
+
+                {% endif %}
+
+                {% if presidente %}
+
+                    <div class="membro">
+
+                        <strong>
+                            {{ presidente }}
+                        </strong>
+
+                        <br>
+
+                        Presidente
 
                     </div>
 
@@ -234,7 +250,7 @@
 
                         <br>
 
-                        Avaliador(a) externo(a)
+                        Membro externo
 
                         {% if instituicao_externa %}
 
