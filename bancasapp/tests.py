@@ -19,6 +19,8 @@ from django.core import mail
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from .tokens import token_confirmacao_email
+from .services import atualizar_status_bancas
+from decimal import Decimal
 
 def criar_pdf_teste():
 
@@ -3743,4 +3745,426 @@ class PerfilDocenteTests(TestCase):
         self.assertRedirects(
             response,
             reverse('dashboard')
+        )
+
+class CicloPosDefesaTests(TestCase):
+
+    def setUp(self):
+
+        self.senha = 'Senha123!'
+
+        self.usuario_orientador = User.objects.create_user(
+            username='orientador.nota@ufac.br',
+            password=self.senha,
+            first_name='Olivia',
+            last_name='Orientadora',
+            is_active=True
+        )
+
+        self.orientador = pUsuario.objects.create(
+            usuario=self.usuario_orientador,
+            perfil='DOCENTE'
+        )
+
+        self.usuario_avaliador = User.objects.create_user(
+            username='avaliador.nota@ufac.br',
+            password=self.senha,
+            first_name='Andre',
+            last_name='Avaliador',
+            is_active=True
+        )
+
+        self.avaliador = pUsuario.objects.create(
+            usuario=self.usuario_avaliador,
+            perfil='DOCENTE'
+        )
+
+        self.usuario_coordenacao = User.objects.create_user(
+            username='coordenacao.nota@ufac.br',
+            password=self.senha,
+            is_active=True
+        )
+
+        pUsuario.objects.create(
+            usuario=self.usuario_coordenacao,
+            perfil='COORDENACAO'
+        )
+
+        self.discente = Discente.objects.create(
+            nome='Discente da Nota',
+            matricula='20260000084'
+        )
+
+        self.projeto = ProjetoTCC.objects.create(
+            titulo='TCC do Ciclo Pós-Defesa',
+            resumo=(
+                'Resumo utilizado nos testes '
+                'do ciclo pós-defesa.'
+            ),
+            semestre_letivo='2026.2',
+            discente=self.discente,
+            status='APROVADO'
+        )
+
+        self.espaco = EspacoFisico.objects.create(
+            nome='Sala da Banca Finalizada'
+        )
+
+        self.inicio = (
+            timezone.now()
+            - timedelta(hours=3)
+        )
+
+        self.fim = (
+            timezone.now()
+            - timedelta(hours=1)
+        )
+
+        self.solicitacao = (
+            SolicitacaoAgendamento.objects.create(
+                usuario_solicitante=self.orientador,
+                projeto_tcc=self.projeto,
+                espaco=self.espaco,
+                opcao_data_inicio=self.inicio,
+                opcao_data_fim=self.fim,
+                status='APROVADA'
+            )
+        )
+
+        self.composicao = (
+            ComposicaoBanca.objects.create(
+                projeto_tcc=self.projeto,
+                solicitacao=self.solicitacao,
+                orientador=self.orientador,
+                avaliador_interno=self.avaliador,
+                presidente=self.orientador
+            )
+        )
+
+        self.banca = BancaTCC.objects.create(
+            solicitacao=self.solicitacao,
+            projeto_tcc=self.projeto,
+            espaco=self.espaco,
+            data_horario_inicio=self.inicio,
+            data_horario_fim=self.fim,
+            status='AGENDADA'
+        )
+
+        self.url_nota = reverse(
+            'registrar_nota_banca',
+            args=[
+                self.banca.id,
+            ]
+        )
+
+        self.url_detalhes = reverse(
+            'detalhar_solicitacao',
+            args=[
+                self.solicitacao.id,
+            ]
+        )
+
+    def test_banca_passada_fica_aguardando_nota(self):
+
+        atualizar_status_bancas()
+
+        self.banca.refresh_from_db()
+
+        self.assertEqual(
+            self.banca.status,
+            'AGUARDANDO_NOTA'
+        )
+
+    def test_banca_futura_permanece_agendada(self):
+
+        self.banca.data_horario_inicio = (
+            timezone.now()
+            + timedelta(days=1)
+        )
+
+        self.banca.data_horario_fim = (
+            timezone.now()
+            + timedelta(
+                days=1,
+                hours=2
+            )
+        )
+
+        self.banca.save(
+            update_fields=[
+                'data_horario_inicio',
+                'data_horario_fim',
+            ]
+        )
+
+        atualizar_status_bancas()
+
+        self.banca.refresh_from_db()
+
+        self.assertEqual(
+            self.banca.status,
+            'AGENDADA'
+        )
+
+    def test_orientador_visualiza_botao_registrar_nota(
+        self
+    ):
+
+        self.client.force_login(
+            self.usuario_orientador
+        )
+
+        response = self.client.get(
+            self.url_detalhes
+        )
+
+        self.assertContains(
+            response,
+            'REGISTRAR NOTA'
+        )
+
+    def test_avaliador_nao_pode_registrar_nota(self):
+
+        self.client.force_login(
+            self.usuario_avaliador
+        )
+
+        response = self.client.post(
+            self.url_nota,
+            {
+                'nota': '9.50',
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            self.url_detalhes
+        )
+
+        self.banca.refresh_from_db()
+
+        self.assertIsNone(
+            self.banca.nota
+        )
+
+    def test_coordenacao_nao_pode_registrar_nota(self):
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.get(
+            self.url_nota
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+    def test_nota_nao_pode_ser_registrada_antes_da_defesa(
+        self
+    ):
+
+        self.banca.data_horario_inicio = (
+            timezone.now()
+            + timedelta(days=1)
+        )
+
+        self.banca.data_horario_fim = (
+            timezone.now()
+            + timedelta(
+                days=1,
+                hours=2
+            )
+        )
+
+        self.banca.save(
+            update_fields=[
+                'data_horario_inicio',
+                'data_horario_fim',
+            ]
+        )
+
+        self.client.force_login(
+            self.usuario_orientador
+        )
+
+        response = self.client.post(
+            self.url_nota,
+            {
+                'nota': '8.00',
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            self.url_detalhes
+        )
+
+        self.banca.refresh_from_db()
+
+        self.assertIsNone(
+            self.banca.nota
+        )
+
+        self.assertEqual(
+            self.banca.status,
+            'AGENDADA'
+        )
+
+    def test_orientador_registra_nota_e_finaliza_banca(
+        self
+    ):
+
+        self.client.force_login(
+            self.usuario_orientador
+        )
+
+        response = self.client.post(
+            self.url_nota,
+            {
+                'nota': '9.75',
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            self.url_detalhes
+        )
+
+        self.banca.refresh_from_db()
+
+        self.assertEqual(
+            self.banca.nota,
+            Decimal('9.75')
+        )
+
+        self.assertEqual(
+            self.banca.status,
+            'FINALIZADA'
+        )
+
+        self.assertEqual(
+            self.banca.nota_registrada_por,
+            self.usuario_orientador
+        )
+
+        self.assertIsNotNone(
+            self.banca.data_registro_nota
+        )
+
+        self.assertEqual(
+            len(mail.outbox),
+            1
+        )
+
+        self.assertIn(
+            'Banca finalizada no SGTCC',
+            mail.outbox[0].subject
+        )
+
+    def test_notas_invalidas_sao_rejeitadas(self):
+
+        self.client.force_login(
+            self.usuario_orientador
+        )
+
+        for nota_invalida in [
+            '-0.01',
+            '10.01',
+            '9.999',
+        ]:
+
+            with self.subTest(
+                nota=nota_invalida
+            ):
+
+                response = self.client.post(
+                    self.url_nota,
+                    {
+                        'nota': nota_invalida,
+                    }
+                )
+
+                self.assertEqual(
+                    response.status_code,
+                    200
+                )
+
+                self.banca.refresh_from_db()
+
+                self.assertIsNone(
+                    self.banca.nota
+                )
+
+                self.assertNotEqual(
+                    self.banca.status,
+                    'FINALIZADA'
+                )
+
+    def test_nota_finalizada_nao_pode_ser_alterada(
+        self
+    ):
+
+        self.banca.status = 'FINALIZADA'
+
+        self.banca.nota = Decimal(
+            '8.50'
+        )
+
+        self.banca.nota_registrada_por = (
+            self.usuario_orientador
+        )
+
+        self.banca.data_registro_nota = (
+            timezone.now()
+        )
+
+        self.banca.save(
+            update_fields=[
+                'status',
+                'nota',
+                'nota_registrada_por',
+                'data_registro_nota',
+            ]
+        )
+
+        self.client.force_login(
+            self.usuario_orientador
+        )
+
+        response = self.client.post(
+            self.url_nota,
+            {
+                'nota': '10.00',
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            self.url_detalhes
+        )
+
+        self.banca.refresh_from_db()
+
+        self.assertEqual(
+            self.banca.nota,
+            Decimal('8.50')
+        )
+
+    def test_prazo_da_versao_final_e_trinta_dias(
+        self
+    ):
+
+        data_defesa = timezone.localtime(
+            self.banca.data_horario_inicio
+        ).date()
+
+        self.assertEqual(
+            self.banca.data_limite_versao_final,
+            (
+                data_defesa
+                + timedelta(days=30)
+            )
         )
