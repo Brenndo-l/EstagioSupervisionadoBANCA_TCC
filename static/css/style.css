@@ -607,49 +607,64 @@ img {
     color: #facc22;
 }
 
-/* STATUS DO CICLO DA BANCA */
+/* =========================================================
+   ESTADOS DO CICLO DA BANCA
+   ========================================================= */
 
-.status-agendada {
-    background-color: #285296;
+.status-badge.status-agendada {
+    background-color: #285296 !important;
+    color: #ffffff !important;
 }
 
-.status-aguardando-nota {
-    background-color: #f0ad4e;
+.status-badge.status-aguardando-nota {
+    background-color: #f0ad4e !important;
+    color: #ffffff !important;
 }
 
-.status-finalizada {
-    background-color: #5cb85c;
+.status-badge.status-finalizada {
+    background-color: #5cb85c !important;
+    color: #ffffff !important;
 }
 
 
-/* AÇÕES DOS MODELOS DE DOCUMENTOS */
+/* =========================================================
+   AÇÕES DA TABELA DE DOCUMENTOS
+   ========================================================= */
 
 .acoes-tabela {
+    min-width: 190px;
     white-space: nowrap;
 }
 
 .form-acao-inline {
     display: inline-block;
-    margin-left: 6px;
+    margin: 2px 0 2px 6px;
 }
 
-.btn-perigo {
+button.btn-perigo {
+    appearance: none;
     background-color: #d9534f;
     border: none;
     border-radius: 4px;
-    color: white;
+    color: #ffffff;
     cursor: pointer;
+    display: inline-block;
+    font-family: inherit;
     font-size: 13px;
     font-weight: bold;
+    line-height: normal;
     padding: 8px 14px;
+    text-decoration: none;
 }
 
-.btn-perigo:hover {
+button.btn-perigo:hover {
     background-color: #b52b27;
 }
 
 
-/* PAGINAÇÃO */
+/* =========================================================
+   PAGINAÇÃO
+   ========================================================= */
 
 .paginacao {
     align-items: center;
