@@ -1,6 +1,12 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.core.validators import FileExtensionValidator
+from datetime import timedelta
+from decimal import Decimal
+from django.core.validators import (
+    FileExtensionValidator,
+    MaxValueValidator,
+    MinValueValidator,
+)
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 
@@ -249,12 +255,85 @@ class ProjetoTCC(models.Model):
 
 #Define a banca e decide a sala, dia e horario.
 class BancaTCC(models.Model):
-    projeto_tcc = models.ForeignKey(ProjetoTCC, on_delete=models.CASCADE)
-    espaco = models.ForeignKey(EspacoFisico, on_delete=models.RESTRICT)
+
+    STATUS_BANCA = (
+        ('AGENDADA', 'Agendada'),
+        ('AGUARDANDO_NOTA', 'Aguardando nota'),
+        ('FINALIZADA', 'Finalizada'),
+    )
+
+    solicitacao = models.OneToOneField(
+        'SolicitacaoAgendamento',
+        on_delete=models.CASCADE,
+        related_name='banca_tcc',
+        null=True,
+        blank=True,
+        verbose_name='Solicitação aprovada'
+    )
+
+    projeto_tcc = models.ForeignKey(
+        ProjetoTCC,
+        on_delete=models.CASCADE
+    )
+
+    espaco = models.ForeignKey(
+        EspacoFisico,
+        on_delete=models.RESTRICT
+    )
+
     data_horario_inicio = models.DateTimeField()
+
     data_horario_fim = models.DateTimeField()
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_BANCA,
+        default='AGENDADA'
+    )
+
+    nota = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[
+            MinValueValidator(Decimal('0.00')),
+            MaxValueValidator(Decimal('10.00')),
+        ]
+    )
+
+    nota_registrada_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='notas_de_bancas_registradas',
+        editable=False
+    )
+
+    data_registro_nota = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False
+    )
+
+    @property
+    def data_limite_versao_final(self):
+
+        inicio_local = timezone.localtime(
+            self.data_horario_inicio
+        )
+
+        return (
+            inicio_local.date()
+            + timedelta(days=30)
+        )
+
     def __str__(self):
-        return f"Banca: {self.projeto_tcc.titulo}"
+
+        return (
+            f'Banca: {self.projeto_tcc.titulo}'
+        )
 
 #Diz quem esta na banca orientador ou avaliador
 class MembroBanca(models.Model):

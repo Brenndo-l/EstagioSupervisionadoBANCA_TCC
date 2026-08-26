@@ -9,7 +9,16 @@ from django.contrib.auth.models import User
 from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
-from .models import Discente,DisponibilidadeEspaco,EspacoFisico,ModeloDocumento,ProjetoTCC,SolicitacaoAgendamento,pUsuario
+from .models import (
+    BancaTCC,
+    Discente,
+    DisponibilidadeEspaco,
+    EspacoFisico,
+    ModeloDocumento,
+    ProjetoTCC,
+    SolicitacaoAgendamento,
+    pUsuario,
+)
 
 class CadastroDocenteForm(UserCreationForm):
 
@@ -1250,6 +1259,64 @@ class AvaliacaoSolicitacaoForm(forms.Form):
             )
 
         return cleaned_data
+
+class RegistroNotaBancaForm(forms.ModelForm):
+
+    def __init__(self, *args, **kwargs):
+
+        super().__init__(*args, **kwargs)
+
+        self.fields['nota'].required = True
+
+    class Meta:
+
+        model = BancaTCC
+
+        fields = [
+            'nota',
+        ]
+
+        labels = {
+            'nota': 'Nota final da banca',
+        }
+
+        help_texts = {
+            'nota': (
+                'Informe um valor de 0,00 a 10,00, '
+                'com no máximo duas casas decimais.'
+            ),
+        }
+
+        widgets = {
+            'nota': forms.NumberInput(
+                attrs={
+                    'class': 'form-input',
+                    'min': '0',
+                    'max': '10',
+                    'step': '0.01',
+                    'placeholder': 'Ex.: 9,75',
+                }
+            ),
+        }
+
+        error_messages = {
+            'nota': {
+                'required': (
+                    'Informe a nota final da banca.'
+                ),
+                'invalid': (
+                    'Informe uma nota válida.'
+                ),
+                'max_digits': (
+                    'A nota deve estar entre '
+                    '0,00 e 10,00.'
+                ),
+                'max_decimal_places': (
+                    'Utilize no máximo duas '
+                    'casas decimais.'
+                ),
+            },
+        }
 
 class EspacoFisicoForm(forms.ModelForm):
 

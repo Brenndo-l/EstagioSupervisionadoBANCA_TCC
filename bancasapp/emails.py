@@ -169,3 +169,74 @@ def enviar_email_decisao_solicitacao(
     )
 
     return True
+
+def enviar_email_banca_finalizada(
+    request,
+    banca,
+    solicitacao
+):
+
+    usuario = (
+        solicitacao
+        .usuario_solicitante
+        .usuario
+    )
+
+    destinatario = (
+        usuario.email
+        or usuario.username
+    ).strip()
+
+    if not destinatario:
+        return False
+
+    caminho_detalhes = reverse(
+        'detalhar_solicitacao',
+        args=[solicitacao.id]
+    )
+
+    link_detalhes = (
+        request.build_absolute_uri(
+            caminho_detalhes
+        )
+    )
+
+    contexto = {
+        'usuario': usuario,
+        'banca': banca,
+        'solicitacao': solicitacao,
+        'link_detalhes': link_detalhes,
+    }
+
+    assunto = (
+        'Banca finalizada no SGTCC — '
+        f'{solicitacao.projeto_tcc.titulo}'
+    )
+
+    mensagem_texto = render_to_string(
+        'emails/banca_finalizada.txt',
+        contexto
+    )
+
+    mensagem_html = render_to_string(
+        'emails/banca_finalizada.html',
+        contexto
+    )
+
+    email = EmailMultiAlternatives(
+        subject=assunto,
+        body=mensagem_texto,
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        to=[destinatario],
+    )
+
+    email.attach_alternative(
+        mensagem_html,
+        'text/html'
+    )
+
+    email.send(
+        fail_silently=False
+    )
+
+    return True

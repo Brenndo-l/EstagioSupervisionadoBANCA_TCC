@@ -140,12 +140,19 @@
         como requisito parcial para a obtenção do grau de
         Bacharel em Sistemas de Informação, com aprovação
         registrada pela banca examinadora abaixo, com nota
-        igual a ________
-        (________________________________________).
+        igual a
+        {% if nota is not None %}
+            <strong>{{ nota|floatformat:2 }}</strong>.
+        {% else %}
+            ________
+            (________________________________________).
+        {% endif %}
         Ao final, o discente foi informado da
         obrigatoriedade da apresentação da versão final do
         Trabalho de Conclusão de Curso até a data limite de
-        ____ de __________________ de ______, contendo todos
+        <strong>
+            {{ data_limite_versao_final|date:"d/m/Y" }}
+        </strong>, contendo todos
         os ajustes sugeridos pela Banca Examinadora, sob
         consentimento de seu orientador.
 

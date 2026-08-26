@@ -9,6 +9,7 @@ from .forms import (
     PerfilDocenteForm,
     SolicitacaoBancaForm,
     ReenvioConfirmacaoForm,
+    RegistroNotaBancaForm,
 )
 from .models import (
     BancaTCC,
@@ -40,15 +41,20 @@ from django.utils import timezone
 from django.core.paginator import Paginator
 from django.views.decorators.http import require_POST
 from django.core.exceptions import ValidationError
-from .services import expirar_solicitacoes_vencidas
+from .services import (
+    atualizar_status_bancas,
+    expirar_solicitacoes_vencidas,
+)
 from django.conf import settings
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from .emails import (
     enviar_email_confirmacao_docente,
     enviar_email_decisao_solicitacao,
+    enviar_email_banca_finalizada,
 )
 from .tokens import token_confirmacao_email
+from datetime import timedelta
 
 def usuario_pode_acessar_solicitacao(
     user,
@@ -103,7 +109,52 @@ def usuario_pode_acessar_solicitacao(
 
     return perfil_logado.id in participantes_ids
 
+def obter_banca_da_solicitacao(solicitacao):
+    """
+    Retorna a banca oficial vinculada à solicitação.
 
+    O segundo filtro mantém compatibilidade com
+    registros antigos.
+    """
+
+    try:
+
+        return solicitacao.banca_tcc
+
+    except BancaTCC.DoesNotExist:
+
+        banca = (
+            BancaTCC.objects
+            .filter(
+                projeto_tcc=(
+                    solicitacao.projeto_tcc
+                ),
+                espaco=solicitacao.espaco,
+                data_horario_inicio=(
+                    solicitacao.opcao_data_inicio
+                ),
+                data_horario_fim=(
+                    solicitacao.opcao_data_fim
+                ),
+            )
+            .order_by('id')
+            .first()
+        )
+
+        if (
+            banca
+            and banca.solicitacao_id is None
+        ):
+
+            banca.solicitacao = solicitacao
+
+            banca.save(
+                update_fields=[
+                    'solicitacao',
+                ]
+            )
+
+        return banca
 
 # 1. Tela inicial do sistema (Dashboard com os botões principais)
 # 1. Tela inicial do sistema
@@ -995,6 +1046,7 @@ def detalhar_solicitacao(
     solicitacao_id
 ):
     expirar_solicitacoes_vencidas()
+    atualizar_status_bancas()
 
     solicitacao = get_object_or_404(
         SolicitacaoAgendamento.objects.select_related(
@@ -1042,10 +1094,38 @@ def detalhar_solicitacao(
             'visualizar_bancas'
         )
 
+    banca = obter_banca_da_solicitacao(
+    solicitacao
+    )
+
+    perfil_logado = None
+
+    if not is_coordenacao:
+
+        perfil_logado = (
+            pUsuario.objects
+            .filter(
+                usuario=request.user,
+                perfil='DOCENTE',
+                usuario__is_active=True,
+            )
+            .first()
+        )
+
     contexto = {
         'solicitacao': solicitacao,
         'composicao': composicao,
         'is_coordenacao': is_coordenacao,
+        'banca': banca,
+        'pode_registrar_nota': (
+            banca is not None
+            and composicao is not None
+            and perfil_logado is not None
+            and solicitacao.status == 'APROVADA'
+            and composicao.orientador_id == perfil_logado.id
+            and banca.status == 'AGUARDANDO_NOTA'
+            and banca.nota is None
+        ),
         'pode_avaliar': (
             is_coordenacao
             and solicitacao.status == 'EM_ANÁLISE'
@@ -1060,6 +1140,251 @@ def detalhar_solicitacao(
         request,
         'detalhar_solicitacao.html',
         contexto
+    )
+
+@docente_required
+def registrar_nota_banca(
+    request,
+    banca_id
+):
+    atualizar_status_bancas()
+
+    banca = get_object_or_404(
+        BancaTCC.objects.select_related(
+            'solicitacao',
+            'projeto_tcc',
+            'projeto_tcc__discente',
+            'espaco',
+        ),
+        pk=banca_id
+    )
+
+    solicitacao = banca.solicitacao
+
+    if solicitacao is None:
+
+        solicitacao = (
+            SolicitacaoAgendamento.objects
+            .filter(
+                projeto_tcc=banca.projeto_tcc,
+                espaco=banca.espaco,
+                opcao_data_inicio=(
+                    banca.data_horario_inicio
+                ),
+                opcao_data_fim=(
+                    banca.data_horario_fim
+                ),
+                status='APROVADA',
+            )
+            .order_by('id')
+            .first()
+        )
+
+        if solicitacao:
+
+            banca.solicitacao = solicitacao
+
+            banca.save(
+                update_fields=[
+                    'solicitacao',
+                ]
+            )
+
+    if solicitacao is None:
+
+        messages.error(
+            request,
+            'Não foi encontrada a solicitação aprovada '
+            'vinculada a esta banca.'
+        )
+
+        return redirect(
+            'visualizar_bancas'
+        )
+
+    if solicitacao.status != 'APROVADA':
+
+        messages.error(
+            request,
+            'A nota somente pode ser registrada para '
+            'uma solicitação aprovada.'
+        )
+
+        return redirect(
+            'detalhar_solicitacao',
+            solicitacao_id=solicitacao.id
+        )
+
+    composicao = (
+        ComposicaoBanca.objects
+        .select_related(
+            'orientador__usuario'
+        )
+        .filter(
+            solicitacao=solicitacao
+        )
+        .first()
+    )
+
+    perfil_logado = get_object_or_404(
+        pUsuario,
+        usuario=request.user,
+        perfil='DOCENTE',
+        usuario__is_active=True,
+    )
+
+    if (
+        composicao is None
+        or composicao.orientador_id
+        != perfil_logado.id
+    ):
+
+        messages.error(
+            request,
+            'Somente o professor orientador pode '
+            'registrar a nota desta banca.'
+        )
+
+        return redirect(
+            'detalhar_solicitacao',
+            solicitacao_id=solicitacao.id
+        )
+
+    if (
+        banca.status == 'FINALIZADA'
+        or banca.nota is not None
+    ):
+
+        messages.warning(
+            request,
+            'A nota desta banca já foi registrada.'
+        )
+
+        return redirect(
+            'detalhar_solicitacao',
+            solicitacao_id=solicitacao.id
+        )
+
+    if (
+        banca.data_horario_fim
+        > timezone.now()
+    ):
+
+        messages.warning(
+            request,
+            'A nota somente pode ser registrada depois '
+            'do término previsto da defesa.'
+        )
+
+        return redirect(
+            'detalhar_solicitacao',
+            solicitacao_id=solicitacao.id
+        )
+
+    if request.method == 'POST':
+
+        form = RegistroNotaBancaForm(
+            request.POST,
+            instance=banca
+        )
+
+        if form.is_valid():
+
+            with transaction.atomic():
+
+                banca_bloqueada = get_object_or_404(
+                    BancaTCC.objects
+                    .select_for_update(),
+                    pk=banca.id
+                )
+
+                if (
+                    banca_bloqueada.status
+                    == 'FINALIZADA'
+                    or banca_bloqueada.nota
+                    is not None
+                ):
+
+                    messages.warning(
+                        request,
+                        'A nota desta banca já '
+                        'foi registrada.'
+                    )
+
+                    return redirect(
+                        'detalhar_solicitacao',
+                        solicitacao_id=(
+                            solicitacao.id
+                        )
+                    )
+
+                banca_bloqueada.nota = (
+                    form.cleaned_data['nota']
+                )
+
+                banca_bloqueada.status = (
+                    'FINALIZADA'
+                )
+
+                banca_bloqueada.nota_registrada_por = (
+                    request.user
+                )
+
+                banca_bloqueada.data_registro_nota = (
+                    timezone.now()
+                )
+
+                banca_bloqueada.save(
+                    update_fields=[
+                        'nota',
+                        'status',
+                        'nota_registrada_por',
+                        'data_registro_nota',
+                    ]
+                )
+
+            messages.success(
+                request,
+                'Nota registrada e banca '
+                'finalizada com sucesso.'
+            )
+
+            try:
+
+                enviar_email_banca_finalizada(
+                    request,
+                    banca_bloqueada,
+                    solicitacao
+                )
+
+            except Exception:
+
+                messages.warning(
+                    request,
+                    'A banca foi finalizada, mas não '
+                    'foi possível enviar a '
+                    'notificação por e-mail.'
+                )
+
+            return redirect(
+                'detalhar_solicitacao',
+                solicitacao_id=solicitacao.id
+            )
+
+    else:
+
+        form = RegistroNotaBancaForm(
+            instance=banca
+        )
+
+    return render(
+        request,
+        'registrar_nota_banca.html',
+        {
+            'banca': banca,
+            'solicitacao': solicitacao,
+            'form': form,
+        }
     )
 
 @docente_required
@@ -1833,10 +2158,9 @@ def avaliar_solicitacao(
                     # A BancaTCC oficial só é criada
                     # depois de todas as validações.
                     BancaTCC.objects.create(
+                        solicitacao=solicitacao_bloqueada,
                         projeto_tcc=projeto,
-                        espaco=(
-                            solicitacao_bloqueada.espaco
-                        ),
+                        espaco=solicitacao_bloqueada.espaco,
                         data_horario_inicio=(
                             solicitacao_bloqueada
                             .opcao_data_inicio
@@ -2197,6 +2521,8 @@ def baixar_documento(request, modelo_id):
 @usuario_interno_required
 def gerar_pdf_banca(request, solicitacao_id):
 
+    atualizar_status_bancas()
+
     # A minuta somente pode ser gerada para uma
     # solicitação que já tenha sido aprovada.
     solicitacao = get_object_or_404(
@@ -2240,7 +2566,11 @@ def gerar_pdf_banca(request, solicitacao_id):
 
         return redirect('documentos')
 
-        # A Coordenação, o solicitante e os integrantes
+    banca = obter_banca_da_solicitacao(
+        solicitacao
+    )
+
+    # A Coordenação, o solicitante e os integrantes
     # da banca podem gerar o documento aprovado.
     if not usuario_pode_acessar_solicitacao(
         request.user,
@@ -2344,6 +2674,22 @@ def gerar_pdf_banca(request, solicitacao_id):
         'data_fim': solicitacao.opcao_data_fim,
         'data_defesa': (
             solicitacao.opcao_data_inicio
+        ),
+        'nota': (
+            banca.nota
+            if banca is not None
+            else None
+        ),
+
+        'data_limite_versao_final': (
+            banca.data_limite_versao_final
+            if banca is not None
+            else (
+                timezone.localtime(
+                    solicitacao.opcao_data_inicio
+                ).date()
+                + timedelta(days=30)
+            )
         ),
     }
 

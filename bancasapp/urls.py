@@ -188,4 +188,9 @@ urlpatterns = [
         views.meu_perfil,
         name='meu_perfil'
     ),
+    path(
+        'bancas/<int:banca_id>/registrar-nota/',
+        views.registrar_nota_banca,
+        name='registrar_nota_banca'
+    ),
 ]

@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="dashboard-header">
+
+    <h1>Registrar Nota da Banca</h1>
+
+    <p>
+        Esta ação finaliza a banca e complementa o documento
+        institucional com o resultado da defesa.
+    </p>
+
+</div>
+
+<div class="table-container">
+
+    <h2>Dados da defesa</h2>
+
+    <table>
+        <tbody>
+            <tr>
+                <th>Discente</th>
+                <td>
+                    {{ solicitacao.projeto_tcc.discente.nome }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>Título do TCC</th>
+                <td>
+                    {{ solicitacao.projeto_tcc.titulo }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>Data da defesa</th>
+                <td>
+                    {{ banca.data_horario_inicio|date:"d/m/Y H:i" }}
+                    até
+                    {{ banca.data_horario_fim|date:"H:i" }}
+                </td>
+            </tr>
+
+            <tr>
+                <th>Local</th>
+                <td>{{ banca.espaco.nome }}</td>
+            </tr>
+
+            <tr>
+                <th>Prazo da versão final</th>
+                <td>
+                    {{ banca.data_limite_versao_final|date:"d/m/Y" }}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+</div>
+
+<div
+    class="form-container"
+    style="margin-top: 30px;"
+>
+
+    <h2>Resultado da banca</h2>
+
+    <form method="POST">
+
+        {% csrf_token %}
+
+        <p>
+            <label for="{{ form.nota.id_for_label }}">
+                <strong>{{ form.nota.label }}</strong>
+            </label>
+        </p>
+
+        {{ form.nota }}
+
+        {% if form.nota.help_text %}
+            <p style="font-size: 13px; color: #666;">
+                {{ form.nota.help_text }}
+            </p>
+        {% endif %}
+
+        {% for erro in form.nota.errors %}
+            <p style="color: #d9534f;">
+                {{ erro }}
+            </p>
+        {% endfor %}
+
+        <button
+            type="submit"
+            class="btn-enviar"
+        >
+            REGISTRAR NOTA E FINALIZAR BANCA
+        </button>
+
+    </form>
+
+</div>
+
+<div style="margin-top: 20px;">
+    <a
+        href="{% url 'detalhar_solicitacao' solicitacao.id %}"
+        class="btn-filter"
+    >
+        VOLTAR AOS DETALHES
+    </a>
+</div>
+
+{% endblock %}

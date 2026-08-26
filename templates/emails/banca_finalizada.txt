@@ -1,0 +1,16 @@
+Olá, {% firstof usuario.get_full_name usuario.username %}.
+
+A banca do TCC "{{ solicitacao.projeto_tcc.titulo }}" foi finalizada no SGTCC.
+
+Discente: {{ solicitacao.projeto_tcc.discente.nome }}
+Nota final: {{ banca.nota|floatformat:2 }}
+Prazo para a versão final: {{ banca.data_limite_versao_final|date:"d/m/Y" }}
+Status da banca: {{ banca.get_status_display }}
+
+O documento institucional foi complementado com a nota e pode ser gerado novamente nos detalhes da solicitação.
+
+{{ link_detalhes }}
+
+SGTCC
+Sistema de Gerenciamento de Bancas de TCC
+Universidade Federal do Acre

@@ -284,6 +284,78 @@
 
 {% endif %}
 
+{% if banca %}
+
+    <div
+        class="table-container"
+        style="margin-top: 30px;"
+    >
+        <h2>Situação da banca</h2>
+
+        <table>
+            <tbody>
+                <tr>
+                    <th>Status da banca</th>
+                    <td>
+                        {% if banca.status == 'AGENDADA' %}
+                            <span class="status-badge status-aprovada">
+                                Agendada
+                            </span>
+
+                        {% elif banca.status == 'AGUARDANDO_NOTA' %}
+                            <span class="status-badge status-analise">
+                                Aguardando nota
+                            </span>
+
+                        {% else %}
+                            <span class="status-badge status-aprovada">
+                                Finalizada
+                            </span>
+                        {% endif %}
+                    </td>
+                </tr>
+
+                <tr>
+                    <th>Nota final</th>
+                    <td>
+                        {% if banca.nota is not None %}
+                            {{ banca.nota|floatformat:2 }}
+                        {% else %}
+                            Ainda não registrada
+                        {% endif %}
+                    </td>
+                </tr>
+
+                <tr>
+                    <th>Prazo da versão final</th>
+                    <td>
+                        {{ banca.data_limite_versao_final|date:"d/m/Y" }}
+                    </td>
+                </tr>
+
+                {% if banca.data_registro_nota %}
+                    <tr>
+                        <th>Nota registrada em</th>
+                        <td>
+                            {{ banca.data_registro_nota|date:"d/m/Y H:i" }}
+                        </td>
+                    </tr>
+                {% endif %}
+
+                {% if banca.nota_registrada_por %}
+                    <tr>
+                        <th>Nota registrada por</th>
+                        <td>
+                            {{ banca.nota_registrada_por.get_full_name|default:banca.nota_registrada_por.username }}
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
+{% endif %}
+
 <div style="
     display: flex;
     gap: 10px;
@@ -314,6 +386,15 @@
             class="btn-download"
         >
             GERAR DOCUMENTO DA BANCA
+        </a>
+    {% endif %}
+
+    {% if pode_registrar_nota %}
+        <a
+            href="{% url 'registrar_nota_banca' banca.id %}"
+            class="btn-download"
+        >
+            REGISTRAR NOTA
         </a>
     {% endif %}
 

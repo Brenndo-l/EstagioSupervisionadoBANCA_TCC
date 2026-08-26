@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Banca finalizada</title>
+</head>
+
+<body style="font-family: Arial, sans-serif; color: #333;">
+
+    <div style="max-width: 600px; margin: 0 auto; padding: 30px;">
+
+        <h1 style="color: #2b3990;">
+            Banca finalizada
+        </h1>
+
+        <p>
+            Olá,
+            <strong>
+                {% firstof usuario.get_full_name usuario.username %}
+            </strong>.
+        </p>
+
+        <p>
+            A banca do TCC
+            <strong>{{ solicitacao.projeto_tcc.titulo }}</strong>
+            foi finalizada no SGTCC.
+        </p>
+
+        <table style="width: 100%; border-collapse: collapse;">
+            <tbody>
+                <tr>
+                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">
+                        Discente
+                    </th>
+                    <td style="border: 1px solid #ddd; padding: 10px;">
+                        {{ solicitacao.projeto_tcc.discente.nome }}
+                    </td>
+                </tr>
+
+                <tr>
+                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">
+                        Nota final
+                    </th>
+                    <td style="border: 1px solid #ddd; padding: 10px;">
+                        {{ banca.nota|floatformat:2 }}
+                    </td>
+                </tr>
+
+                <tr>
+                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">
+                        Prazo da versão final
+                    </th>
+                    <td style="border: 1px solid #ddd; padding: 10px;">
+                        {{ banca.data_limite_versao_final|date:"d/m/Y" }}
+                    </td>
+                </tr>
+
+                <tr>
+                    <th style="border: 1px solid #ddd; padding: 10px; text-align: left;">
+                        Status
+                    </th>
+                    <td style="border: 1px solid #ddd; padding: 10px;">
+                        {{ banca.get_status_display }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>
+            O documento institucional foi complementado com
+            a nota e pode ser gerado novamente nos detalhes.
+        </p>
+
+        <p style="margin: 30px 0;">
+            <a
+                href="{{ link_detalhes }}"
+                style="
+                    background-color: #2b3990;
+                    border-radius: 5px;
+                    color: white;
+                    display: inline-block;
+                    font-weight: bold;
+                    padding: 12px 22px;
+                    text-decoration: none;
+                "
+            >
+                Ver detalhes no SGTCC
+            </a>
+        </p>
+
+        <hr style="border: 0; border-top: 1px solid #ddd;">
+
+        <p style="color: #666; font-size: 13px;">
+            SGTCC — Sistema de Gerenciamento de Bancas de TCC<br>
+            Universidade Federal do Acre
+        </p>
+
+    </div>
+
+</body>
+
+</html>
