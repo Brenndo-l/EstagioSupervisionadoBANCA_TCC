@@ -2034,6 +2034,97 @@ class AvaliacaoSolicitacaoTests(TestCase):
                 projeto_tcc=self.projeto
             ).exists()
         )
+    def test_aprovacao_envia_email_ao_docente(self):
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        self.client.post(
+            self.url_avaliacao,
+            {
+                'acao': 'aprovar',
+                'motivo_decisao': (
+                    'Dados conferidos pela Coordenação.'
+                ),
+            }
+        )
+
+        self.assertEqual(
+            len(mail.outbox),
+            1
+        )
+
+        email = mail.outbox[0]
+
+        self.assertEqual(
+            email.to,
+            ['docente_avaliacao@ufac.br']
+        )
+
+        self.assertIn(
+            'Banca aprovada no SGTCC',
+            email.subject
+        )
+
+        self.assertIn(
+            'Dados conferidos pela Coordenação.',
+            email.body
+        )
+
+        self.assertIn(
+            reverse(
+                'detalhar_solicitacao',
+                args=[self.solicitacao.id]
+            ),
+            email.body
+        )
+
+    def test_recusa_envia_email_com_justificativa(self):
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        self.client.post(
+            self.url_avaliacao,
+            {
+                'acao': 'recusar',
+                'motivo_decisao': (
+                    'Solicitação recusada por conflito administrativo.'
+                ),
+            }
+        )
+
+        self.assertEqual(
+            len(mail.outbox),
+            1
+        )
+
+        email = mail.outbox[0]
+
+        self.assertEqual(
+            email.to,
+            ['docente_avaliacao@ufac.br']
+        )
+
+        self.assertIn(
+            'Solicitação de banca recusada no SGTCC',
+            email.subject
+        )
+
+        self.assertIn(
+            'Solicitação recusada por conflito administrativo.',
+            email.body
+        )
+
+        self.assertIn(
+            reverse(
+                'detalhar_solicitacao',
+                args=[self.solicitacao.id]
+            ),
+            email.body
+        )
 
     def test_solicitacao_nao_pode_ser_decidida_duas_vezes(self):
 

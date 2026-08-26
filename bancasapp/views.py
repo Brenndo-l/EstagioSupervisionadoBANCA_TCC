@@ -43,7 +43,10 @@ from .services import expirar_solicitacoes_vencidas
 from django.conf import settings
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
-from .emails import enviar_email_confirmacao_docente
+from .emails import (
+    enviar_email_confirmacao_docente,
+    enviar_email_decisao_solicitacao,
+)
 from .tokens import token_confirmacao_email
 
 def usuario_pode_acessar_solicitacao(
@@ -1754,6 +1757,21 @@ def avaliar_solicitacao(
                         'data_decisao',
                         'decidida_por',
                     ]
+                )
+
+            try:
+
+                enviar_email_decisao_solicitacao(
+                    request,
+                    solicitacao_bloqueada
+                )
+
+            except Exception:
+
+                messages.warning(
+                    request,
+                    'A decisão foi registrada, mas não foi '
+                    'possível enviar a notificação por e-mail.'
                 )
 
             if acao == 'aprovar':

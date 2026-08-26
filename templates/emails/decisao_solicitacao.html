@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Decisão da solicitação de banca</title>
+</head>
+
+<body style="font-family: Arial, sans-serif; color: #333;">
+
+    <div
+        style="
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 30px;
+        "
+    >
+
+        <h1 style="color: #2b3990;">
+
+            {% if aprovada %}
+                Banca aprovada
+            {% else %}
+                Solicitação recusada
+            {% endif %}
+
+        </h1>
+
+        <p>
+            Olá,
+
+            <strong>
+                {% firstof usuario.get_full_name usuario.username %}
+            </strong>.
+        </p>
+
+        <p>
+            {% if aprovada %}
+                Sua solicitação de banca foi aprovada
+                pela Coordenação.
+            {% else %}
+                Sua solicitação de banca foi recusada
+                pela Coordenação.
+            {% endif %}
+        </p>
+
+        <table
+            style="
+                width: 100%;
+                border-collapse: collapse;
+            "
+        >
+            <tbody>
+
+                <tr>
+                    <th
+                        style="
+                            border: 1px solid #ddd;
+                            padding: 10px;
+                            text-align: left;
+                        "
+                    >
+                        TCC
+                    </th>
+
+                    <td
+                        style="
+                            border: 1px solid #ddd;
+                            padding: 10px;
+                        "
+                    >
+                        {{ solicitacao.projeto_tcc.titulo }}
+                    </td>
+                </tr>
+
+                <tr>
+                    <th
+                        style="
+                            border: 1px solid #ddd;
+                            padding: 10px;
+                            text-align: left;
+                        "
+                    >
+                        Discente
+                    </th>
+
+                    <td
+                        style="
+                            border: 1px solid #ddd;
+                            padding: 10px;
+                        "
+                    >
+                        {{ solicitacao.projeto_tcc.discente.nome }}
+                    </td>
+                </tr>
+
+                <tr>
+                    <th
+                        style="
+                            border: 1px solid #ddd;
+                            padding: 10px;
+                            text-align: left;
+                        "
+                    >
+                        Data da defesa
+                    </th>
+
+                    <td
+                        style="
+                            border: 1px solid #ddd;
+                            padding: 10px;
+                        "
+                    >
+                        {{ solicitacao.opcao_data_inicio|date:"d/m/Y H:i" }}
+                    </td>
+                </tr>
+
+                <tr>
+                    <th
+                        style="
+                            border: 1px solid #ddd;
+                            padding: 10px;
+                            text-align: left;
+                        "
+                    >
+                        Local
+                    </th>
+
+                    <td
+                        style="
+                            border: 1px solid #ddd;
+                            padding: 10px;
+                        "
+                    >
+                        {{ solicitacao.espaco.nome }}
+                    </td>
+                </tr>
+
+                <tr>
+                    <th
+                        style="
+                            border: 1px solid #ddd;
+                            padding: 10px;
+                            text-align: left;
+                        "
+                    >
+                        Status
+                    </th>
+
+                    <td
+                        style="
+                            border: 1px solid #ddd;
+                            padding: 10px;
+                        "
+                    >
+                        <strong>
+                            {{ solicitacao.get_status_display }}
+                        </strong>
+                    </td>
+                </tr>
+
+                <tr>
+                    <th
+                        style="
+                            border: 1px solid #ddd;
+                            padding: 10px;
+                            text-align: left;
+                        "
+                    >
+                        Justificativa
+                    </th>
+
+                    <td
+                        style="
+                            border: 1px solid #ddd;
+                            padding: 10px;
+                        "
+                    >
+                        {{ solicitacao.motivo_decisao|default:"Não informada."|linebreaksbr }}
+                    </td>
+                </tr>
+
+            </tbody>
+        </table>
+
+        <p style="margin: 30px 0;">
+
+            <a
+                href="{{ link_detalhes }}"
+                style="
+                    background-color: #2b3990;
+                    border-radius: 5px;
+                    color: white;
+                    display: inline-block;
+                    font-weight: bold;
+                    padding: 12px 22px;
+                    text-decoration: none;
+                "
+            >
+                Ver detalhes no SGTCC
+            </a>
+
+        </p>
+
+        <hr style="border: 0; border-top: 1px solid #ddd;">
+
+        <p style="color: #666; font-size: 13px;">
+            SGTCC — Sistema de Gerenciamento de Bancas de TCC<br>
+            Universidade Federal do Acre
+        </p>
+
+    </div>
+
+</body>
+
+</html>
