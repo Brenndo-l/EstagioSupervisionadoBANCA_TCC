@@ -113,6 +113,17 @@
                     </tr>
                 {% endif %}
 
+                <tr>
+                    <th>Presidente indicado</th>
+                    <td>
+                        {% if composicao.presidente %}
+                            {{ composicao.presidente }}
+                        {% else %}
+                            Não indicado pelo orientador
+                        {% endif %}
+                    </td>
+                </tr>
+
                 {% if composicao.nome_avaliador_externo %}
                     <tr>
                         <th>Avaliador externo</th>
@@ -159,6 +170,26 @@
 
     <form method="POST">
         {% csrf_token %}
+
+        <p>
+            <label for="{{ form.presidente.id_for_label }}">
+                <strong>{{ form.presidente.label }}</strong>
+            </label>
+        </p>
+
+        {{ form.presidente }}
+
+        {% if form.presidente.help_text %}
+            <p style="font-size: 13px; color: #666;">
+                {{ form.presidente.help_text }}
+            </p>
+        {% endif %}
+
+        {% for erro in form.presidente.errors %}
+            <p style="color: #d9534f;">
+                {{ erro }}
+            </p>
+        {% endfor %}
 
         <p>
             <label for="{{ form.motivo_decisao.id_for_label }}">

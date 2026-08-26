@@ -416,6 +416,10 @@ def editar_solicitacao_coordenacao(
             composicao.segundo_avaliador_interno
         ),
 
+        'presidente': (
+            composicao.presidente
+        ),
+
         'nome_avaliador_externo': (
             composicao.nome_avaliador_externo
         ),
@@ -517,6 +521,12 @@ def editar_solicitacao_coordenacao(
                     ]
                 )
 
+                composicao_bloqueada.presidente = (
+                    form.cleaned_data[
+                        'presidente'
+                    ]
+                )
+
                 composicao_bloqueada.nome_avaliador_externo = (
                     form.cleaned_data[
                         'nome_avaliador_externo'
@@ -535,6 +545,7 @@ def editar_solicitacao_coordenacao(
                         'coorientador',
                         'avaliador_interno',
                         'segundo_avaliador_interno',
+                        'presidente',
                         'nome_avaliador_externo',
                         'instituicao_avaliador_externo',
                     ]
@@ -771,6 +782,12 @@ def solicitar_banca(request):
                         ]
                     ),
 
+                    presidente=(
+                        form.cleaned_data[
+                            'presidente'
+                        ]
+                    ),
+
                     nome_avaliador_externo=(
                         form.cleaned_data[
                             'nome_avaliador_externo'
@@ -975,6 +992,7 @@ def detalhar_solicitacao(
             'coorientador__usuario',
             'avaliador_interno__usuario',
             'segundo_avaliador_interno__usuario',
+            'presidente__usuario',
         )
         .filter(
             solicitacao=solicitacao
@@ -1481,6 +1499,11 @@ def criar_formulario_revalidacao(
             or ''
         ),
 
+        'presidente': (
+            composicao.presidente_id
+            or ''
+        ),
+
         'nome_avaliador_externo': (
             composicao.nome_avaliador_externo
             or ''
@@ -1527,6 +1550,7 @@ def avaliar_solicitacao(
             'coorientador__usuario',
             'avaliador_interno__usuario',
             'segundo_avaliador_interno__usuario',
+            'presidente__usuario',
         )
         .filter(
             solicitacao=solicitacao
@@ -1564,12 +1588,14 @@ def avaliar_solicitacao(
 
     if request.method == 'POST':
 
-        form = AvaliacaoSolicitacaoForm(
-            request.POST
-        )
-
         acao = request.POST.get(
             'acao'
+        )
+
+        form = AvaliacaoSolicitacaoForm(
+            request.POST,
+            composicao=composicao,
+            acao=acao
         )
 
         # Protege contra valores enviados
@@ -1703,6 +1729,26 @@ def avaliar_solicitacao(
 
                 if acao == 'aprovar':
 
+                    composicao_bloqueada = (
+                        get_object_or_404(
+                            ComposicaoBanca.objects
+                            .select_for_update(),
+                            pk=composicao.pk
+                        )
+                    )
+
+                    composicao_bloqueada.presidente = (
+                        form.cleaned_data[
+                            'presidente'
+                        ]
+                    )
+
+                    composicao_bloqueada.save(
+                        update_fields=[
+                            'presidente',
+                        ]
+                    )
+
                     solicitacao_bloqueada.status = (
                         'APROVADA'
                     )
@@ -1794,7 +1840,9 @@ def avaliar_solicitacao(
 
     else:
 
-        form = AvaliacaoSolicitacaoForm()
+        form = AvaliacaoSolicitacaoForm(
+            composicao=composicao
+        )
 
     contexto = {
         'solicitacao': solicitacao,

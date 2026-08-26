@@ -1352,6 +1352,7 @@ class AvaliacaoSolicitacaoTests(TestCase):
             solicitacao=self.solicitacao,
             orientador=self.docente,
             avaliador_interno=self.avaliador,
+            presidente=self.avaliador,
             nome_avaliador_externo='Avaliador Externo',
             instituicao_avaliador_externo='Instituição Externa'
         )
@@ -1979,6 +1980,97 @@ class AvaliacaoSolicitacaoTests(TestCase):
         self.assertEqual(
             banca.data_horario_fim,
             self.solicitacao.opcao_data_fim
+        )
+
+    def test_presidente_e_obrigatorio_para_aprovar(self):
+
+        self.composicao.presidente = None
+
+        self.composicao.save(
+            update_fields=['presidente']
+        )
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.post(
+            self.url_avaliacao,
+            {
+                'acao': 'aprovar',
+                'presidente': '',
+                'motivo_decisao': (
+                    'Tentativa sem definir presidente.'
+                ),
+            }
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
+            response,
+            'Selecione o presidente da banca'
+        )
+
+        self.solicitacao.refresh_from_db()
+
+        self.assertEqual(
+            self.solicitacao.status,
+            'EM_ANÁLISE'
+        )
+
+        self.assertEqual(
+            BancaTCC.objects.count(),
+            0
+        )
+
+    def test_coordenacao_define_presidente_ao_aprovar(self):
+
+        self.composicao.presidente = None
+
+        self.composicao.save(
+            update_fields=['presidente']
+        )
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.post(
+            self.url_avaliacao,
+            {
+                'acao': 'aprovar',
+                'presidente': self.avaliador.id,
+                'motivo_decisao': (
+                    'Presidente definido pela Coordenação.'
+                ),
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+        self.solicitacao.refresh_from_db()
+        self.composicao.refresh_from_db()
+
+        self.assertEqual(
+            self.solicitacao.status,
+            'APROVADA'
+        )
+
+        self.assertEqual(
+            self.composicao.presidente,
+            self.avaliador
+        )
+
+        self.assertEqual(
+            BancaTCC.objects.count(),
+            1
         )
 
     def test_recusa_nao_cria_banca(self):

@@ -191,6 +191,19 @@
         </p>
 
         <p>
+            <label for="{{ form.presidente.id_for_label }}">
+                <strong>{{ form.presidente.label }}</strong>
+            </label>
+
+            {{ form.presidente }}
+        </p>
+
+        <p style="font-size: 13px; color: #666;">
+            Se não houver indicação, a Coordenação selecionará
+            um dos integrantes internos antes da aprovação.
+        </p>
+
+        <p>
             <label for="{{ form.nome_avaliador_externo.id_for_label }}">
                 <strong>{{ form.nome_avaliador_externo.label }}</strong>
             </label>

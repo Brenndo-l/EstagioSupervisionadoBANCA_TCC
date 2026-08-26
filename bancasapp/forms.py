@@ -411,6 +411,13 @@ class SolicitacaoBancaForm(forms.ModelForm):
         empty_label='Sem segundo avaliador'
     )
 
+    presidente = forms.ModelChoiceField(
+        queryset=pUsuario.objects.none(),
+        required=False,
+        label='Presidente indicado (Opcional)',
+        empty_label='A Coordenação selecionará'
+    )
+
     nome_avaliador_externo = forms.CharField(
         max_length=150,
         required=False,
@@ -506,6 +513,7 @@ class SolicitacaoBancaForm(forms.ModelForm):
             'coorientador',
             'avaliador_interno',
             'segundo_avaliador_interno',
+            'presidente',
         ]
 
         for nome_campo in campos_docentes:
@@ -666,6 +674,10 @@ class SolicitacaoBancaForm(forms.ModelForm):
             'segundo_avaliador_interno'
         )
 
+        presidente = cleaned_data.get(
+            'presidente'
+        )
+
         matricula_discente = cleaned_data.get(
             'matricula_discente'
         )
@@ -746,6 +758,19 @@ class SolicitacaoBancaForm(forms.ModelForm):
                 funcoes_por_docente[
                     docente.pk
                 ] = funcao
+
+        # A presidência é uma função adicional exercida
+        # por um dos integrantes internos já selecionados.
+        if (
+            presidente
+            and presidente.pk not in funcoes_por_docente
+        ):
+
+            self.add_error(
+                'presidente',
+                'O presidente deve ser um dos integrantes '
+                'internos selecionados para esta banca.'
+            )
 
         if espaco and data_inicio and data_fim:
 
@@ -960,6 +985,22 @@ class EdicaoSolicitacaoCoordenacaoForm(
       
 class AvaliacaoSolicitacaoForm(forms.Form):
 
+    presidente = forms.ModelChoiceField(
+        queryset=pUsuario.objects.none(),
+        required=False,
+        label='Presidente da banca',
+        empty_label='Selecione o presidente',
+        help_text=(
+            'Obrigatório para aprovação. O presidente deve '
+            'ser um dos integrantes internos da banca.'
+        ),
+        widget=forms.Select(
+            attrs={
+                'class': 'form-input',
+            }
+        )
+    )
+
     motivo_decisao = forms.CharField(
         label='Justificativa da decisão',
         required=True,
@@ -974,10 +1015,104 @@ class AvaliacaoSolicitacaoForm(forms.Form):
         ),
         error_messages={
             'required': (
-                'Informe uma justificativa antes de concluir a avaliação.'
+                'Informe uma justificativa antes de '
+                'concluir a avaliação.'
             ),
         }
     )
+
+    def __init__(
+        self,
+        *args,
+        composicao=None,
+        acao=None,
+        **kwargs
+    ):
+
+        self.composicao = composicao
+        self.acao = acao
+
+        super().__init__(
+            *args,
+            **kwargs
+        )
+
+        participantes_ids = []
+
+        if composicao:
+
+            participantes_ids = [
+                composicao.orientador_id,
+                composicao.coorientador_id,
+                composicao.avaliador_interno_id,
+                composicao.segundo_avaliador_interno_id,
+            ]
+
+            participantes_ids = [
+                participante_id
+                for participante_id in participantes_ids
+                if participante_id is not None
+            ]
+
+            if composicao.presidente_id:
+
+                self.fields[
+                    'presidente'
+                ].initial = (
+                    composicao.presidente_id
+                )
+
+        self.fields['presidente'].queryset = (
+            pUsuario.objects
+            .select_related('usuario')
+            .filter(
+                pk__in=participantes_ids,
+                perfil='DOCENTE',
+                usuario__is_active=True,
+            )
+            .order_by(
+                'usuario__first_name',
+                'usuario__last_name',
+                'usuario__username',
+            )
+        )
+
+    def clean(self):
+
+        cleaned_data = super().clean()
+
+        presidente = cleaned_data.get(
+            'presidente'
+        )
+
+        # Preserva a indicação que já tenha sido
+        # feita anteriormente pelo orientador.
+        if (
+            presidente is None
+            and self.composicao
+            and self.composicao.presidente_id
+        ):
+
+            presidente = (
+                self.composicao.presidente
+            )
+
+            cleaned_data['presidente'] = (
+                presidente
+            )
+
+        if (
+            self.acao == 'aprovar'
+            and presidente is None
+        ):
+
+            self.add_error(
+                'presidente',
+                'Selecione o presidente da banca antes '
+                'de aprovar a solicitação.'
+            )
+
+        return cleaned_data
 
 class EspacoFisicoForm(forms.ModelForm):
 
