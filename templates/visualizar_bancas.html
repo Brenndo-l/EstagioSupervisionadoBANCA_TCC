@@ -58,7 +58,8 @@
                     <th>Local</th>
                     <th>Data/Hora Início</th>
                     <th>Data/Hora Término</th>
-                    <th>Status</th>
+                    <th>Status da solicitação</th>
+                    <th>Situação da banca</th>
                     <th>Arquivo do TCC</th>
                     <th>Detalhes</th>
                 </tr>
@@ -89,29 +90,53 @@
                         <td>
 
                             {% if solicitacao.status == 'EM_ANÁLISE' %}
-
                                 <span class="status-badge status-analise">
                                     Em Análise
                                 </span>
 
                             {% elif solicitacao.status == 'APROVADA' %}
-
                                 <span class="status-badge status-aprovada">
                                     Aprovada
                                 </span>
-                            
-                            {% elif solicitacao.status == 'EXPIRADA' %}
 
+                            {% elif solicitacao.status == 'EXPIRADA' %}
                                 <span class="status-badge status-expirada">
                                     Expirada
                                 </span>
 
                             {% else %}
-
                                 <span class="status-badge status-recusada">
                                     Recusada
                                 </span>
+                            {% endif %}
 
+                        </td>
+
+                        <td>
+
+                            {% if solicitacao.status == 'APROVADA' %}
+
+                                {% if solicitacao.banca_tcc.status == 'AGENDADA' %}
+                                    <span class="status-badge status-agendada">
+                                        Agendada
+                                    </span>
+
+                                {% elif solicitacao.banca_tcc.status == 'AGUARDANDO_NOTA' %}
+                                    <span class="status-badge status-aguardando-nota">
+                                        Aguardando nota
+                                    </span>
+
+                                {% elif solicitacao.banca_tcc.status == 'FINALIZADA' %}
+                                    <span class="status-badge status-finalizada">
+                                        Finalizada
+                                    </span>
+
+                                {% else %}
+                                    Registro não localizado
+                                {% endif %}
+
+                            {% else %}
+                                —
                             {% endif %}
 
                         </td>
@@ -119,18 +144,14 @@
                         <td>
 
                             {% if solicitacao.arquivo_tcc %}
-
                                 <a
                                     href="{% url 'baixar_tcc_solicitacao' solicitacao.id %}"
                                     class="btn-download"
                                 >
                                     BAIXAR PDF
                                 </a>
-
                             {% else %}
-
                                 Não anexado
-
                             {% endif %}
 
                         </td>
@@ -150,7 +171,7 @@
 
                     <tr>
                         <td
-                            colspan="7"
+                            colspan="8"
                             style="text-align: center; padding: 20px;"
                         >
                             Nenhuma solicitação encontrada.
@@ -163,6 +184,37 @@
             </tbody>
 
         </table>
+
+        {% if solicitacoes.has_other_pages %}
+
+            <div class="paginacao">
+
+                {% if solicitacoes.has_previous %}
+                    <a
+                        class="btn-filter"
+                        href="?{% if status_atual %}status={{ status_atual }}&{% endif %}pagina={{ solicitacoes.previous_page_number }}"
+                    >
+                        Anterior
+                    </a>
+                {% endif %}
+
+                <span>
+                    Página {{ solicitacoes.number }}
+                    de {{ solicitacoes.paginator.num_pages }}
+                </span>
+
+                {% if solicitacoes.has_next %}
+                    <a
+                        class="btn-filter"
+                        href="?{% if status_atual %}status={{ status_atual }}&{% endif %}pagina={{ solicitacoes.next_page_number }}"
+                    >
+                        Próxima
+                    </a>
+                {% endif %}
+
+            </div>
+
+        {% endif %}
 
     </div>
 

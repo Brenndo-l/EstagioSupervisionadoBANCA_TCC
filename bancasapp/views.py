@@ -161,7 +161,8 @@ def obter_banca_da_solicitacao(solicitacao):
 @usuario_interno_required
 def dashboard(request):
 
-    expirar_solicitacoes_vencidas() 
+    expirar_solicitacoes_vencidas()
+    atualizar_status_bancas() 
 
     is_coordenacao = usuario_e_coordenacao(
         request.user
@@ -297,6 +298,7 @@ def dashboard(request):
 def solicitacoes_coordenacao(request):
 
     expirar_solicitacoes_vencidas()
+    atualizar_status_bancas()
 
     status_atual = request.GET.get(
         'status',
@@ -323,6 +325,7 @@ def solicitacoes_coordenacao(request):
             'usuario_solicitante',
             'usuario_solicitante__usuario',
             'decidida_por',
+            'banca_tcc'
         )
         .order_by(
             '-data_solicitacao',
@@ -661,6 +664,7 @@ def editar_solicitacao_coordenacao(
 def visualizar_bancas(request):
 
     expirar_solicitacoes_vencidas()
+    atualizar_status_bancas()
 
     consulta = (
         SolicitacaoAgendamento.objects
@@ -669,13 +673,11 @@ def visualizar_bancas(request):
             'projeto_tcc__discente',
             'espaco',
             'usuario_solicitante',
-            'usuario_solicitante__usuario'
+            'usuario_solicitante__usuario',
+            'banca_tcc',
         )
     )
 
-    # Esta tela pertence ao fluxo do docente.
-    # A Coordenação possui a tela administrativa
-    # "Analisar Solicitações".
     perfil_logado = pUsuario.objects.get(
         usuario=request.user,
         perfil='DOCENTE'
@@ -735,8 +737,17 @@ def visualizar_bancas(request):
 
         status_filtro = None
 
+    paginador = Paginator(
+        solicitacoes,
+        10
+    )
+
+    pagina_solicitacoes = paginador.get_page(
+        request.GET.get('pagina')
+    )
+
     contexto = {
-        'solicitacoes': solicitacoes,
+        'solicitacoes': pagina_solicitacoes,
         'status_atual': status_filtro,
     }
 
@@ -1095,7 +1106,7 @@ def detalhar_solicitacao(
         )
 
     banca = obter_banca_da_solicitacao(
-    solicitacao
+        solicitacao
     )
 
     perfil_logado = None
@@ -2362,22 +2373,24 @@ def pesquisar(request):
 @usuario_interno_required
 def documentos(request):
 
+    atualizar_status_bancas()
+
     eh_coordenacao = usuario_e_coordenacao(
-        request.user or
-        pUsuario.objects.filter(
-            usuario=request.user,
-            perfil='COORDENACAO'
-        ).exists()
+        request.user
     )
 
     if request.method == 'POST':
 
         if not eh_coordenacao:
+
             messages.error(
                 request,
                 'Apenas a coordenação pode enviar documentos.'
             )
-            return redirect('documentos')
+
+            return redirect(
+                'documentos'
+            )
 
         form = ModeloDocumentoForm(
             request.POST,
@@ -2385,8 +2398,13 @@ def documentos(request):
         )
 
         if form.is_valid():
-            modelo = form.save(commit=False)
+
+            modelo = form.save(
+                commit=False
+            )
+
             modelo.enviado_por = request.user
+
             modelo.save()
 
             messages.success(
@@ -2394,27 +2412,34 @@ def documentos(request):
                 'Modelo de documento enviado com sucesso.'
             )
 
-            return redirect('documentos')
+            return redirect(
+                'documentos'
+            )
 
     else:
+
         form = ModeloDocumentoForm()
 
-    modelos = ModeloDocumento.objects.all().order_by('-data_upload')
+    modelos = (
+        ModeloDocumento.objects
+        .select_related('enviado_por')
+        .order_by('-data_upload')
+    )
 
-    # Bancas aprovadas que podem ser usadas na geração de documentos
     consulta_solicitacoes = (
-    SolicitacaoAgendamento.objects
-    .select_related(
-        'projeto_tcc',
-        'projeto_tcc__discente',
-        'espaco',
-        'usuario_solicitante',
-        'usuario_solicitante__usuario',
+        SolicitacaoAgendamento.objects
+        .select_related(
+            'projeto_tcc',
+            'projeto_tcc__discente',
+            'espaco',
+            'usuario_solicitante',
+            'usuario_solicitante__usuario',
+            'banca_tcc',
+        )
+        .filter(
+            status='APROVADA'
+        )
     )
-    .filter(
-        status='APROVADA'
-    )
-)
 
     if not eh_coordenacao:
 
@@ -2486,35 +2511,116 @@ def documentos(request):
         contexto
     )
 
+
 @usuario_interno_required
 def baixar_documento(request, modelo_id):
 
-    # Procura o documento pelo ID ou retorna erro 404
-    modelo = get_object_or_404(ModeloDocumento, id=modelo_id)
+    modelo = get_object_or_404(
+        ModeloDocumento,
+        id=modelo_id
+    )
 
-    # Somente usuários internos do sistema podem baixar
     usuario_permitido = (
-        request.user.is_superuser or
-        pUsuario.objects.filter(
+        request.user.is_superuser
+        or pUsuario.objects.filter(
             usuario=request.user,
-            perfil__in=['DOCENTE', 'COORDENACAO']
+            perfil__in=[
+                'DOCENTE',
+                'COORDENACAO',
+            ]
         ).exists()
     )
 
     if not usuario_permitido:
+
         messages.error(
             request,
-            'Você não possui permissão para baixar este documento.'
+            'Você não possui permissão para baixar '
+            'este documento.'
         )
-        return redirect('dashboard')
 
-    # Nome original do arquivo, sem o caminho media/documentos/modelos/
-    nome_arquivo = Path(modelo.arquivo.name).name
+        return redirect(
+            'dashboard'
+        )
+
+    if not modelo.arquivo:
+
+        messages.warning(
+            request,
+            'Este modelo não possui um arquivo disponível.'
+        )
+
+        return redirect(
+            'documentos'
+        )
+
+    nome_arquivo = Path(
+        modelo.arquivo.name
+    ).name
+
+    try:
+
+        arquivo = modelo.arquivo.open(
+            'rb'
+        )
+
+    except (FileNotFoundError, OSError):
+
+        messages.error(
+            request,
+            'O arquivo deste modelo não foi encontrado '
+            'no armazenamento do sistema.'
+        )
+
+        return redirect(
+            'documentos'
+        )
 
     return FileResponse(
-        modelo.arquivo.open('rb'),
+        arquivo,
         as_attachment=True,
         filename=nome_arquivo
+    )
+
+
+@coordenacao_required
+@require_POST
+def excluir_documento(
+    request,
+    modelo_id
+):
+
+    modelo = get_object_or_404(
+        ModeloDocumento,
+        id=modelo_id
+    )
+
+    nome_documento = modelo.nome
+    nome_arquivo = modelo.arquivo.name
+    armazenamento = modelo.arquivo.storage
+
+    with transaction.atomic():
+
+        modelo.delete()
+
+        if nome_arquivo:
+
+            transaction.on_commit(
+                lambda: armazenamento.delete(
+                    nome_arquivo
+                )
+            )
+
+    messages.success(
+        request,
+        (
+            f'O modelo "{nome_documento}" '
+            'foi excluído com sucesso.'
+        )
+    )
+
+    return redirect(
+        'documentos'
     )
 
 

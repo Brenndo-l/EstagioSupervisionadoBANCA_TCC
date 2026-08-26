@@ -193,4 +193,9 @@ urlpatterns = [
         views.registrar_nota_banca,
         name='registrar_nota_banca'
     ),
+        path(
+        'documentos/<int:modelo_id>/excluir/',
+        views.excluir_documento,
+        name='excluir_documento'
+    ),
 ]

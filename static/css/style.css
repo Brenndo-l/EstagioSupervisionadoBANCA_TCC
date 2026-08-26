@@ -606,3 +606,56 @@ img {
 .btn-logout:hover {
     color: #facc22;
 }
+
+/* STATUS DO CICLO DA BANCA */
+
+.status-agendada {
+    background-color: #285296;
+}
+
+.status-aguardando-nota {
+    background-color: #f0ad4e;
+}
+
+.status-finalizada {
+    background-color: #5cb85c;
+}
+
+
+/* AÇÕES DOS MODELOS DE DOCUMENTOS */
+
+.acoes-tabela {
+    white-space: nowrap;
+}
+
+.form-acao-inline {
+    display: inline-block;
+    margin-left: 6px;
+}
+
+.btn-perigo {
+    background-color: #d9534f;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: bold;
+    padding: 8px 14px;
+}
+
+.btn-perigo:hover {
+    background-color: #b52b27;
+}
+
+
+/* PAGINAÇÃO */
+
+.paginacao {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 20px;
+}

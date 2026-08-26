@@ -99,7 +99,8 @@
                     <th>Local</th>
                     <th>Data da defesa</th>
                     <th>Solicitada em</th>
-                    <th>Status</th>
+                    <th>Status da solicitação</th>
+                    <th>Situação da banca</th>
                     <th>Ações</th>
                 </tr>
 
@@ -163,6 +164,35 @@
                                     Expirada
                                 </span>
 
+                            {% endif %}
+
+                        </td>
+
+                        <td>
+
+                            {% if solicitacao.status == 'APROVADA' %}
+
+                                {% if solicitacao.banca_tcc.status == 'AGENDADA' %}
+                                    <span class="status-badge status-agendada">
+                                        Agendada
+                                    </span>
+
+                                {% elif solicitacao.banca_tcc.status == 'AGUARDANDO_NOTA' %}
+                                    <span class="status-badge status-aguardando-nota">
+                                        Aguardando nota
+                                    </span>
+
+                                {% elif solicitacao.banca_tcc.status == 'FINALIZADA' %}
+                                    <span class="status-badge status-finalizada">
+                                        Finalizada
+                                    </span>
+
+                                {% else %}
+                                    Registro não localizado
+                                {% endif %}
+
+                            {% else %}
+                                —
                             {% endif %}
 
                         </td>

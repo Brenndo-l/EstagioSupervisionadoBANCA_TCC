@@ -58,6 +58,7 @@
                     <th>Título do TCC</th>
                     <th>Local</th>
                     <th>Data/Hora</th>
+                    <th>Situação da banca</th>
                     <th>Ação</th>
                 </tr>
             </thead>
@@ -82,6 +83,24 @@
 
                         <td>
                             {{ solicitacao.opcao_data_inicio|date:"d/m/Y H:i" }}
+                        </td>
+
+                        <td>
+                            {% if solicitacao.banca_tcc.status == 'AGENDADA' %}
+                                <span class="status-badge status-agendada">
+                                    Agendada
+                                </span>
+                            {% elif solicitacao.banca_tcc.status == 'AGUARDANDO_NOTA' %}
+                                <span class="status-badge status-aguardando-nota">
+                                    Aguardando nota
+                                </span>
+                            {% elif solicitacao.banca_tcc.status == 'FINALIZADA' %}
+                                <span class="status-badge status-finalizada">
+                                    Finalizada
+                                </span>
+                            {% else %}
+                                Registro não localizado
+                            {% endif %}
                         </td>
 
                         <td>
@@ -152,7 +171,7 @@
                             {{ modelo.data_upload|date:"d/m/Y H:i" }}
                         </td>
 
-                        <td>
+                        <td class="acoes-tabela">
                             {% if modelo.arquivo %}
                                 <a
                                     href="{% url 'baixar_documento' modelo.id %}"
@@ -162,6 +181,24 @@
                                 </a>
                             {% else %}
                                 Arquivo indisponível
+                            {% endif %}
+
+                            {% if eh_coordenacao %}
+                                <form
+                                    method="POST"
+                                    action="{% url 'excluir_documento' modelo.id %}"
+                                    class="form-acao-inline"
+                                    onsubmit="return confirm('Deseja excluir permanentemente este modelo?');"
+                                >
+                                    {% csrf_token %}
+
+                                    <button
+                                        type="submit"
+                                        class="btn-perigo"
+                                    >
+                                        EXCLUIR
+                                    </button>
+                                </form>
                             {% endif %}
                         </td>
 

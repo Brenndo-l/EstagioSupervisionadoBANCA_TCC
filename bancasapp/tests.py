@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.models import User
 from django.urls import reverse
@@ -6,6 +6,7 @@ from datetime import timedelta
 from django.utils import timezone
 from django.core.files.uploadedfile import SimpleUploadedFile
 from .models import (
+    ModeloDocumento,
     pUsuario,
     EspacoFisico,
     Discente,
@@ -21,6 +22,8 @@ from django.utils.http import urlsafe_base64_encode
 from .tokens import token_confirmacao_email
 from .services import atualizar_status_bancas
 from decimal import Decimal
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 def criar_pdf_teste():
 
@@ -4167,4 +4170,391 @@ class CicloPosDefesaTests(TestCase):
                 data_defesa
                 + timedelta(days=30)
             )
+        )
+
+
+class GerenciamentoDocumentosTests(TestCase):
+
+    def setUp(self):
+
+        self.diretorio_temporario = TemporaryDirectory()
+
+        self.configuracao_media = override_settings(
+            MEDIA_ROOT=self.diretorio_temporario.name
+        )
+
+        self.configuracao_media.enable()
+
+        self.addCleanup(
+            self.configuracao_media.disable
+        )
+
+        self.addCleanup(
+            self.diretorio_temporario.cleanup
+        )
+
+        self.usuario_coordenacao = User.objects.create_user(
+            username='coordenacao.documentos@ufac.br',
+            password='Senha123!',
+            is_active=True
+        )
+
+        pUsuario.objects.create(
+            usuario=self.usuario_coordenacao,
+            perfil='COORDENACAO'
+        )
+
+        self.usuario_docente = User.objects.create_user(
+            username='docente.documentos@ufac.br',
+            password='Senha123!',
+            is_active=True
+        )
+
+        pUsuario.objects.create(
+            usuario=self.usuario_docente,
+            perfil='DOCENTE'
+        )
+
+        self.modelo = ModeloDocumento.objects.create(
+            nome='Modelo temporário',
+            tipo='OUTRO',
+            enviado_por=self.usuario_coordenacao,
+            arquivo=SimpleUploadedFile(
+                'modelo_teste.pdf',
+                b'%PDF-1.4\nModelo utilizado no teste.',
+                content_type='application/pdf'
+            )
+        )
+
+        self.url_excluir = reverse(
+            'excluir_documento',
+            args=[self.modelo.id]
+        )
+
+        self.url_download = reverse(
+            'baixar_documento',
+            args=[self.modelo.id]
+        )
+
+    def test_coordenacao_exclui_registro_e_arquivo(self):
+
+        caminho_arquivo = Path(
+            self.modelo.arquivo.path
+        )
+
+        self.assertTrue(
+            caminho_arquivo.exists()
+        )
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        with self.captureOnCommitCallbacks(
+            execute=True
+        ):
+
+            response = self.client.post(
+                self.url_excluir
+            )
+
+        self.assertRedirects(
+            response,
+            reverse('documentos')
+        )
+
+        self.assertFalse(
+            ModeloDocumento.objects.filter(
+                id=self.modelo.id
+            ).exists()
+        )
+
+        self.assertFalse(
+            caminho_arquivo.exists()
+        )
+
+    def test_docente_nao_pode_excluir_modelo(self):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.post(
+            self.url_excluir
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+        self.assertTrue(
+            ModeloDocumento.objects.filter(
+                id=self.modelo.id
+            ).exists()
+        )
+
+    def test_exclusao_nao_aceita_get(self):
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.get(
+            self.url_excluir
+        )
+
+        self.assertEqual(
+            response.status_code,
+            405
+        )
+
+        self.assertTrue(
+            ModeloDocumento.objects.filter(
+                id=self.modelo.id
+            ).exists()
+        )
+
+    def test_download_ausente_exibe_mensagem_sem_erro_500(
+        self
+    ):
+
+        Path(
+            self.modelo.arquivo.path
+        ).unlink()
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.get(
+            self.url_download
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('documentos')
+        )
+
+
+class ListagensCicloBancaTests(TestCase):
+
+    def setUp(self):
+
+        self.usuario_orientador = User.objects.create_user(
+            username='orientador.listagem@ufac.br',
+            password='Senha123!',
+            is_active=True
+        )
+
+        self.orientador = pUsuario.objects.create(
+            usuario=self.usuario_orientador,
+            perfil='DOCENTE'
+        )
+
+        self.usuario_avaliador = User.objects.create_user(
+            username='avaliador.listagem@ufac.br',
+            password='Senha123!',
+            is_active=True
+        )
+
+        self.avaliador = pUsuario.objects.create(
+            usuario=self.usuario_avaliador,
+            perfil='DOCENTE'
+        )
+
+        self.usuario_coordenacao = User.objects.create_user(
+            username='coordenacao.listagem@ufac.br',
+            password='Senha123!',
+            is_active=True
+        )
+
+        pUsuario.objects.create(
+            usuario=self.usuario_coordenacao,
+            perfil='COORDENACAO'
+        )
+
+        self.espaco = EspacoFisico.objects.create(
+            nome='Sala da listagem'
+        )
+
+        self.discente = Discente.objects.create(
+            nome='Discente da listagem',
+            matricula='20260000091'
+        )
+
+        self.projeto = ProjetoTCC.objects.create(
+            titulo='TCC exibido na listagem',
+            resumo='Resumo da listagem.',
+            semestre_letivo='2026.2',
+            discente=self.discente,
+            status='APROVADO'
+        )
+
+        inicio = timezone.now() - timedelta(
+            hours=3
+        )
+
+        fim = timezone.now() - timedelta(
+            hours=1
+        )
+
+        self.solicitacao = (
+            SolicitacaoAgendamento.objects.create(
+                usuario_solicitante=self.orientador,
+                projeto_tcc=self.projeto,
+                espaco=self.espaco,
+                opcao_data_inicio=inicio,
+                opcao_data_fim=fim,
+                status='APROVADA'
+            )
+        )
+
+        ComposicaoBanca.objects.create(
+            projeto_tcc=self.projeto,
+            solicitacao=self.solicitacao,
+            orientador=self.orientador,
+            avaliador_interno=self.avaliador,
+            presidente=self.orientador
+        )
+
+        self.banca = BancaTCC.objects.create(
+            solicitacao=self.solicitacao,
+            projeto_tcc=self.projeto,
+            espaco=self.espaco,
+            data_horario_inicio=inicio,
+            data_horario_fim=fim,
+            status='AGENDADA'
+        )
+
+    def test_docente_visualiza_banca_aguardando_nota(self):
+
+        self.client.force_login(
+            self.usuario_orientador
+        )
+
+        response = self.client.get(
+            reverse('visualizar_bancas')
+        )
+
+        self.assertContains(
+            response,
+            'Aguardando nota'
+        )
+
+        self.banca.refresh_from_db()
+
+        self.assertEqual(
+            self.banca.status,
+            'AGUARDANDO_NOTA'
+        )
+
+    def test_coordenacao_visualiza_banca_aguardando_nota(
+        self
+    ):
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.get(
+            reverse('solicitacoes_coordenacao'),
+            {
+                'status': 'APROVADA',
+            }
+        )
+
+        self.assertContains(
+            response,
+            'Aguardando nota'
+        )
+
+    def test_documentos_exibe_situacao_da_banca(self):
+
+        self.client.force_login(
+            self.usuario_orientador
+        )
+
+        response = self.client.get(
+            reverse('documentos')
+        )
+
+        self.assertContains(
+            response,
+            'Aguardando nota'
+        )
+
+    def test_minhas_solicitacoes_possui_paginacao(self):
+
+        inicio = timezone.now() + timedelta(
+            days=10
+        )
+
+        for indice in range(10):
+
+            discente = Discente.objects.create(
+                nome=f'Discente adicional {indice}',
+                matricula=f'202600001{indice:02d}'
+            )
+
+            projeto = ProjetoTCC.objects.create(
+                titulo=f'TCC adicional {indice}',
+                resumo='Resumo adicional.',
+                semestre_letivo='2026.2',
+                discente=discente
+            )
+
+            SolicitacaoAgendamento.objects.create(
+                usuario_solicitante=self.orientador,
+                projeto_tcc=projeto,
+                espaco=self.espaco,
+                opcao_data_inicio=(
+                    inicio + timedelta(days=indice)
+                ),
+                opcao_data_fim=(
+                    inicio
+                    + timedelta(
+                        days=indice,
+                        hours=2
+                    )
+                ),
+                status='EM_ANÁLISE'
+            )
+
+        self.client.force_login(
+            self.usuario_orientador
+        )
+
+        primeira_pagina = self.client.get(
+            reverse('visualizar_bancas')
+        )
+
+        segunda_pagina = self.client.get(
+            reverse('visualizar_bancas'),
+            {
+                'pagina': 2,
+            }
+        )
+
+        self.assertEqual(
+            len(
+                primeira_pagina.context[
+                    'solicitacoes'
+                ]
+            ),
+            10
+        )
+
+        self.assertEqual(
+            len(
+                segunda_pagina.context[
+                    'solicitacoes'
+                ]
+            ),
+            1
+        )
+
+        self.assertContains(
+            primeira_pagina,
+            'Próxima'
         )
