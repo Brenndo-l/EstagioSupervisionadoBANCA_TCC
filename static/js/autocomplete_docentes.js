@@ -22,6 +22,10 @@
             select.dataset.minLength || 2
         );
 
+        const grupoExclusivo = (
+            select.dataset.exclusiveGroup || ''
+        );
+
         const grupoCandidatos = (
             select.dataset.memberSourceGroup || ''
         );
@@ -54,7 +58,6 @@
         );
 
         const input = document.createElement('input');
-        input.type = 'text';
 
         input.type = 'text';
 
@@ -364,6 +367,10 @@
                 fecharResultados();
                 return;
             }
+
+            const selecionadosNoGrupo = (
+                valoresSelecionadosNoGrupo()
+            );
 
             const membrosPermitidos = (
                 valoresPermitidosComoMembro()
