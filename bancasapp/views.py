@@ -456,9 +456,6 @@ def editar_solicitacao_coordenacao(
         )
 
     dados_iniciais = {
-        'orientador': (
-            composicao.orientador
-        ),
 
         'coorientador': (
             composicao.coorientador
@@ -494,7 +491,8 @@ def editar_solicitacao_coordenacao(
         form = EdicaoSolicitacaoCoordenacaoForm(
             request.POST,
             instance=solicitacao,
-            initial=dados_iniciais
+            initial=dados_iniciais,
+            orientador=composicao.orientador
         )
 
         if form.is_valid():
@@ -561,11 +559,6 @@ def editar_solicitacao_coordenacao(
                     ]
                 )
 
-                composicao_bloqueada.orientador = (
-                    form.cleaned_data[
-                        'orientador'
-                    ]
-                )
 
                 composicao_bloqueada.coorientador = (
                     form.cleaned_data[
@@ -611,7 +604,6 @@ def editar_solicitacao_coordenacao(
 
                 composicao_bloqueada.save(
                     update_fields=[
-                        'orientador',
                         'coorientador',
                         'avaliador_interno',
                         'segundo_avaliador_interno',
@@ -647,7 +639,8 @@ def editar_solicitacao_coordenacao(
 
         form = EdicaoSolicitacaoCoordenacaoForm(
             instance=solicitacao,
-            initial=dados_iniciais
+            initial=dados_iniciais,
+            orientador=composicao.orientador
         )
 
     return render(
@@ -772,7 +765,8 @@ def solicitar_banca(request):
 
         form = SolicitacaoBancaForm(
             request.POST,
-            request.FILES
+            request.FILES,
+            orientador=perfil_logado
         )
 
         if form.is_valid():
@@ -837,11 +831,7 @@ def solicitar_banca(request):
                     solicitacao=solicitacao,
                     projeto_tcc=projeto,
 
-                    orientador=(
-                        form.cleaned_data[
-                            'orientador'
-                        ]
-                    ),
+                    orientador=perfil_logado,
 
                     coorientador=(
                         form.cleaned_data[
@@ -906,7 +896,9 @@ def solicitar_banca(request):
 
     else:
 
-        form = SolicitacaoBancaForm()
+        form = SolicitacaoBancaForm(
+            orientador=perfil_logado
+        )
 
     disponibilidades = (
         DisponibilidadeEspaco.objects
@@ -928,6 +920,7 @@ def solicitar_banca(request):
         {
             'form': form,
             'disponibilidades': disponibilidades,
+            'orientador_logado': perfil_logado,
         }
     )
 
@@ -1887,10 +1880,6 @@ def criar_formulario_revalidacao(
             )
         ),
 
-        'orientador': (
-            composicao.orientador_id
-        ),
-
         'coorientador': (
             composicao.coorientador_id
             or ''
@@ -1928,7 +1917,8 @@ def criar_formulario_revalidacao(
 
     return EdicaoSolicitacaoCoordenacaoForm(
         data=dados_atuais,
-        instance=solicitacao
+        instance=solicitacao,
+        orientador=composicao.orientador
     )
 
 

@@ -158,13 +158,19 @@
             {{ form.arquivo_tcc.help_text }}
         </p>
 
-        <p>
-            <label for="{{ form.orientador.id_for_label }}">
-                <strong>{{ form.orientador.label }}</strong>
-            </label>
+        <div class="orientador-automatico">
 
-            {{ form.orientador }}
-        </p>
+            <strong>Professor Orientador</strong>
+
+            <span>
+                {{ orientador_logado }}
+            </span>
+
+            <small>
+                Definido automaticamente a partir da sua conta.
+            </small>
+
+        </div>
 
         <p>
             <label for="{{ form.coorientador.id_for_label }}">
@@ -200,7 +206,8 @@
 
         <p style="font-size: 13px; color: #666;">
             Se não houver indicação, a Coordenação selecionará
-            um dos integrantes internos antes da aprovação.
+            um docente antes da aprovação. A indicação é documental
+            e não adiciona o presidente à composição da banca.
         </p>
 
         <p>

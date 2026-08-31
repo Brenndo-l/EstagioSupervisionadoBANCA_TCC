@@ -20,6 +20,44 @@ from .models import (
     pUsuario,
 )
 
+def autocomplete_docente_widget(
+    placeholder,
+    grupo_exclusivo=False
+):
+
+    attrs = {
+        'class': 'form-input js-docente-autocomplete',
+        'data-placeholder': placeholder,
+        'data-min-length': '2',
+    }
+
+    if grupo_exclusivo:
+        attrs['data-exclusive-group'] = 'composicao-interna'
+
+    return forms.Select(
+        attrs=attrs
+    )
+
+
+class DocenteModelChoiceField(forms.ModelChoiceField):
+
+    def label_from_instance(self, docente):
+
+        nome = (
+            docente.usuario.get_full_name().strip()
+            or docente.usuario.username
+        )
+
+        email = (
+            docente.usuario.email.strip()
+            or docente.usuario.username
+        )
+
+        if nome.casefold() == email.casefold():
+            return nome
+
+        return f'{nome} — {email}'
+
 class CadastroDocenteForm(UserCreationForm):
 
     first_name = forms.CharField(
@@ -518,37 +556,67 @@ class SolicitacaoBancaForm(forms.ModelForm):
         )
     )
 
-    orientador = forms.ModelChoiceField(
-        queryset=pUsuario.objects.none(),
-        label='Professor Orientador',
-        empty_label='Selecione o Orientador'
-    )
-
-    coorientador = forms.ModelChoiceField(
+    coorientador = DocenteModelChoiceField(
         queryset=pUsuario.objects.none(),
         required=False,
         label='Professor Coorientador (Opcional)',
-        empty_label='Sem coorientador'
+        empty_label='Sem coorientador',
+        widget=autocomplete_docente_widget(
+            'Digite ao menos 2 letras do nome ou e-mail',
+            grupo_exclusivo=True
+        ),
+        error_messages={
+            'invalid_choice': (
+                'Selecione um coorientador válido nas sugestões.'
+            ),
+        }
     )
 
-    avaliador_interno = forms.ModelChoiceField(
+    avaliador_interno = DocenteModelChoiceField(
         queryset=pUsuario.objects.none(),
         label='Avaliador Interno (UFAC)',
-        empty_label='Selecione o Avaliador'
+        empty_label='Selecione o avaliador',
+        widget=autocomplete_docente_widget(
+            'Digite ao menos 2 letras do nome ou e-mail',
+            grupo_exclusivo=True
+        ),
+        error_messages={
+            'required': 'Selecione o avaliador interno.',
+            'invalid_choice': (
+                'Selecione um avaliador interno válido nas sugestões.'
+            ),
+        }
     )
 
-    segundo_avaliador_interno = forms.ModelChoiceField(
+    segundo_avaliador_interno = DocenteModelChoiceField(
         queryset=pUsuario.objects.none(),
         required=False,
         label='Segundo Avaliador Interno (Opcional)',
-        empty_label='Sem segundo avaliador'
+        empty_label='Sem segundo avaliador',
+        widget=autocomplete_docente_widget(
+            'Digite ao menos 2 letras do nome ou e-mail',
+            grupo_exclusivo=True
+        ),
+        error_messages={
+            'invalid_choice': (
+                'Selecione um segundo avaliador válido nas sugestões.'
+            ),
+        }
     )
 
-    presidente = forms.ModelChoiceField(
+    presidente = DocenteModelChoiceField(
         queryset=pUsuario.objects.none(),
         required=False,
         label='Presidente indicado (Opcional)',
-        empty_label='A Coordenação selecionará'
+        empty_label='A Coordenação selecionará',
+        widget=autocomplete_docente_widget(
+            'Digite ao menos 2 letras do nome ou e-mail'
+        ),
+        error_messages={
+            'invalid_choice': (
+                'Selecione um presidente válido nas sugestões.'
+            ),
+        }
     )
 
     nome_avaliador_externo = forms.CharField(
@@ -636,10 +704,15 @@ class SolicitacaoBancaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
 
+        self.orientador = kwargs.pop(
+            'orientador',
+            None
+        )
+
         super().__init__(*args, **kwargs)
 
-        # Somente docentes que confirmaram o e-mail
-        # e possuem conta ativa aparecem na banca.
+        # Somente docentes com conta ativa aparecem
+        # nas pesquisas da composição e da presidência.
         docentes_ativos = (
             pUsuario.objects
             .select_related('usuario')
@@ -655,7 +728,6 @@ class SolicitacaoBancaForm(forms.ModelForm):
         )
 
         campos_docentes = [
-            'orientador',
             'coorientador',
             'avaliador_interno',
             'segundo_avaliador_interno',
@@ -667,6 +739,24 @@ class SolicitacaoBancaForm(forms.ModelForm):
             self.fields[
                 nome_campo
             ].queryset = docentes_ativos
+
+        # O orientador é sempre o solicitante.
+        # Ele não aparece como coorientador ou avaliador,
+        # mas pode ser indicado como presidente porque
+        # a presidência é apenas uma informação documental.
+        if self.orientador:
+
+            for nome_campo in [
+                'coorientador',
+                'avaliador_interno',
+                'segundo_avaliador_interno',
+            ]:
+
+                self.fields[
+                    nome_campo
+                ].widget.attrs[
+                    'data-excluded-values'
+                ] = str(self.orientador.pk)
 
         # Todas as salas ativas aparecem no formulário,
         # mesmo que ainda não possuam disponibilidade.
@@ -804,9 +894,7 @@ class SolicitacaoBancaForm(forms.ModelForm):
             'opcao_data_fim'
         )
 
-        orientador = cleaned_data.get(
-            'orientador'
-        )
+        orientador = self.orientador
 
         coorientador = cleaned_data.get(
             'coorientador'
@@ -905,18 +993,10 @@ class SolicitacaoBancaForm(forms.ModelForm):
                     docente.pk
                 ] = funcao
 
-        # A presidência é uma função adicional exercida
-        # por um dos integrantes internos já selecionados.
-        if (
-            presidente
-            and presidente.pk not in funcoes_por_docente
-        ):
-
-            self.add_error(
-                'presidente',
-                'O presidente deve ser um dos integrantes '
-                'internos selecionados para esta banca.'
-            )
+        # O presidente pode ser qualquer docente ativo.
+        # Esta indicação é apenas documental: ela não torna
+        # o docente integrante da banca e não participa das
+        # validações de duplicidade ou choque de horário.
 
         if espaco and data_inicio and data_fim:
 
@@ -1131,20 +1211,23 @@ class EdicaoSolicitacaoCoordenacaoForm(
       
 class AvaliacaoSolicitacaoForm(forms.Form):
 
-    presidente = forms.ModelChoiceField(
+    presidente = DocenteModelChoiceField(
         queryset=pUsuario.objects.none(),
         required=False,
         label='Presidente da banca',
         empty_label='Selecione o presidente',
         help_text=(
-            'Obrigatório para aprovação. O presidente deve '
-            'ser um dos integrantes internos da banca.'
+            'Obrigatório para aprovação. Pode ser qualquer '
+            'docente ativo; esta indicação é apenas documental.'
         ),
-        widget=forms.Select(
-            attrs={
-                'class': 'form-input',
-            }
-        )
+        widget=autocomplete_docente_widget(
+            'Digite ao menos 2 letras do nome ou e-mail'
+        ),
+        error_messages={
+            'invalid_choice': (
+                'Selecione um presidente válido nas sugestões.'
+            ),
+        }
     )
 
     motivo_decisao = forms.CharField(
@@ -1183,36 +1266,21 @@ class AvaliacaoSolicitacaoForm(forms.Form):
             **kwargs
         )
 
-        participantes_ids = []
+        if (
+            composicao
+            and composicao.presidente_id
+        ):
 
-        if composicao:
-
-            participantes_ids = [
-                composicao.orientador_id,
-                composicao.coorientador_id,
-                composicao.avaliador_interno_id,
-                composicao.segundo_avaliador_interno_id,
-            ]
-
-            participantes_ids = [
-                participante_id
-                for participante_id in participantes_ids
-                if participante_id is not None
-            ]
-
-            if composicao.presidente_id:
-
-                self.fields[
-                    'presidente'
-                ].initial = (
-                    composicao.presidente_id
-                )
+            self.fields[
+                'presidente'
+            ].initial = (
+                composicao.presidente_id
+            )
 
         self.fields['presidente'].queryset = (
             pUsuario.objects
             .select_related('usuario')
             .filter(
-                pk__in=participantes_ids,
                 perfil='DOCENTE',
                 usuario__is_active=True,
             )
@@ -1231,8 +1299,8 @@ class AvaliacaoSolicitacaoForm(forms.Form):
             'presidente'
         )
 
-        # Preserva a indicação que já tenha sido
-        # feita anteriormente pelo orientador.
+        # Preserva a indicação feita anteriormente
+        # pelo docente solicitante.
         if (
             presidente is None
             and self.composicao

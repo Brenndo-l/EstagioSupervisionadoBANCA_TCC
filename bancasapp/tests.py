@@ -15,7 +15,9 @@ from .models import (
     ComposicaoBanca,
     BancaTCC,
     DisponibilidadeEspaco,
+    
 )
+from .forms import SolicitacaoBancaForm
 from django.core import mail
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
@@ -4557,4 +4559,535 @@ class ListagensCicloBancaTests(TestCase):
         self.assertContains(
             primeira_pagina,
             'Próxima'
+        )
+
+
+def pdf_teste():
+
+    return SimpleUploadedFile(
+        'tcc.pdf',
+        b'%PDF-1.4\n% arquivo de teste\n',
+        content_type='application/pdf'
+    )
+
+
+class AutocompleteDocentesTests(TestCase):
+
+    def criar_docente(
+        self,
+        email,
+        nome,
+        ativo=True,
+        perfil='DOCENTE'
+    ):
+
+        usuario = User.objects.create_user(
+            username=email,
+            email=email,
+            first_name=nome,
+            password='Senha123!',
+            is_active=ativo
+        )
+
+        return pUsuario.objects.create(
+            usuario=usuario,
+            perfil=perfil
+        )
+
+    def setUp(self):
+
+        self.orientador = self.criar_docente(
+            'orientador.autocomplete@ufac.br',
+            'Orientador'
+        )
+
+        self.avaliador = self.criar_docente(
+            'avaliador.autocomplete@ufac.br',
+            'Avaliador'
+        )
+
+        self.presidente = self.criar_docente(
+            'presidente.autocomplete@ufac.br',
+            'Presidente Documental'
+        )
+
+        self.inativo = self.criar_docente(
+            'inativo.autocomplete@ufac.br',
+            'Docente Inativo',
+            ativo=False
+        )
+
+        self.coordenacao = self.criar_docente(
+            'coordenacao.autocomplete@ufac.br',
+            'Coordenacao',
+            perfil='COORDENACAO'
+        )
+
+        self.espaco = EspacoFisico.objects.create(
+            nome='Sala Autocomplete'
+        )
+
+        self.inicio = (
+            timezone.localtime(
+                timezone.now()
+            )
+            + timedelta(days=30)
+        ).replace(
+            hour=14,
+            minute=0,
+            second=0,
+            microsecond=0
+        )
+
+        self.fim = (
+            self.inicio
+            + timedelta(hours=2)
+        )
+
+        DisponibilidadeEspaco.objects.create(
+            espaco=self.espaco,
+            data_hora_inicio=(
+                self.inicio
+                - timedelta(hours=1)
+            ),
+            data_hora_fim=(
+                self.fim
+                + timedelta(hours=1)
+            ),
+            ativo=True,
+            criada_por=self.coordenacao.usuario
+        )
+
+    def dados_post(self, **extras):
+
+        dados = {
+            'nome_discente': (
+                'Discente Autocomplete'
+            ),
+            'matricula_discente': (
+                '20269999999'
+            ),
+            'titulo_tcc': (
+                'Projeto com busca de docentes'
+            ),
+            'resumo_tcc': (
+                'Resumo válido para testar a busca.'
+            ),
+            'semestre_letivo': '2026.2',
+            'espaco': self.espaco.id,
+            'opcao_data_inicio': (
+                self.inicio.strftime(
+                    '%Y-%m-%dT%H:%M'
+                )
+            ),
+            'opcao_data_fim': (
+                self.fim.strftime(
+                    '%Y-%m-%dT%H:%M'
+                )
+            ),
+            'coorientador': '',
+            'avaliador_interno': (
+                self.avaliador.id
+            ),
+            'segundo_avaliador_interno': '',
+            'presidente': '',
+            'nome_avaliador_externo': '',
+            'titulacao_avaliador_externo': '',
+            'instituicao_avaliador_externo': '',
+            'arquivo_tcc': pdf_teste(),
+        }
+
+        dados.update(extras)
+
+        return dados
+
+    def criar_pendente(
+        self,
+        presidente=None
+    ):
+
+        discente = Discente.objects.create(
+            nome='Discente Pendente',
+            matricula='20268888888'
+        )
+
+        projeto = ProjetoTCC.objects.create(
+            titulo='Projeto pendente para avaliação',
+            resumo='Resumo do projeto pendente.',
+            semestre_letivo='2026.2',
+            discente=discente
+        )
+
+        solicitacao = (
+            SolicitacaoAgendamento.objects.create(
+                usuario_solicitante=self.orientador,
+                projeto_tcc=projeto,
+                espaco=self.espaco,
+                opcao_data_inicio=self.inicio,
+                opcao_data_fim=self.fim,
+                status='EM_ANÁLISE'
+            )
+        )
+
+        composicao = ComposicaoBanca.objects.create(
+            solicitacao=solicitacao,
+            projeto_tcc=projeto,
+            orientador=self.orientador,
+            avaliador_interno=self.avaliador,
+            presidente=presidente
+        )
+
+        return solicitacao, composicao
+
+    def test_formulario_configura_campos_pesquisaveis(
+        self
+    ):
+
+        form = SolicitacaoBancaForm(
+            orientador=self.orientador
+        )
+
+        self.assertNotIn(
+            'orientador',
+            form.fields
+        )
+
+        for campo in [
+            'coorientador',
+            'avaliador_interno',
+            'segundo_avaliador_interno',
+            'presidente',
+        ]:
+
+            self.assertIn(
+                'js-docente-autocomplete',
+                form.fields[
+                    campo
+                ].widget.attrs[
+                    'class'
+                ]
+            )
+
+        ids = set(
+            form.fields[
+                'presidente'
+            ].queryset.values_list(
+                'id',
+                flat=True
+            )
+        )
+
+        self.assertIn(
+            self.presidente.id,
+            ids
+        )
+
+        self.assertNotIn(
+            self.inativo.id,
+            ids
+        )
+
+        self.assertNotIn(
+            self.coordenacao.id,
+            ids
+        )
+
+        self.assertIn(
+            self.presidente.usuario.email,
+            form.fields[
+                'presidente'
+            ].label_from_instance(
+                self.presidente
+            )
+        )
+
+    def test_tela_mostra_orientador_automatico(
+        self
+    ):
+
+        self.client.force_login(
+            self.orientador.usuario
+        )
+
+        response = self.client.get(
+            reverse('solicitar_banca')
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
+            response,
+            (
+                'Definido automaticamente '
+                'a partir da sua conta.'
+            )
+        )
+
+        self.assertNotContains(
+            response,
+            'name="orientador"'
+        )
+
+        self.assertContains(
+            response,
+            'autocomplete_docentes.js'
+        )
+
+    def test_orientador_enviado_manualmente_e_ignorado(
+        self
+    ):
+
+        self.client.force_login(
+            self.orientador.usuario
+        )
+
+        response = self.client.post(
+            reverse('solicitar_banca'),
+            self.dados_post(
+                orientador=self.presidente.id
+            )
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+        self.assertEqual(
+            (
+                ComposicaoBanca.objects
+                .get()
+                .orientador
+            ),
+            self.orientador
+        )
+
+    def test_presidente_pode_ser_docente_fora_da_composicao(
+        self
+    ):
+
+        self.client.force_login(
+            self.orientador.usuario
+        )
+
+        response = self.client.post(
+            reverse('solicitar_banca'),
+            self.dados_post(
+                presidente=self.presidente.id
+            )
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+        composicao = (
+            ComposicaoBanca.objects.get()
+        )
+
+        self.assertEqual(
+            composicao.presidente,
+            self.presidente
+        )
+
+        self.assertNotEqual(
+            composicao.presidente,
+            composicao.orientador
+        )
+
+        self.assertNotEqual(
+            composicao.presidente,
+            composicao.avaliador_interno
+        )
+
+    def test_presidente_inativo_e_rejeitado(
+        self
+    ):
+
+        self.client.force_login(
+            self.orientador.usuario
+        )
+
+        response = self.client.post(
+            reverse('solicitar_banca'),
+            self.dados_post(
+                presidente=self.inativo.id
+            )
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
+            response,
+            (
+                'Selecione um presidente '
+                'válido nas sugestões.'
+            )
+        )
+
+        self.assertFalse(
+            SolicitacaoAgendamento
+            .objects
+            .exists()
+        )
+
+    def test_coordenacao_define_presidente_documental(
+        self
+    ):
+
+        solicitacao, composicao = (
+            self.criar_pendente()
+        )
+
+        self.client.force_login(
+            self.coordenacao.usuario
+        )
+
+        response = self.client.post(
+            reverse(
+                'avaliar_solicitacao',
+                args=[solicitacao.id]
+            ),
+            {
+                'acao': 'aprovar',
+                'presidente': self.presidente.id,
+                'motivo_decisao': (
+                    'Composição conferida.'
+                ),
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+        composicao.refresh_from_db()
+
+        self.assertEqual(
+            composicao.presidente,
+            self.presidente
+        )
+
+        self.assertTrue(
+            BancaTCC.objects.filter(
+                solicitacao=solicitacao
+            ).exists()
+        )
+
+    def test_presidente_documental_nao_entra_em_choque(
+        self
+    ):
+
+        outro_orientador = self.criar_docente(
+            'outro.orientador@ufac.br',
+            'Outro Orientador'
+        )
+
+        outro_avaliador = self.criar_docente(
+            'outro.avaliador@ufac.br',
+            'Outro Avaliador'
+        )
+
+        discente = Discente.objects.create(
+            nome='Discente Conflito',
+            matricula='20267777777'
+        )
+
+        projeto = ProjetoTCC.objects.create(
+            titulo=(
+                'Projeto com presidente documental'
+            ),
+            resumo=(
+                'Resumo do projeto em mesmo horário.'
+            ),
+            semestre_letivo='2026.2',
+            discente=discente
+        )
+
+        outro_espaco = (
+            EspacoFisico.objects.create(
+                nome='Outra sala'
+            )
+        )
+
+        existente = (
+            SolicitacaoAgendamento
+            .objects
+            .create(
+                usuario_solicitante=(
+                    outro_orientador
+                ),
+                projeto_tcc=projeto,
+                espaco=outro_espaco,
+                opcao_data_inicio=self.inicio,
+                opcao_data_fim=self.fim,
+                status='APROVADA'
+            )
+        )
+
+        ComposicaoBanca.objects.create(
+            solicitacao=existente,
+            projeto_tcc=projeto,
+            orientador=outro_orientador,
+            avaliador_interno=outro_avaliador,
+            presidente=self.presidente
+        )
+
+        self.client.force_login(
+            self.orientador.usuario
+        )
+
+        response = self.client.post(
+            reverse('solicitar_banca'),
+            self.dados_post(
+                presidente=self.presidente.id
+            )
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+        self.assertEqual(
+            SolicitacaoAgendamento
+            .objects
+            .count(),
+            2
+        )
+
+    def test_presidente_documental_nao_recebe_acesso(
+        self
+    ):
+
+        solicitacao, _ = (
+            self.criar_pendente(
+                presidente=self.presidente
+            )
+        )
+
+        self.client.force_login(
+            self.presidente.usuario
+        )
+
+        response = self.client.get(
+            reverse('visualizar_bancas')
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertNotContains(
+            response,
+            solicitacao.projeto_tcc.titulo
         )
