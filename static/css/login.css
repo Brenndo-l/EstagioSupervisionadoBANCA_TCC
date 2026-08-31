@@ -1,130 +1,457 @@
-body{
+:root {
+    --auth-azul-950: #101a3f;
+    --auth-azul-900: #172554;
+    --auth-azul-700: #29489f;
+    --auth-azul-600: #365fc2;
+    --auth-azul-100: #e9efff;
+    --auth-amarelo: #f4b942;
+    --auth-texto: #1f2937;
+    --auth-suave: #647084;
+    --auth-borda: #dfe4ec;
+    --auth-fundo: #f3f6fb;
+    --auth-branco: #ffffff;
+    --auth-verde: #187451;
+    --auth-laranja: #a65313;
+    --auth-vermelho: #a93842;
+    --auth-sombra: 0 28px 70px rgba(16, 26, 63, 0.16);
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    min-height: 100%;
+}
+
+body {
+    background:
+        radial-gradient(
+            circle at 92% 10%,
+            rgba(54, 95, 194, 0.1),
+            transparent 26%
+        ),
+        var(--auth-fundo);
+    color: var(--auth-texto);
+    font-family:
+        Inter,
+        ui-sans-serif,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    line-height: 1.55;
     margin: 0;
-    font-family: Arial, sans-serif;
-}
-.container{
-    display: flex;
-    height: 100vh;
+    min-height: 100vh;
 }
 
-.sidebar{
-    display: flex;
-    justify-content: center;
-    flex-direction: column;
-    background-color: #2b3990;
-    width: 300px;
+button,
+input,
+select,
+textarea {
+    font: inherit;
 }
 
-.sidebar p{
-    color: white;
-    text-align: center;
-    font-family: Arial, sans-serif;
-    font-size: 64px;
+a {
+    color: var(--auth-azul-700);
+    font-weight: 700;
+    text-decoration: none;
 }
 
-.form-login{
-    flex: 1;
-    gap: 20px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+a:hover {
+    color: var(--auth-azul-900);
+    text-decoration: underline;
+}
+
+.sr-only {
+    clip: rect(0, 0, 0, 0);
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}
+
+.container {
+    display: grid;
+    grid-template-columns: minmax(300px, 38%) minmax(0, 1fr);
+    min-height: 100vh;
+}
+
+.sidebar {
     align-items: center;
-}
-
-.form-login h1{
-    color: #2b3990;
-    font-size: 50px;
-}
-
-.form-login button{
-    background-color: #2b3990;;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    padding: 10px;
-}
-
-
-.form-login button:hover{
-    cursor: pointer;
-    background-color: #5c6cd4;
-}
-
-input{
-    border-radius: 10px;
-    border: 1px solid #2b3990;
-    padding: 15px;
-}
-
-input::placeholder {
-  font-size: 14px;
-  font-family: Arial, sans-serif;
-}
-
-input:focus {
-  border: 2px solid #42389c; 
-  outline: none;             
-}
-
-.error{
-    color: red;
-}
-
-.mensagens-flutuantes {
-    position: fixed; /* Fixa no topo da tela */
-    top: 20px;
-    left: 50%; /* Joga pro meio */
-    transform: translateX(-50%); /* Centraliza perfeitamente */
-    width: 100%;
-    max-width: 500px;
-    z-index: 1000; /* Garante que fique por cima de tudo */
-}
-
-.alerta {
-    padding: 15px;
-    margin-bottom: 10px;
-    border-radius: 5px;
-    color: white;
-    font-size: 15px;
-    font-weight: bold;
+    background:
+        radial-gradient(
+            circle at 20% 8%,
+            rgba(83, 111, 202, 0.45),
+            transparent 34%
+        ),
+        linear-gradient(155deg, var(--auth-azul-900), var(--auth-azul-950));
+    color: var(--auth-branco);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 100vh;
+    overflow: hidden;
+    padding: 54px;
+    position: relative;
     text-align: center;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    animation: fadeIn 0.4s ease-in-out;
 }
 
-/* Cores do sistema */
-.alerta-success { background-color: #5cb85c; border-left: 6px solid #4cae4c; }
-.alerta-warning { background-color: #f0ad4e; border-left: 6px solid #eea236; }
-.alerta-error { background-color: #d9534f; border-left: 6px solid #d43f3a; }
+.sidebar::before,
+.sidebar::after {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 50%;
+    content: "";
+    position: absolute;
+}
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-15px); }
-    to { opacity: 1; transform: translateY(0); }
+.sidebar::before {
+    height: 430px;
+    left: -250px;
+    top: -180px;
+    width: 430px;
+}
+
+.sidebar::after {
+    bottom: -260px;
+    height: 540px;
+    right: -330px;
+    width: 540px;
+}
+
+.sidebar img {
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 28px;
+    box-shadow: 0 24px 55px rgba(4, 9, 31, 0.3);
+    height: 156px;
+    object-fit: contain;
+    padding: 17px;
+    position: relative;
+    width: 156px;
+    z-index: 1;
+}
+
+.sidebar p {
+    color: var(--auth-branco);
+    font-size: clamp(2.7rem, 5vw, 4.3rem);
+    font-weight: 850;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    margin: 28px 0 0;
+    position: relative;
+    text-shadow: 0 8px 25px rgba(3, 8, 29, 0.26);
+    z-index: 1;
+}
+
+.sidebar p::after {
+    color: rgba(255, 255, 255, 0.62);
+    content: "Sistema de Gerenciamento de Bancas de TCC";
+    display: block;
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.035em;
+    line-height: 1.5;
+    margin: 16px auto 0;
+    max-width: 310px;
+    text-transform: none;
+}
+
+.form-login {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    padding: clamp(30px, 6vw, 78px);
+}
+
+.auth-card,
+.form-login > form,
+.form-login > h1,
+.form-login > p,
+.form-login > .mensagens-flutuantes,
+.form-login > .error {
+    max-width: 520px;
+    width: 100%;
+}
+
+.auth-card {
+    background: var(--auth-branco);
+    border: 1px solid var(--auth-borda);
+    border-radius: 22px;
+    box-shadow: var(--auth-sombra);
+    padding: clamp(26px, 4vw, 42px);
+}
+
+.auth-eyebrow {
+    color: var(--auth-azul-600);
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.form-login h1 {
+    color: var(--auth-azul-950);
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    letter-spacing: -0.04em;
+    line-height: 1.15;
+    margin: 0 0 10px;
+    text-align: left;
+}
+
+.auth-intro,
+.form-login > p {
+    color: var(--auth-suave);
+    margin: 0 0 23px;
+    text-align: left !important;
 }
 
 .form-login form {
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 13px;
+    margin: 0;
+}
+
+.form-login label:not(.opcao-manter-conectado) {
+    color: var(--auth-texto);
+    font-size: 0.82rem;
+    font-weight: 750;
+}
+
+.form-login input:not([type="checkbox"]),
+.form-login select,
+.form-login textarea {
+    background: var(--auth-branco);
+    border: 1px solid #cfd5df;
+    border-radius: 10px;
+    color: var(--auth-texto);
+    min-height: 48px;
+    outline: none;
+    padding: 11px 13px;
+    transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease;
     width: 100%;
-    max-width: 380px;
+}
+
+.form-login input::placeholder {
+    color: #8791a2;
+}
+
+.form-login input:not([type="checkbox"]):focus,
+.form-login select:focus,
+.form-login textarea:focus {
+    border-color: var(--auth-azul-600);
+    box-shadow: 0 0 0 4px rgba(54, 95, 194, 0.11);
+}
+
+.form-login button[type="submit"] {
+    background: var(--auth-azul-900);
+    border: 0;
+    border-radius: 10px;
+    box-shadow: 0 10px 22px rgba(23, 37, 84, 0.18);
+    color: var(--auth-branco);
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 780;
+    margin-top: 5px;
+    min-height: 48px;
+    padding: 11px 16px;
+    transition:
+        background-color 180ms ease,
+        box-shadow 180ms ease,
+        transform 180ms ease;
+}
+
+.form-login button[type="submit"]:hover {
+    background: var(--auth-azul-700);
+    box-shadow: 0 14px 28px rgba(23, 37, 84, 0.22);
+    transform: translateY(-1px);
 }
 
 .opcao-manter-conectado {
     align-items: center;
-    align-self: flex-start;
-    color: #333;
+    color: var(--auth-suave);
     cursor: pointer;
     display: flex;
-    font-size: 14px;
+    font-size: 0.8rem;
     gap: 8px;
+    margin: 1px 0 2px;
 }
 
 .opcao-manter-conectado input[type="checkbox"] {
-    accent-color: #2b3990;
+    accent-color: var(--auth-azul-700);
     cursor: pointer;
     height: 17px;
     margin: 0;
-    padding: 0;
     width: 17px;
+}
+
+.auth-links {
+    border-top: 1px solid var(--auth-borda);
+    display: grid;
+    gap: 9px;
+    margin-top: 25px;
+    padding-top: 21px;
+}
+
+.auth-links p,
+.form-login > p[style*="font-size"] {
+    color: var(--auth-suave);
+    font-size: 0.78rem !important;
+    margin: 0;
+    text-align: center !important;
+}
+
+.error {
+    background: #fff4f5;
+    border-left: 3px solid var(--auth-vermelho);
+    border-radius: 7px;
+    color: #872832;
+    display: block;
+    font-size: 0.78rem;
+    margin: 0;
+    padding: 8px 10px;
+}
+
+.form-login small {
+    color: var(--auth-suave) !important;
+    font-size: 0.74rem;
+    line-height: 1.45;
+}
+
+.form-login ul {
+    color: var(--auth-suave);
+    font-size: 0.73rem;
+    margin: 4px 0;
+    padding-left: 18px;
+}
+
+.mensagens-flutuantes {
+    display: grid;
+    gap: 9px;
+    margin-bottom: 18px;
+}
+
+.alerta {
+    border: 1px solid transparent;
+    border-left-width: 4px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: 650;
+    padding: 11px 13px;
+}
+
+.alerta-success {
+    background: #f0fbf5;
+    border-color: #c6ead6;
+    border-left-color: var(--auth-verde);
+    color: #125d41;
+}
+
+.alerta-warning {
+    background: #fff8ea;
+    border-color: #f5dfb5;
+    border-left-color: var(--auth-laranja);
+    color: #81400e;
+}
+
+.alerta-error {
+    background: #fff4f5;
+    border-color: #f5ccd0;
+    border-left-color: var(--auth-vermelho);
+    color: #872832;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 3px solid rgba(54, 95, 194, 0.26);
+    outline-offset: 2px;
+}
+
+@media (max-width: 880px) {
+    .container {
+        grid-template-columns: 1fr;
+    }
+
+    .sidebar {
+        flex-direction: row;
+        gap: 17px;
+        justify-content: flex-start;
+        min-height: auto;
+        padding: 20px 24px;
+        text-align: left;
+    }
+
+    .sidebar img {
+        border-radius: 13px;
+        height: 64px;
+        padding: 7px;
+        width: 64px;
+    }
+
+    .sidebar p {
+        font-size: 1.85rem;
+        margin: 0;
+    }
+
+    .sidebar p::after {
+        font-size: 0.66rem;
+        margin: 5px 0 0;
+    }
+
+    .form-login {
+        justify-content: flex-start;
+        min-height: calc(100vh - 104px);
+        padding: 34px 20px 46px;
+    }
+}
+
+@media (max-width: 560px) {
+    .sidebar {
+        padding: 15px 18px;
+    }
+
+    .sidebar img {
+        height: 52px;
+        width: 52px;
+    }
+
+    .sidebar p {
+        font-size: 1.5rem;
+    }
+
+    .sidebar p::after {
+        content: "Bancas de TCC";
+    }
+
+    .form-login {
+        padding: 24px 13px 36px;
+    }
+
+    .auth-card {
+        border-radius: 16px;
+        padding: 23px 18px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
 }

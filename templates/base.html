@@ -3,129 +3,328 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>SGTCC - UFAC</title>
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+    <meta name="theme-color" content="#172554">
+
+    <title>{% block title %}SGTCC | UFAC{% endblock %}</title>
+
+    <link
+        rel="icon"
+        type="image/png"
+        href="{% static 'assets/logo_ufac.png' %}"
+    >
+
     <link
         rel="stylesheet"
-        href="{% static 'css/style.css' %}?v=20260831-02"
+        href="{% static 'css/style.css' %}?v=20260901-02"
     >
 
     <script
-    src="{% static 'js/autocomplete_docentes.js' %}?v=20260831-03"
-    defer
+        src="{% static 'js/autocomplete_docentes.js' %}?v=20260901-01"
+        defer
+    ></script>
+
+    <script
+        src="{% static 'js/interface.js' %}?v=20260901-01"
+        defer
     ></script>
 </head>
+
 <body>
-    
-    <div class="sidebar">
 
-        <h2>UFAC<br>SGTCC</h2>
+    <a class="skip-link" href="#conteudo-principal">
+        Ir para o conteúdo principal
+    </a>
 
-        {% if request.user.is_authenticated %}
+    {% with rota=request.resolver_match.url_name %}
 
-            <div class="usuario-logado">
+        <div class="app-shell">
 
-                <strong>
-                    {{ request.user.get_full_name|default:request.user.username }}
-                </strong>
-
-                <span>
-                    {% if request.user.is_superuser %}
-                        Coordenação
-                    {% else %}
-                        {{ request.user.pusuario.get_perfil_display }}
-                    {% endif %}
-                </span>
-
-            </div>
-
-        {% endif %}
-
-        <a href="{% url 'dashboard' %}">
-            INÍCIO / PAINEL
-        </a>
-
-        {% if request.user.is_superuser or request.user.pusuario.perfil == 'COORDENACAO' %}
-
-            <a href="{% url 'solicitacoes_coordenacao' %}">
-                ANALISAR SOLICITAÇÕES
-            </a>
-
-            <a href="{% url 'gerenciar_espacos' %}">
-                GERENCIAR SALAS
-            </a>
-
-            <a href="{% url 'documentos' %}">
-                DOCUMENTOS
-            </a>
-
-        {% else %}
-
-            <a href="{% url 'visualizar_bancas' %}">
-                MINHAS SOLICITAÇÕES
-            </a>
-
-            <a href="{% url 'solicitar_banca' %}">
-                SOLICITAR BANCA
-            </a>
-
-            <a href="{% url 'documentos' %}">
-                DOCUMENTOS
-            </a>
-
-            <a href="{% url 'meu_perfil' %}">
-                MEU PERFIL
-            </a>
-
-        {% endif %}
-
-        <div class="footer-menu">
-
-            <form
-                method="POST"
-                action="{% url 'logout' %}"
-                class="form-logout"
+            <aside
+                class="sidebar"
+                id="menu-principal"
+                aria-label="Navegação principal"
             >
 
-                {% csrf_token %}
+                <div class="brand">
+                    <div class="brand-logo">
+                        <img
+                            src="{% static 'assets/logo_ufac.png' %}"
+                            alt="Brasão da Universidade Federal do Acre"
+                        >
+                    </div>
 
-                <button
-                    type="submit"
-                    class="btn-logout"
-                >
-                    SAIR
-                </button>
+                    <div class="brand-texto">
+                        <span>Universidade Federal do Acre</span>
+                        <strong>SGTCC</strong>
+                    </div>
+                </div>
 
-            </form>
+                {% if request.user.is_authenticated %}
+
+                    <div class="usuario-logado">
+                        <div class="usuario-avatar" aria-hidden="true">
+                            {{ request.user.get_full_name|default:request.user.username|slice:":1"|upper }}
+                        </div>
+
+                        <div class="usuario-dados">
+                            <strong>
+                                {{ request.user.get_full_name|default:request.user.username }}
+                            </strong>
+
+                            <span>
+                                {% if request.user.is_superuser %}
+                                    Coordenação
+                                {% else %}
+                                    {{ request.user.pusuario.get_perfil_display }}
+                                {% endif %}
+                            </span>
+                        </div>
+                    </div>
+
+                {% endif %}
+
+                <nav class="app-nav">
+
+                    <span class="nav-secao">Visão geral</span>
+
+                    <a
+                        href="{% url 'dashboard' %}"
+                        class="nav-link {% if rota == 'dashboard' %}is-active{% endif %}"
+                        {% if rota == 'dashboard' %}aria-current="page"{% endif %}
+                    >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M3 11.5 12 4l9 7.5"></path>
+                            <path d="M5.5 10.5V20h13v-9.5"></path>
+                            <path d="M9.5 20v-6h5v6"></path>
+                        </svg>
+                        <span>Início / Painel</span>
+                    </a>
+
+                    {% if request.user.is_superuser or request.user.pusuario.perfil == 'COORDENACAO' %}
+
+                        <span class="nav-secao">Coordenação</span>
+
+                        <a
+                            href="{% url 'solicitacoes_coordenacao' %}"
+                            class="nav-link {% if rota == 'solicitacoes_coordenacao' or rota == 'avaliar_solicitacao' or rota == 'editar_solicitacao_coordenacao' %}is-active{% endif %}"
+                        >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M9 11 12 14 20 6"></path>
+                                <path d="M20 12v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h10"></path>
+                            </svg>
+                            <span>ANALISAR SOLICITAÇÕES</span>
+                        </a>
+
+                        <a
+                            href="{% url 'gerenciar_espacos' %}"
+                            class="nav-link {% if rota == 'gerenciar_espacos' or rota == 'editar_espaco' or rota == 'editar_disponibilidade' %}is-active{% endif %}"
+                        >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 20h16"></path>
+                                <path d="M6 20V8l6-4 6 4v12"></path>
+                                <path d="M9 12h6"></path>
+                                <path d="M9 16h6"></path>
+                            </svg>
+                            <span>GERENCIAR SALAS</span>
+                        </a>
+
+                        <a
+                            href="{% url 'documentos' %}"
+                            class="nav-link {% if rota == 'documentos' %}is-active{% endif %}"
+                        >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M7 3h7l4 4v14H7z"></path>
+                                <path d="M14 3v5h5"></path>
+                                <path d="M10 13h5"></path>
+                                <path d="M10 17h5"></path>
+                            </svg>
+                            <span>Documentos</span>
+                        </a>
+
+                    {% else %}
+
+                        <span class="nav-secao">Área docente</span>
+
+                        <a
+                            href="{% url 'visualizar_bancas' %}"
+                            class="nav-link {% if rota == 'visualizar_bancas' or rota == 'detalhar_solicitacao' or rota == 'registrar_nota_banca' %}is-active{% endif %}"
+                        >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 5h16v14H4z"></path>
+                                <path d="M8 9h8"></path>
+                                <path d="M8 13h5"></path>
+                            </svg>
+                            <span>MINHAS SOLICITAÇÕES</span>
+                        </a>
+
+                        <a
+                            href="{% url 'solicitar_banca' %}"
+                            class="nav-link {% if rota == 'solicitar_banca' %}is-active{% endif %}"
+                        >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="12" cy="12" r="9"></circle>
+                                <path d="M12 8v8"></path>
+                                <path d="M8 12h8"></path>
+                            </svg>
+                            <span>SOLICITAR BANCA</span>
+                        </a>
+
+                        <a
+                            href="{% url 'documentos' %}"
+                            class="nav-link {% if rota == 'documentos' %}is-active{% endif %}"
+                        >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M7 3h7l4 4v14H7z"></path>
+                                <path d="M14 3v5h5"></path>
+                                <path d="M10 13h5"></path>
+                                <path d="M10 17h5"></path>
+                            </svg>
+                            <span>Documentos</span>
+                        </a>
+
+                        <a
+                            href="{% url 'meu_perfil' %}"
+                            class="nav-link {% if rota == 'meu_perfil' %}is-active{% endif %}"
+                        >
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="12" cy="8" r="4"></circle>
+                                <path d="M4.5 21a7.5 7.5 0 0 1 15 0"></path>
+                            </svg>
+                            <span>Meu perfil</span>
+                        </a>
+
+                    {% endif %}
+
+                </nav>
+
+                <div class="footer-menu">
+                    <form
+                        method="POST"
+                        action="{% url 'logout' %}"
+                        class="form-logout"
+                    >
+                        {% csrf_token %}
+
+                        <button type="submit" class="btn-logout">
+                            <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M10 5H5v14h5"></path>
+                                <path d="M14 8l4 4-4 4"></path>
+                                <path d="M8 12h10"></path>
+                            </svg>
+                            <span>Sair do sistema</span>
+                        </button>
+                    </form>
+                </div>
+
+            </aside>
+
+            <button
+                type="button"
+                class="sidebar-overlay"
+                data-sidebar-overlay
+                aria-label="Fechar menu"
+                tabindex="-1"
+            ></button>
+
+            <main class="app-main">
+
+                <header class="topbar">
+
+                    <button
+                        type="button"
+                        class="menu-toggle"
+                        data-sidebar-toggle
+                        aria-controls="menu-principal"
+                        aria-expanded="false"
+                        aria-label="Abrir menu principal"
+                    >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M4 7h16"></path>
+                            <path d="M4 12h16"></path>
+                            <path d="M4 17h16"></path>
+                        </svg>
+                    </button>
+
+                    <form
+                        action="{% url 'pesquisar' %}"
+                        method="GET"
+                        class="barra-pesquisa"
+                        role="search"
+                    >
+                        <label class="sr-only" for="pesquisa-global">
+                            Pesquisar discente ou trabalho de conclusão
+                        </label>
+
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="11" cy="11" r="7"></circle>
+                            <path d="m16 16 4 4"></path>
+                        </svg>
+
+                        <input
+                            id="pesquisa-global"
+                            type="search"
+                            name="q"
+                            placeholder="Pesquisar discente ou TCC"
+                            value="{{ request.GET.q|default:'' }}"
+                            autocomplete="off"
+                        >
+
+                        <button type="submit">Pesquisar</button>
+                    </form>
+
+                    <div class="topbar-contexto" aria-label="Perfil atual">
+                        {% if request.user.is_superuser or request.user.pusuario.perfil == 'COORDENACAO' %}
+                            <span class="contexto-indicador contexto-coordenacao"></span>
+                            Coordenação
+                        {% else %}
+                            <span class="contexto-indicador contexto-docente"></span>
+                            Docente
+                        {% endif %}
+                    </div>
+
+                </header>
+
+                <div class="page-content" id="conteudo-principal" tabindex="-1">
+
+                    {% if messages %}
+                        <div
+                            class="mensagens-container"
+                            aria-label="Mensagens do sistema"
+                        >
+                            {% for message in messages %}
+                                <div
+                                    class="alerta alerta-{{ message.tags }}"
+                                    role="{% if message.tags == 'error' %}alert{% else %}status{% endif %}"
+                                >
+                                    <span>{{ message }}</span>
+
+                                    <button
+                                        type="button"
+                                        class="alerta-fechar"
+                                        data-alert-close
+                                        aria-label="Fechar mensagem"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    {% block content %}
+                    {% endblock %}
+
+                </div>
+
+            </main>
 
         </div>
 
-    </div>
-
-    <div class="content">
-        {% if messages %}
-            <div class="mensagens-container">
-                {% for message in messages %}
-                    <!-- A tag message.tags puxa se é success, warning ou error -->
-                    <div class="alerta alerta-{{ message.tags }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
-
-            <form action="{% url 'pesquisar' %}" method="GET" class="barra-pesquisa">
-                <input
-                    type="text"
-                    name="q"
-                    placeholder="Pesquisar discente ou TCC..."
-                    value="{{ request.GET.q }}"
-                >
-                <button type="submit">Pesquisar</button>
-            </form>
-
-        {% block content %}
-        {% endblock %}
-    </div>
+    {% endwith %}
 
 </body>
 </html>

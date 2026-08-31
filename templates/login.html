@@ -1,21 +1,26 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
-
     <meta
         name="viewport"
         content="width=device-width, initial-scale=1.0"
     >
+    <meta name="theme-color" content="#172554">
+
+    <title>Entrar | SGTCC</title>
+
+    <link
+        rel="icon"
+        type="image/png"
+        href="{% static 'assets/logo_ufac.png' %}"
+    >
 
     <link
         rel="stylesheet"
-        href="{% static 'css/login.css' %}"
+        href="{% static 'css/login.css' %}?v=20260901-01"
     >
-
-    <title>Login | SGTCC</title>
 </head>
 
 <body>
@@ -23,105 +28,115 @@
     <div class="container">
 
         <aside class="sidebar">
-
             <img
                 src="{% static 'assets/logo_ufac.png' %}"
-                alt="Universidade Federal do Acre"
+                alt="Brasão da Universidade Federal do Acre"
             >
 
             <p>SGTCC</p>
-
         </aside>
 
         <main class="form-login">
 
-            <h1>Login</h1>
+            <section class="auth-card" aria-labelledby="titulo-login">
 
-            {% if messages %}
+                <span class="auth-eyebrow">
+                    Acesso institucional
+                </span>
 
-                <div class="mensagens-flutuantes">
+                <h1 id="titulo-login">Boas-vindas</h1>
 
-                    {% for message in messages %}
+                <p class="auth-intro">
+                    Entre com sua conta para gerenciar e acompanhar
+                    as bancas de TCC.
+                </p>
 
-                        <div class="alerta alerta-{{ message.tags }}">
-                            {{ message }}
-                        </div>
+                {% if messages %}
+                    <div
+                        class="mensagens-flutuantes"
+                        aria-label="Mensagens do sistema"
+                    >
+                        {% for message in messages %}
+                            <div
+                                class="alerta alerta-{{ message.tags }}"
+                                role="{% if message.tags == 'error' %}alert{% else %}status{% endif %}"
+                            >
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
 
-                    {% endfor %}
+                <form method="POST">
+                    {% csrf_token %}
 
-                </div>
+                    <label for="login">
+                        E-mail institucional ou usuário
+                    </label>
 
-            {% endif %}
-
-            <form method="POST">
-                {% csrf_token %}
-
-                <input
-                    type="text"
-                    id="login"
-                    name="email"
-                    placeholder="E-mail institucional ou usuário"
-                    value="{{ request.POST.email|default:'' }}"
-                    autocomplete="username"
-                    required
-                >
-
-                <input
-                    type="password"
-                    id="senha"
-                    name="senha"
-                    placeholder="Senha"
-                    autocomplete="current-password"
-                    required
-                >
-
-                <label class="opcao-manter-conectado">
                     <input
-                        type="checkbox"
-                        name="manter_conectado"
-                        {% if request.POST.manter_conectado %}
-                            checked
-                        {% endif %}
+                        type="text"
+                        id="login"
+                        name="email"
+                        placeholder="nome@ufac.br"
+                        value="{{ request.POST.email|default:'' }}"
+                        autocomplete="username"
+                        required
                     >
 
-                    <span>Manter conectado</span>
-                </label>
+                    <label for="senha">Senha</label>
 
-                <button type="submit">
-                    Entrar
-                </button>
-            </form>
-            <p style="font-size: 14px; text-align: center;">
+                    <input
+                        type="password"
+                        id="senha"
+                        name="senha"
+                        placeholder="Digite sua senha"
+                        autocomplete="current-password"
+                        required
+                    >
 
-                <a href="{% url 'recuperar_senha' %}">
-                    Esqueci minha senha
-                </a>
+                    <label class="opcao-manter-conectado">
+                        <input
+                            type="checkbox"
+                            name="manter_conectado"
+                            {% if request.POST.manter_conectado %}
+                                checked
+                            {% endif %}
+                        >
 
-            </p>
+                        <span>Manter conectado neste dispositivo</span>
+                    </label>
 
-            <p style="font-size: 14px; text-align: center;">
+                    <button type="submit">Entrar no sistema</button>
+                </form>
 
-                Ainda não possui cadastro?
+                <div class="auth-links">
+                    <p>
+                        <a href="{% url 'recuperar_senha' %}">
+                            Esqueci minha senha
+                        </a>
+                    </p>
 
-                <a href="{% url 'cadastrar_docente' %}">
-                    Solicitar cadastro
-                </a>
+                    <p>
+                        Ainda não possui cadastro?
+                        <a href="{% url 'cadastrar_docente' %}">
+                            Solicitar cadastro
+                        </a>
+                    </p>
 
-            </p>
-            <p style="font-size: 14px; text-align: center;">
+                    <p>
+                        Não recebeu o link?
+                        <a href="{% url 'reenviar_confirmacao_docente' %}">
+                            Reenviar confirmação
+                        </a>
+                    </p>
+                </div>
 
-                Não recebeu o link?
-
-                <a href="{% url 'reenviar_confirmacao_docente' %}">
-                    Reenviar confirmação
-                </a>
-
-            </p>
+            </section>
 
         </main>
 
     </div>
 
 </body>
-
 </html>

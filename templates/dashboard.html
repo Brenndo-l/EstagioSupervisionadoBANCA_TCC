@@ -1,336 +1,256 @@
 {% extends 'base.html' %}
 
+{% block title %}Painel | SGTCC{% endblock %}
+
 {% block content %}
 
-<div class="dashboard-header">
+    <section class="dashboard-header">
+        <span class="page-eyebrow">
+            {% if is_coordenacao %}
+                Visão administrativa
+            {% else %}
+                Área do docente
+            {% endif %}
+        </span>
 
-    <h1>Painel de Controle</h1>
+        <h1>Painel de Controle</h1>
+
+        {% if is_coordenacao %}
+            <p>
+                Acompanhe as solicitações, decisões e espaços do
+                Sistema de Gerenciamento de Bancas de TCC.
+            </p>
+        {% else %}
+            <p>
+                Acompanhe seus pedidos de agendamento e o andamento
+                das bancas das quais você participa.
+            </p>
+        {% endif %}
+    </section>
+
+    <section
+        class="dashboard-cards"
+        aria-label="Resumo do sistema"
+    >
+        <article class="card card-sucesso">
+            <h3>Bancas agendadas</h3>
+            <p>{{ total_bancas }}</p>
+        </article>
+
+        <article class="card card-alerta">
+            <h3>Solicitações pendentes</h3>
+            <p>{{ total_pendentes }}</p>
+        </article>
+
+        <article class="card">
+            <h3>Salas cadastradas</h3>
+            <p>{{ total_salas }}</p>
+        </article>
+    </section>
 
     {% if is_coordenacao %}
-        <p>
-            <strong>Modo Coordenação:</strong>
-            resumo global do Sistema de Gerenciamento de Bancas de TCC.
-        </p>
-    {% else %}
-        <p>
-            Resumo dos seus agendamentos de Bancas de TCC.
-        </p>
-    {% endif %}
 
-</div>
-
-
-<div class="dashboard-cards">
-
-    <div class="card">
-        <h3>Bancas Agendadas</h3>
-        <p>{{ total_bancas }}</p>
-    </div>
-
-    <div class="card">
-        <h3>Solicitações Pendentes</h3>
-        <p>{{ total_pendentes }}</p>
-    </div>
-
-    <div class="card">
-        <h3>Salas Cadastradas</h3>
-        <p>{{ total_salas }}</p>
-    </div>
-
-</div>
-
-
-{% if is_coordenacao %}
-
-    <!-- Solicitações pendentes -->
-
-    <div
-        class="coordenacao-panel"
-        style="
-            margin-top: 40px;
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        "
-    >
-
-        <h2 style="color: #d9534f; margin-bottom: 15px;">
-            Atenção Coordenação: Pendentes de Análise
-        </h2>
-
-        {% if ultimos_pedidos %}
-
-            <ul style="list-style: none; padding: 0;">
-
-                {% for pedido in ultimos_pedidos %}
-
-                    <li
-                        style="
-                            padding: 12px 10px;
-                            border-bottom: 1px solid #eee;
-                            display: flex;
-                            justify-content: space-between;
-                            align-items: center;
-                            gap: 15px;
-                            flex-wrap: wrap;
-                        "
-                    >
-
-                        <span>
-                            <strong>
-                                {{ pedido.projeto_tcc.titulo }}
-                            </strong>
-
-                            — Solicitado para:
-
-                            {{ pedido.opcao_data_inicio|date:"d/m/Y H:i" }}
-
-                            no
-
-                            <strong>
-                                {{ pedido.espaco.nome }}
-                            </strong>
-                        </span>
-
-                        <div
-                            style="
-                                display: flex;
-                                align-items: center;
-                                gap: 10px;
-                            "
-                        >
-
-                            <span class="status-badge status-analise">
-                                Pendente
-                            </span>
-
-                            <a
-                                href="{% url 'avaliar_solicitacao' pedido.id %}"
-                                style="
-                                    text-decoration: none;
-                                    background-color: #2b3990;
-                                    color: white;
-                                    padding: 8px 14px;
-                                    border-radius: 5px;
-                                    font-size: 12px;
-                                    font-weight: bold;
-                                "
-                            >
-                                AVALIAR
-                            </a>
-
-                        </div>
-
-                    </li>
-
-                {% endfor %}
-
-            </ul>
-
-        {% else %}
-
-            <p>
-                Nenhuma solicitação aguardando análise no momento.
-            </p>
-
-        {% endif %}
-
-    </div>
-
-
-    <!-- Histórico privado da Coordenação -->
-
-    <div
-        class="table-container"
-        style="margin-top: 30px;"
-    >
-
-        <h2>Histórico de Decisões</h2>
-
-        <p>
-            Registro administrativo das solicitações aprovadas
-            e recusadas pela Coordenação.
-        </p>
-
-        <div class="filter-menu">
-
-            <a
-                href="{% url 'dashboard' %}"
-                class="btn-filter {% if not status_historico %}active{% endif %}"
-            >
-                Todas
-            </a>
-
-            <a
-                href="{% url 'dashboard' %}?historico=APROVADA"
-                class="btn-filter {% if status_historico == 'APROVADA' %}active{% endif %}"
-            >
-                Aprovadas
-            </a>
-
-            <a
-                href="{% url 'dashboard' %}?historico=RECUSADA"
-                class="btn-filter {% if status_historico == 'RECUSADA' %}active{% endif %}"
-            >
-                Recusadas
-            </a>
-
-        </div>
-
-        {% if historico_decisoes %}
-
-            <table>
-
-                <thead>
-                    <tr>
-                        <th>Discente</th>
-                        <th>Título do TCC</th>
-                        <th>Solicitante</th>
-                        <th>Status</th>
-                        <th>Justificativa</th>
-                        <th>Data da decisão</th>
-                        <th>Responsável</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-
-                    {% for decisao in historico_decisoes %}
-
-                        <tr>
-
-                            <td>
-                                {{ decisao.projeto_tcc.discente.nome }}
-                            </td>
-
-                            <td>
-                                {{ decisao.projeto_tcc.titulo }}
-                            </td>
-
-                            <td>
-                                {{ decisao.usuario_solicitante }}
-                            </td>
-
-                            <td>
-
-                                {% if decisao.status == 'APROVADA' %}
-
-                                    <span class="status-badge status-aprovada">
-                                        Aprovada
-                                    </span>
-
-                                {% else %}
-
-                                    <span class="status-badge status-recusada">
-                                        Recusada
-                                    </span>
-
-                                {% endif %}
-
-                            </td>
-
-                            <td
-                                style="
-                                    white-space: normal;
-                                    min-width: 250px;
-                                "
-                            >
-                                {% if decisao.motivo_decisao %}
-                                    {{ decisao.motivo_decisao }}
-                                {% else %}
-                                    Registro anterior à implantação
-                                    das justificativas.
-                                {% endif %}
-                            </td>
-
-                            <td>
-                                {% if decisao.data_decisao %}
-                                    {{ decisao.data_decisao|date:"d/m/Y H:i" }}
-                                {% else %}
-                                    Não registrada
-                                {% endif %}
-                            </td>
-
-                            <td>
-                                {% if decisao.decidida_por %}
-
-                                    {{ decisao.decidida_por.get_full_name|default:decisao.decidida_por.username }}
-
-                                {% else %}
-
-                                    Não registrado
-
-                                {% endif %}
-                            </td>
-
-                        </tr>
-
-                    {% endfor %}
-
-                </tbody>
-
-            </table>
-
-
-            <!-- Paginação do histórico -->
-
-            {% if historico_decisoes.has_other_pages %}
-
-                <div
-                    style="
-                        margin-top: 20px;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        gap: 15px;
-                        flex-wrap: wrap;
-                    "
-                >
-
-                    {% if historico_decisoes.has_previous %}
-
-                        <a
-                            class="btn-filter"
-                            href="?{% if status_historico %}historico={{ status_historico }}&{% endif %}pagina={{ historico_decisoes.previous_page_number }}"
-                        >
-                            Anterior
-                        </a>
-
-                    {% endif %}
-
-                    <span>
-                        Página
-                        {{ historico_decisoes.number }}
-                        de
-                        {{ historico_decisoes.paginator.num_pages }}
-                    </span>
-
-                    {% if historico_decisoes.has_next %}
-
-                        <a
-                            class="btn-filter"
-                            href="?{% if status_historico %}historico={{ status_historico }}&{% endif %}pagina={{ historico_decisoes.next_page_number }}"
-                        >
-                            Próxima
-                        </a>
-
-                    {% endif %}
-
+        <section class="coordenacao-panel">
+            <div class="panel-header">
+                <div>
+                    <span class="page-eyebrow">Ação necessária</span>
+                    <h2>Pendentes de análise</h2>
+                    <p>
+                        Solicitações recentes que aguardam uma decisão
+                        da Coordenação.
+                    </p>
                 </div>
 
+                <a
+                    href="{% url 'solicitacoes_coordenacao' %}?status=EM_ANÁLISE"
+                    class="btn-filter"
+                >
+                    Ver todas
+                </a>
+            </div>
+
+            {% if ultimos_pedidos %}
+                <ul class="lista-pendencias">
+                    {% for pedido in ultimos_pedidos %}
+                        <li class="item-pendencia">
+                            <div class="item-pendencia-conteudo">
+                                <strong>
+                                    {{ pedido.projeto_tcc.titulo }}
+                                </strong>
+
+                                <span>
+                                    {{ pedido.opcao_data_inicio|date:"d/m/Y" }}
+                                    às
+                                    {{ pedido.opcao_data_inicio|date:"H:i" }}
+                                    · {{ pedido.espaco.nome }}
+                                </span>
+                            </div>
+
+                            <div class="item-pendencia-acoes">
+                                <span class="status-badge status-analise">
+                                    Pendente
+                                </span>
+
+                                <a
+                                    href="{% url 'avaliar_solicitacao' pedido.id %}"
+                                    class="btn-download"
+                                >
+                                    Avaliar
+                                </a>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="sem-resultados">
+                    <h3>Nenhuma solicitação pendente</h3>
+                    <p>
+                        Todas as solicitações recebidas já foram analisadas.
+                    </p>
+                </div>
             {% endif %}
+        </section>
 
-        {% else %}
+        <section class="table-container">
+            <div class="section-header">
+                <div>
+                    <span class="page-eyebrow">Registro administrativo</span>
+                    <h2>Histórico de Decisões</h2>
+                    <p>
+                        Solicitações aprovadas e recusadas pela Coordenação.
+                    </p>
+                </div>
+            </div>
 
-            <p>
-                Nenhuma decisão encontrada para o filtro selecionado.
-            </p>
+            <nav class="filter-menu" aria-label="Filtrar histórico">
+                <a
+                    href="{% url 'dashboard' %}"
+                    class="btn-filter {% if not status_historico %}active{% endif %}"
+                >
+                    Todas
+                </a>
 
-        {% endif %}
+                <a
+                    href="{% url 'dashboard' %}?historico=APROVADA"
+                    class="btn-filter {% if status_historico == 'APROVADA' %}active{% endif %}"
+                >
+                    Aprovadas
+                </a>
 
-    </div>
+                <a
+                    href="{% url 'dashboard' %}?historico=RECUSADA"
+                    class="btn-filter {% if status_historico == 'RECUSADA' %}active{% endif %}"
+                >
+                    Recusadas
+                </a>
+            </nav>
 
-{% endif %}
+            {% if historico_decisoes %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Discente</th>
+                            <th>Título do TCC</th>
+                            <th>Solicitante</th>
+                            <th>Status</th>
+                            <th>Justificativa</th>
+                            <th>Data da decisão</th>
+                            <th>Responsável</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for decisao in historico_decisoes %}
+                            <tr>
+                                <td>
+                                    {{ decisao.projeto_tcc.discente.nome }}
+                                </td>
+
+                                <td>
+                                    {{ decisao.projeto_tcc.titulo }}
+                                </td>
+
+                                <td>
+                                    {{ decisao.usuario_solicitante }}
+                                </td>
+
+                                <td>
+                                    {% if decisao.status == 'APROVADA' %}
+                                        <span class="status-badge status-aprovada">
+                                            Aprovada
+                                        </span>
+                                    {% else %}
+                                        <span class="status-badge status-recusada">
+                                            Recusada
+                                        </span>
+                                    {% endif %}
+                                </td>
+
+                                <td class="texto-longo">
+                                    {% if decisao.motivo_decisao %}
+                                        {{ decisao.motivo_decisao }}
+                                    {% else %}
+                                        Registro anterior à implantação
+                                        das justificativas.
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if decisao.data_decisao %}
+                                        {{ decisao.data_decisao|date:"d/m/Y H:i" }}
+                                    {% else %}
+                                        Não registrada
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if decisao.decidida_por %}
+                                        {{ decisao.decidida_por.get_full_name|default:decisao.decidida_por.username }}
+                                    {% else %}
+                                        Não registrado
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                {% if historico_decisoes.has_other_pages %}
+                    <nav class="paginacao" aria-label="Paginação do histórico">
+                        {% if historico_decisoes.has_previous %}
+                            <a
+                                class="btn-filter"
+                                href="?{% if status_historico %}historico={{ status_historico }}&{% endif %}pagina={{ historico_decisoes.previous_page_number }}"
+                            >
+                                Anterior
+                            </a>
+                        {% endif %}
+
+                        <span>
+                            Página {{ historico_decisoes.number }}
+                            de {{ historico_decisoes.paginator.num_pages }}
+                        </span>
+
+                        {% if historico_decisoes.has_next %}
+                            <a
+                                class="btn-filter"
+                                href="?{% if status_historico %}historico={{ status_historico }}&{% endif %}pagina={{ historico_decisoes.next_page_number }}"
+                            >
+                                Próxima
+                            </a>
+                        {% endif %}
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="sem-resultados">
+                    <h3>Nenhuma decisão encontrada</h3>
+                    <p>
+                        Não existem decisões para o filtro selecionado.
+                    </p>
+                </div>
+            {% endif %}
+        </section>
+
+    {% endif %}
 
 {% endblock %}
