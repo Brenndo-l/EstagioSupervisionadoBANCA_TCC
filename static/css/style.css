@@ -1716,3 +1716,24 @@ textarea:focus-visible {
 .docente-autocomplete-limpar:not([hidden]) {
     display: flex;
 }
+
+
+/* =========================================================
+   AÇÕES DOS DOCUMENTOS INSTITUCIONAIS
+   ========================================================= */
+
+.acoes-documento-gerado {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    min-width: 210px;
+}
+
+.tipo-versao-documento {
+    color: var(--cinza-600);
+    display: block;
+    flex-basis: 100%;
+    font-size: 0.72rem;
+    font-weight: 650;
+}

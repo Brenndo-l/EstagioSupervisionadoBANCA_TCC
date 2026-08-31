@@ -80,6 +80,11 @@ urlpatterns = [
         name='gerar_pdf_banca'
     ),
     path(
+        'documentos/banca/<int:solicitacao_id>/docx/',
+        views.gerar_docx_banca,
+        name='gerar_docx_banca'
+    ),
+    path(
         'espacos/',
         views.gerenciar_espacos,
         name='gerenciar_espacos'

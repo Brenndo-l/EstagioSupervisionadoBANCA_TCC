@@ -28,8 +28,11 @@ from django.contrib import messages
 from django.db.models import Q
 from django.http import FileResponse, HttpResponse
 from pathlib import Path
-from django.template.loader import get_template
-from xhtml2pdf import pisa
+from .documentos_banca import (
+    gerar_docx_ata,
+    gerar_pdf_ata,
+    montar_dados_ata,
+)
 from .permissions import (
     usuario_e_coordenacao,
     usuario_interno_required,
@@ -54,7 +57,6 @@ from .emails import (
     enviar_email_banca_finalizada,
 )
 from .tokens import token_confirmacao_email
-from datetime import timedelta
 
 def usuario_pode_acessar_solicitacao(
     user,
@@ -103,6 +105,7 @@ def usuario_pode_acessar_solicitacao(
         composicao.coorientador_id,
         composicao.avaliador_interno_id,
         composicao.segundo_avaliador_interno_id,
+        composicao.presidente_id,
     }
 
     participantes_ids.discard(None)
@@ -2627,10 +2630,80 @@ def excluir_documento(
 @usuario_interno_required
 def gerar_pdf_banca(request, solicitacao_id):
 
+    dados_documento = _obter_dados_documento_banca(
+        request,
+        solicitacao_id
+    )
+
+    if dados_documento is None:
+        return redirect('documentos')
+
+    solicitacao, dados = dados_documento
+
+    arquivo = gerar_pdf_ata(dados)
+
+    response = HttpResponse(
+        arquivo.getvalue(),
+        content_type='application/pdf'
+    )
+
+    response['Content-Disposition'] = (
+        'attachment; '
+        f'filename="{_nome_arquivo_ata(solicitacao, dados)}.pdf"'
+    )
+
+    return response
+
+
+@usuario_interno_required
+def gerar_docx_banca(request, solicitacao_id):
+
+    dados_documento = _obter_dados_documento_banca(
+        request,
+        solicitacao_id
+    )
+
+    if dados_documento is None:
+        return redirect('documentos')
+
+    solicitacao, dados = dados_documento
+
+    arquivo = gerar_docx_ata(dados)
+
+    return FileResponse(
+        arquivo,
+        as_attachment=True,
+        filename=(
+            f'{_nome_arquivo_ata(solicitacao, dados)}.docx'
+        ),
+        content_type=(
+            'application/vnd.openxmlformats-officedocument.'
+            'wordprocessingml.document'
+        ),
+    )
+
+
+def _nome_arquivo_ata(solicitacao, dados):
+
+    versao = (
+        'final'
+        if dados['finalizada']
+        else 'pre_defesa'
+    )
+
+    return (
+        f'ata_apresentacao_tcc_'
+        f'{solicitacao.id}_{versao}'
+    )
+
+
+def _obter_dados_documento_banca(
+    request,
+    solicitacao_id
+):
+
     atualizar_status_bancas()
 
-    # A minuta somente pode ser gerada para uma
-    # solicitação que já tenha sido aprovada.
     solicitacao = get_object_or_404(
         SolicitacaoAgendamento.objects.select_related(
             'projeto_tcc',
@@ -2641,9 +2714,6 @@ def gerar_pdf_banca(request, solicitacao_id):
         status='APROVADA',
     )
 
-    # Cada composição pertence à sua solicitação específica.
-    # Não buscamos somente pelo projeto porque o mesmo projeto
-    # pode possuir registros históricos diferentes.
     composicao = (
         ComposicaoBanca.objects
         .select_related(
@@ -2659,9 +2729,7 @@ def gerar_pdf_banca(request, solicitacao_id):
         .first()
     )
 
-    # Impede a geração de uma minuta incompleta.
     if not composicao:
-
         messages.error(
             request,
             (
@@ -2670,14 +2738,12 @@ def gerar_pdf_banca(request, solicitacao_id):
             )
         )
 
-        return redirect('documentos')
+        return None
 
     banca = obter_banca_da_solicitacao(
         solicitacao
     )
 
-    # A Coordenação, o solicitante e os integrantes
-    # da banca podem gerar o documento aprovado.
     if not usuario_pode_acessar_solicitacao(
         request.user,
         solicitacao,
@@ -2689,150 +2755,15 @@ def gerar_pdf_banca(request, solicitacao_id):
             'o documento desta banca.'
         )
 
-        return redirect(
-            'documentos'
-        )
+        return None
 
-    # Retorna o nome completo do docente.
-    # Caso ele não tenha nome completo cadastrado,
-    # utiliza seu username.
-    # A titulação é acrescentada exclusivamente
-# ao nome utilizado no documento.
-    def nome_docente(perfil):
-
-        if perfil is None:
-            return ''
-
-        return perfil.nome_para_documento
-
-
-    nome_orientador = nome_docente(
-        composicao.orientador
+    dados = montar_dados_ata(
+        solicitacao,
+        composicao,
+        banca
     )
 
-    nome_coorientador = nome_docente(
-        composicao.coorientador
-    )
-
-    nome_avaliador_interno = nome_docente(
-        composicao.avaliador_interno
-    )
-
-    nome_segundo_avaliador = nome_docente(
-        composicao.segundo_avaliador_interno
-    )
-
-    nome_presidente = nome_docente(
-        composicao.presidente
-    )
-
-    nome_avaliador_externo = (
-        composicao.nome_avaliador_externo
-        or ''
-    )
-
-    if (
-        nome_avaliador_externo
-        and composicao.titulacao_avaliador_externo
-    ):
-
-        nome_avaliador_externo = (
-            f'{composicao.get_titulacao_avaliador_externo_display()} '
-            f'{nome_avaliador_externo}'
-        )
-
-    contexto = {
-        # Objetos completos, caso o template precise
-        # acessar algum atributo diretamente.
-        'solicitacao': solicitacao,
-        'composicao': composicao,
-
-        # Dados principais da declaração.
-        'discente': (
-            solicitacao.projeto_tcc.discente.nome
-        ),
-        'titulo_tcc': (
-            solicitacao.projeto_tcc.titulo
-        ),
-
-        # Composição da banca.
-        'orientador': nome_orientador,
-        'coorientador': nome_coorientador,
-        'avaliador_interno': (
-            nome_avaliador_interno
-        ),
-        'segundo_avaliador_interno': (
-            nome_segundo_avaliador
-        ),
-        'presidente': nome_presidente,
-        'avaliador_externo': (
-            nome_avaliador_externo
-        ),
-        'instituicao_externa': (
-            composicao.instituicao_avaliador_externo
-        ),
-
-        # Dados do agendamento.
-        'espaco': solicitacao.espaco.nome,
-        'data_inicio': (
-            solicitacao.opcao_data_inicio
-        ),
-        'data_fim': solicitacao.opcao_data_fim,
-        'data_defesa': (
-            solicitacao.opcao_data_inicio
-        ),
-        'nota': (
-            banca.nota
-            if banca is not None
-            else None
-        ),
-
-        'data_limite_versao_final': (
-            banca.data_limite_versao_final
-            if banca is not None
-            else (
-                timezone.localtime(
-                    solicitacao.opcao_data_inicio
-                ).date()
-                + timedelta(days=30)
-            )
-        ),
-    }
-
-    # Este é o template institucional que substituiu
-    # o antigo PDF técnico de teste.
-    template = get_template(
-        'pdf/dados_banca_aprovada.html'
-    )
-
-    html = template.render(
-        contexto
-    )
-
-    response = HttpResponse(
-        content_type='application/pdf'
-    )
-
-    response['Content-Disposition'] = (
-        'attachment; '
-        f'filename="minuta_declaracao_banca_'
-        f'{solicitacao.id}.pdf"'
-    )
-
-    resultado = pisa.CreatePDF(
-        html,
-        dest=response,
-        encoding='UTF-8',
-    )
-
-    if resultado.err:
-
-        return HttpResponse(
-            'Erro ao gerar a minuta em PDF.',
-            status=500,
-        )
-
-    return response
+    return solicitacao, dados
 
 @coordenacao_required
 def gerenciar_espacos(request):

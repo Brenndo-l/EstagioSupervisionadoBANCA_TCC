@@ -44,8 +44,9 @@
     <h2>Bancas aprovadas</h2>
 
     <p>
-        Selecione uma banca aprovada para gerar
-        a minuta institucional que será inserida no SEI.
+        Gere a Ata de Apresentação em PDF ou DOCX. Antes da defesa,
+        o documento mantém resultado e nota em branco; depois do
+        registro da nota, a versão final é preenchida automaticamente.
     </p>
 
     {% if solicitacoes_aprovadas %}
@@ -104,12 +105,29 @@
                         </td>
 
                         <td>
-                            <a
-                                href="{% url 'gerar_pdf_banca' solicitacao.id %}"
-                                class="btn-download"
-                            >
-                                GERAR MINUTA
-                            </a>
+                            <div class="acoes-documento-gerado">
+                                <span class="tipo-versao-documento">
+                                    {% if solicitacao.banca_tcc.status == 'FINALIZADA' %}
+                                        Versão final
+                                    {% else %}
+                                        Pré-defesa
+                                    {% endif %}
+                                </span>
+
+                                <a
+                                    href="{% url 'gerar_pdf_banca' solicitacao.id %}"
+                                    class="btn-download"
+                                >
+                                    PDF
+                                </a>
+
+                                <a
+                                    href="{% url 'gerar_docx_banca' solicitacao.id %}"
+                                    class="btn-download"
+                                >
+                                    DOCX
+                                </a>
+                            </div>
                         </td>
 
                     </tr>

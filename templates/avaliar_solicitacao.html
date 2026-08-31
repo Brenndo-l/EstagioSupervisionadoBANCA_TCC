@@ -184,16 +184,18 @@
         {{ form.presidente }}
 
         {% if form.presidente.help_text %}
-            <p style="font-size: 13px; color: #666;">
+            <p class="form-ajuda">
                 {{ form.presidente.help_text }}
             </p>
         {% endif %}
 
-        {% for erro in form.presidente.errors %}
-            <p style="color: #d9534f;">
-                {{ erro }}
-            </p>
-        {% endfor %}
+        {% if form.presidente.errors %}
+            <ul class="errorlist" role="alert">
+                {% for erro in form.presidente.errors %}
+                    <li>{{ erro }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
 
         <p>
             <label for="{{ form.motivo_decisao.id_for_label }}">
@@ -203,11 +205,13 @@
 
         {{ form.motivo_decisao }}
 
-        {% for erro in form.motivo_decisao.errors %}
-            <p style="color: #d9534f;">
-                {{ erro }}
-            </p>
-        {% endfor %}
+        {% if form.motivo_decisao.errors %}
+            <ul class="errorlist" role="alert">
+                {% for erro in form.motivo_decisao.errors %}
+                    <li>{{ erro }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
 
         <div style="
             display: flex;
