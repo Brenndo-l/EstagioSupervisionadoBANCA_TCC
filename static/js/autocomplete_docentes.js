@@ -90,7 +90,13 @@
             'docente-autocomplete-limpar'
         );
 
-        limpar.textContent = '×';
+        limpar.innerHTML = (
+            '<svg viewBox="0 0 24 24" '
+            + 'aria-hidden="true" focusable="false">'
+            + '<path d="M7 7L17 17"></path>'
+            + '<path d="M17 7L7 17"></path>'
+            + '</svg>'
+        );
 
         limpar.setAttribute(
             'aria-label',

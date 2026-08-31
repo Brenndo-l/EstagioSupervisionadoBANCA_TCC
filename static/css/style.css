@@ -1636,3 +1636,133 @@ textarea:focus-visible {
         box-shadow: none;
     }
 }
+
+/* =========================================================
+   SOLICITAÇÃO DE BANCA — LAYOUT AMPLO
+   ========================================================= */
+
+.form-container form > h2 {
+    margin-bottom: 18px;
+}
+
+.form-container form > h2 ~ h2 {
+    border-top: 1px solid var(--cinza-200);
+    margin-top: 30px !important;
+    padding-top: 27px;
+}
+
+.form-grid {
+    display: grid;
+    gap: 18px 22px;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.form-grid .form-field {
+    margin: 0;
+    min-width: 0;
+}
+
+.form-field--full {
+    grid-column: 1 / -1;
+}
+
+.form-container .form-ajuda {
+    color: var(--cinza-600);
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 450;
+    line-height: 1.45;
+    margin: -7px 0 0;
+}
+
+.form-grid .form-field > input:not([type="checkbox"]):not([type="radio"]),
+.form-grid .form-field > select,
+.form-grid .form-field > textarea,
+.form-grid .docente-autocomplete,
+.form-grid .orientador-automatico {
+    margin-bottom: 0;
+}
+
+
+/* =========================================================
+   BOTÃO DE LIMPAR DO AUTOCOMPLETE
+   ========================================================= */
+
+.docente-autocomplete-input.form-input {
+    padding-right: 54px;
+}
+
+/* Desativa definitivamente o desenho anterior por CSS. */
+.docente-autocomplete-limpar::before,
+.docente-autocomplete-limpar::after {
+    content: none !important;
+    display: none !important;
+}
+
+.docente-autocomplete-limpar {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    color: var(--cinza-500);
+    cursor: pointer;
+    display: grid;
+    height: 32px;
+    line-height: 1;
+    padding: 0;
+    place-items: center;
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    z-index: 2;
+}
+
+.docente-autocomplete-limpar svg {
+    display: block;
+    fill: none;
+    height: 16px;
+    overflow: visible;
+    pointer-events: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-width: 2.25;
+    width: 16px;
+}
+
+.docente-autocomplete-limpar:hover,
+.docente-autocomplete-limpar:focus {
+    background: var(--cinza-100);
+    color: var(--vermelho-700);
+}
+
+
+/* =========================================================
+   DUAS COLUNAS SOMENTE NO DESKTOP
+   ========================================================= */
+
+@media (min-width: 1024px) {
+    .page-content > .form-container.form-container--amplo {
+        max-width: none;
+        width: 100%;
+    }
+
+    .form-solicitacao .form-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .form-solicitacao textarea {
+        min-height: 105px;
+    }
+}
+
+/* O CSS anterior não pode sobrescrever o atributo hidden. */
+.docente-autocomplete-limpar[hidden] {
+    display: none !important;
+}
+
+.docente-autocomplete-limpar:not([hidden]) {
+    display: grid;
+}

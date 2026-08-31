@@ -562,7 +562,7 @@ class SolicitacaoBancaForm(forms.ModelForm):
         label='Professor Coorientador (Opcional)',
         empty_label='Sem coorientador',
         widget=autocomplete_docente_widget(
-            'Digite ao menos 2 letras do nome ou e-mail',
+            'Digite nome ou e-mail',
             grupo_exclusivo=True
         ),
         error_messages={
@@ -577,7 +577,7 @@ class SolicitacaoBancaForm(forms.ModelForm):
         label='Avaliador Interno (UFAC)',
         empty_label='Selecione o avaliador',
         widget=autocomplete_docente_widget(
-            'Digite ao menos 2 letras do nome ou e-mail',
+            'Digite nome ou e-mail',
             grupo_exclusivo=True
         ),
         error_messages={
@@ -594,7 +594,7 @@ class SolicitacaoBancaForm(forms.ModelForm):
         label='Segundo Avaliador Interno (Opcional)',
         empty_label='Sem segundo avaliador',
         widget=autocomplete_docente_widget(
-            'Digite ao menos 2 letras do nome ou e-mail',
+            'Digite nome ou e-mail',
             grupo_exclusivo=True
         ),
         error_messages={
@@ -610,7 +610,7 @@ class SolicitacaoBancaForm(forms.ModelForm):
         label='Presidente indicado (Opcional)',
         empty_label='A Coordenação selecionará',
         widget=autocomplete_docente_widget(
-            'Digite ao menos 2 letras do nome ou e-mail'
+            'Digite nome ou e-mail'
         ),
         error_messages={
             'invalid_choice': (
@@ -1221,7 +1221,7 @@ class AvaliacaoSolicitacaoForm(forms.Form):
             'docente ativo; esta indicação é apenas documental.'
         ),
         widget=autocomplete_docente_widget(
-            'Digite ao menos 2 letras do nome ou e-mail'
+            'Digite nome ou e-mail'
         ),
         error_messages={
             'invalid_choice': (
