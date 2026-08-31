@@ -1852,7 +1852,8 @@ def logout_view(request):
 
 def criar_formulario_revalidacao(
     solicitacao,
-    composicao
+    composicao,
+    presidente=None
 ):
 
     inicio_local = timezone.localtime(
@@ -1895,8 +1896,12 @@ def criar_formulario_revalidacao(
         ),
 
         'presidente': (
-            composicao.presidente_id
-            or ''
+            presidente.pk
+            if presidente is not None
+            else (
+                composicao.presidente_id
+                or ''
+            )
         ),
 
         'nome_avaliador_externo': (
@@ -2037,7 +2042,12 @@ def avaliar_solicitacao(
                 formulario_revalidacao = (
                     criar_formulario_revalidacao(
                         solicitacao,
-                        composicao
+                        composicao,
+                        presidente=(
+                            form.cleaned_data[
+                                'presidente'
+                            ]
+                        )
                     )
                 )
 

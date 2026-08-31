@@ -22,8 +22,15 @@
             select.dataset.minLength || 2
         );
 
-        const grupoExclusivo = (
-            select.dataset.exclusiveGroup || ''
+        const grupoCandidatos = (
+            select.dataset.memberSourceGroup || ''
+        );
+
+        const valoresFixosMembro = new Set(
+            (select.dataset.memberFixedValues || '')
+                .split(',')
+                .map((valor) => valor.trim())
+                .filter(Boolean)
         );
 
         const valoresExcluidos = new Set(
@@ -236,6 +243,56 @@
             return selecionados;
         }
 
+        function valoresPermitidosComoMembro() {
+            const permitidos = new Set(
+                valoresFixosMembro
+            );
+
+            if (!grupoCandidatos) {
+                return permitidos;
+            }
+
+            document
+                .querySelectorAll(
+                    'select[data-exclusive-group="'
+                    + grupoCandidatos
+                    + '"]'
+                )
+                .forEach((selectMembro) => {
+                    if (selectMembro.value) {
+                        permitidos.add(
+                            selectMembro.value
+                        );
+                    }
+                });
+
+            return permitidos;
+        }
+
+        function limparSelecao(
+            devolverFoco = true
+        ) {
+            select.value = '';
+            input.value = '';
+
+            select.dispatchEvent(
+                new Event(
+                    'change',
+                    {
+                        bubbles: true,
+                    }
+                )
+            );
+
+            atualizarBotaoLimpar();
+            atualizarValidade();
+            fecharResultados();
+
+            if (devolverFoco) {
+                input.focus();
+            }
+        }
+
         function escolher(opcao) {
             select.value = opcao.value;
             input.value = opcao.label;
@@ -308,8 +365,8 @@
                 return;
             }
 
-            const selecionadosNoGrupo = (
-                valoresSelecionadosNoGrupo()
+            const membrosPermitidos = (
+                valoresPermitidosComoMembro()
             );
 
             resultadosAtuais = opcoes
@@ -320,6 +377,12 @@
                     )
                     && !selecionadosNoGrupo.has(
                         opcao.value
+                    )
+                    && (
+                        !grupoCandidatos
+                        || membrosPermitidos.has(
+                            opcao.value
+                        )
                     )
                 ))
                 .slice(0, 10);
@@ -337,7 +400,9 @@
                 );
 
                 item.textContent = (
-                    'Nenhum docente encontrado.'
+                    grupoCandidatos
+                        ? 'Nenhum integrante encontrado.'
+                        : 'Nenhum docente encontrado.'
                 );
 
                 resultados.appendChild(item);
@@ -522,23 +587,41 @@
         limpar.addEventListener(
             'click',
             () => {
-                select.value = '';
-                input.value = '';
+                limparSelecao();
+            }
+        );
 
-                select.dispatchEvent(
-                    new Event(
-                        'change',
-                        {
-                            bubbles: true,
-                        }
+        document.addEventListener(
+            'change',
+            (evento) => {
+                if (
+                    !grupoCandidatos
+                    || !evento.target.matches(
+                        'select[data-exclusive-group="'
+                        + grupoCandidatos
+                        + '"]'
                     )
+                ) {
+                    return;
+                }
+
+                const membrosPermitidos = (
+                    valoresPermitidosComoMembro()
                 );
 
-                atualizarBotaoLimpar();
-                atualizarValidade();
-                fecharResultados();
+                if (
+                    select.value
+                    && !membrosPermitidos.has(
+                        select.value
+                    )
+                ) {
+                    limparSelecao(false);
+                    return;
+                }
 
-                input.focus();
+                if (!resultados.hidden) {
+                    mostrarResultados();
+                }
             }
         );
 

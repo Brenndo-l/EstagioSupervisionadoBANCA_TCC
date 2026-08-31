@@ -4878,7 +4878,7 @@ class AutocompleteDocentesTests(TestCase):
             self.orientador
         )
 
-    def test_presidente_pode_ser_docente_fora_da_composicao(
+    def test_presidente_fora_da_composicao_e_rejeitado(
         self
     ):
 
@@ -4893,28 +4893,44 @@ class AutocompleteDocentesTests(TestCase):
             )
         )
 
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
+            response,
+            'O presidente deve ser um dos integrantes '
+            'internos já indicados para a banca.'
+        )
+
+        self.assertFalse(
+            SolicitacaoAgendamento.objects.exists()
+        )
+
+    def test_orientador_pode_ser_presidente(self):
+
+        self.client.force_login(
+            self.orientador.usuario
+        )
+
+        response = self.client.post(
+            reverse('solicitar_banca'),
+            self.dados_post(
+                presidente=self.orientador.id
+            )
+        )
+
         self.assertRedirects(
             response,
             reverse('dashboard')
         )
 
-        composicao = (
-            ComposicaoBanca.objects.get()
-        )
+        composicao = ComposicaoBanca.objects.get()
 
         self.assertEqual(
             composicao.presidente,
-            self.presidente
-        )
-
-        self.assertNotEqual(
-            composicao.presidente,
             composicao.orientador
-        )
-
-        self.assertNotEqual(
-            composicao.presidente,
-            composicao.avaliador_interno
         )
 
     def test_presidente_inativo_e_rejeitado(
@@ -4951,7 +4967,51 @@ class AutocompleteDocentesTests(TestCase):
             .exists()
         )
 
-    def test_coordenacao_define_presidente_documental(
+    def test_coordenacao_define_integrante_como_presidente(
+        self
+    ):
+
+        solicitacao, composicao = (
+            self.criar_pendente()
+        )
+
+        self.client.force_login(
+            self.coordenacao.usuario
+        )
+
+        response = self.client.post(
+            reverse(
+                'avaliar_solicitacao',
+                args=[solicitacao.id]
+            ),
+            {
+                'acao': 'aprovar',
+                'presidente': self.avaliador.id,
+                'motivo_decisao': (
+                    'Composição conferida.'
+                ),
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+        composicao.refresh_from_db()
+
+        self.assertEqual(
+            composicao.presidente,
+            self.avaliador
+        )
+
+        self.assertTrue(
+            BancaTCC.objects.filter(
+                solicitacao=solicitacao
+            ).exists()
+        )
+
+    def test_coordenacao_nao_define_pessoa_fora_da_composicao(
         self
     ):
 
@@ -4972,30 +5032,42 @@ class AutocompleteDocentesTests(TestCase):
                 'acao': 'aprovar',
                 'presidente': self.presidente.id,
                 'motivo_decisao': (
-                    'Composição conferida.'
+                    'Tentativa com pessoa externa '
+                    'à composição.'
                 ),
             }
         )
 
-        self.assertRedirects(
-            response,
-            reverse('dashboard')
+        self.assertEqual(
+            response.status_code,
+            200
         )
 
+        self.assertContains(
+            response,
+            'Selecione como presidente um dos integrantes '
+            'internos da banca.'
+        )
+
+        solicitacao.refresh_from_db()
         composicao.refresh_from_db()
 
         self.assertEqual(
-            composicao.presidente,
-            self.presidente
+            solicitacao.status,
+            'EM_ANÁLISE'
         )
 
-        self.assertTrue(
+        self.assertIsNone(
+            composicao.presidente
+        )
+
+        self.assertFalse(
             BancaTCC.objects.filter(
                 solicitacao=solicitacao
             ).exists()
         )
 
-    def test_presidente_documental_nao_entra_em_choque(
+    def test_presidente_e_considerado_no_choque_de_horario(
         self
     ):
 
@@ -5015,29 +5087,19 @@ class AutocompleteDocentesTests(TestCase):
         )
 
         projeto = ProjetoTCC.objects.create(
-            titulo=(
-                'Projeto com presidente documental'
-            ),
-            resumo=(
-                'Resumo do projeto em mesmo horário.'
-            ),
+            titulo='Projeto com presidente',
+            resumo='Resumo do projeto em mesmo horário.',
             semestre_letivo='2026.2',
             discente=discente
         )
 
-        outro_espaco = (
-            EspacoFisico.objects.create(
-                nome='Outra sala'
-            )
+        outro_espaco = EspacoFisico.objects.create(
+            nome='Outra sala'
         )
 
         existente = (
-            SolicitacaoAgendamento
-            .objects
-            .create(
-                usuario_solicitante=(
-                    outro_orientador
-                ),
+            SolicitacaoAgendamento.objects.create(
+                usuario_solicitante=outro_orientador,
                 projeto_tcc=projeto,
                 espaco=outro_espaco,
                 opcao_data_inicio=self.inicio,
@@ -5046,6 +5108,8 @@ class AutocompleteDocentesTests(TestCase):
             )
         )
 
+        # Simula um registro antigo salvo com o presidente
+        # incorretamente fora da composição.
         ComposicaoBanca.objects.create(
             solicitacao=existente,
             projeto_tcc=projeto,
@@ -5061,34 +5125,39 @@ class AutocompleteDocentesTests(TestCase):
         response = self.client.post(
             reverse('solicitar_banca'),
             self.dados_post(
-                presidente=self.presidente.id
+                avaliador_interno=self.presidente.id,
+                presidente=self.orientador.id
             )
         )
 
-        self.assertRedirects(
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
             response,
-            reverse('dashboard')
+            'Este docente já está alocado em outra banca '
+            'neste horário'
         )
 
         self.assertEqual(
-            SolicitacaoAgendamento
-            .objects
-            .count(),
-            2
+            SolicitacaoAgendamento.objects.count(),
+            1
         )
 
-    def test_presidente_documental_nao_recebe_acesso(
+    def test_presidente_recebe_acesso_como_integrante(
         self
     ):
 
         solicitacao, _ = (
             self.criar_pendente(
-                presidente=self.presidente
+                presidente=self.avaliador
             )
         )
 
         self.client.force_login(
-            self.presidente.usuario
+            self.avaliador.usuario
         )
 
         response = self.client.get(
@@ -5100,7 +5169,7 @@ class AutocompleteDocentesTests(TestCase):
             200
         )
 
-        self.assertNotContains(
+        self.assertContains(
             response,
             solicitacao.projeto_tcc.titulo
         )

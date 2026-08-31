@@ -22,7 +22,8 @@ from .models import (
 
 def autocomplete_docente_widget(
     placeholder,
-    grupo_exclusivo=False
+    grupo_exclusivo=False,
+    grupo_candidatos=None
 ):
 
     attrs = {
@@ -32,7 +33,14 @@ def autocomplete_docente_widget(
     }
 
     if grupo_exclusivo:
-        attrs['data-exclusive-group'] = 'composicao-interna'
+        attrs[
+            'data-exclusive-group'
+        ] = 'composicao-interna'
+
+    if grupo_candidatos:
+        attrs[
+            'data-member-source-group'
+        ] = grupo_candidatos
 
     return forms.Select(
         attrs=attrs
@@ -610,11 +618,13 @@ class SolicitacaoBancaForm(forms.ModelForm):
         label='Presidente indicado (Opcional)',
         empty_label='A Coordenação selecionará',
         widget=autocomplete_docente_widget(
-            'Digite nome ou e-mail'
+            'Digite nome ou e-mail',
+            grupo_candidatos='composicao-interna'
         ),
         error_messages={
             'invalid_choice': (
-                'Selecione um presidente válido nas sugestões.'
+                'Selecione um presidente válido '
+                'nas sugestões.'
             ),
         }
     )
@@ -742,8 +752,7 @@ class SolicitacaoBancaForm(forms.ModelForm):
 
         # O orientador é sempre o solicitante.
         # Ele não aparece como coorientador ou avaliador,
-        # mas pode ser indicado como presidente porque
-        # a presidência é apenas uma informação documental.
+        # mas pode assumir a presidência da banca.
         if self.orientador:
 
             for nome_campo in [
@@ -757,6 +766,12 @@ class SolicitacaoBancaForm(forms.ModelForm):
                 ].widget.attrs[
                     'data-excluded-values'
                 ] = str(self.orientador.pk)
+
+            self.fields[
+                'presidente'
+            ].widget.attrs[
+                'data-member-fixed-values'
+            ] = str(self.orientador.pk)
 
         # Todas as salas ativas aparecem no formulário,
         # mesmo que ainda não possuam disponibilidade.
@@ -993,10 +1008,19 @@ class SolicitacaoBancaForm(forms.ModelForm):
                     docente.pk
                 ] = funcao
 
-        # O presidente pode ser qualquer docente ativo.
-        # Esta indicação é apenas documental: ela não torna
-        # o docente integrante da banca e não participa das
-        # validações de duplicidade ou choque de horário.
+        # A presidência é uma função exercida por um dos
+        # integrantes internos já indicados. O presidente
+        # não é uma quinta pessoa adicionada à composição.
+        if (
+            presidente
+            and presidente.pk not in funcoes_por_docente
+        ):
+
+            self.add_error(
+                'presidente',
+                'O presidente deve ser um dos integrantes '
+                'internos já indicados para a banca.'
+            )
 
         if espaco and data_inicio and data_fim:
 
@@ -1152,6 +1176,11 @@ class SolicitacaoBancaForm(forms.ModelForm):
                                     docente
                                 )
                             )
+                            | Q(
+                                composicao_banca__presidente=(
+                                    docente
+                                )
+                            )
                         )
                         .exists()
                     )
@@ -1217,15 +1246,16 @@ class AvaliacaoSolicitacaoForm(forms.Form):
         label='Presidente da banca',
         empty_label='Selecione o presidente',
         help_text=(
-            'Obrigatório para aprovação. Pode ser qualquer '
-            'docente ativo; esta indicação é apenas documental.'
+            'Obrigatório para aprovação. Selecione um dos '
+            'integrantes internos já indicados para a banca.'
         ),
         widget=autocomplete_docente_widget(
             'Digite nome ou e-mail'
         ),
         error_messages={
             'invalid_choice': (
-                'Selecione um presidente válido nas sugestões.'
+                'Selecione como presidente um dos integrantes '
+                'internos da banca.'
             ),
         }
     )
@@ -1260,15 +1290,28 @@ class AvaliacaoSolicitacaoForm(forms.Form):
 
         self.composicao = composicao
         self.acao = acao
+        self.membros_ids = set()
 
         super().__init__(
             *args,
             **kwargs
         )
 
+        if composicao:
+
+            self.membros_ids = {
+                composicao.orientador_id,
+                composicao.coorientador_id,
+                composicao.avaliador_interno_id,
+                composicao.segundo_avaliador_interno_id,
+            }
+
+            self.membros_ids.discard(None)
+
         if (
             composicao
             and composicao.presidente_id
+            in self.membros_ids
         ):
 
             self.fields[
@@ -1283,6 +1326,7 @@ class AvaliacaoSolicitacaoForm(forms.Form):
             .filter(
                 perfil='DOCENTE',
                 usuario__is_active=True,
+                id__in=self.membros_ids,
             )
             .order_by(
                 'usuario__first_name',
@@ -1299,12 +1343,13 @@ class AvaliacaoSolicitacaoForm(forms.Form):
             'presidente'
         )
 
-        # Preserva a indicação feita anteriormente
+        # Preserva uma indicação válida feita anteriormente
         # pelo docente solicitante.
         if (
             presidente is None
             and self.composicao
             and self.composicao.presidente_id
+            in self.membros_ids
         ):
 
             presidente = (
@@ -1313,6 +1358,17 @@ class AvaliacaoSolicitacaoForm(forms.Form):
 
             cleaned_data['presidente'] = (
                 presidente
+            )
+
+        if (
+            presidente
+            and presidente.pk not in self.membros_ids
+        ):
+
+            self.add_error(
+                'presidente',
+                'Selecione como presidente um dos integrantes '
+                'internos da banca.'
             )
 
         if (

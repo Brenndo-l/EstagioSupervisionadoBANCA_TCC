@@ -1300,53 +1300,6 @@ textarea:focus-visible {
     padding-right: 48px;
 }
 
-.docente-autocomplete-limpar {
-    appearance: none;
-    align-items: center;
-    background: transparent;
-    border: 0;
-    border-radius: 7px;
-    color: var(--cinza-500);
-    cursor: pointer;
-    display: flex;
-    font-size: 0;
-    height: 34px;
-    justify-content: center;
-    line-height: 0;
-    padding: 0;
-    position: absolute;
-    right: 6px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 34px;
-}
-
-.docente-autocomplete-limpar::before,
-.docente-autocomplete-limpar::after {
-    background: currentColor;
-    border-radius: 999px;
-    content: "";
-    height: 2px;
-    left: 50%;
-    pointer-events: none;
-    position: absolute;
-    top: 50%;
-    width: 13px;
-}
-
-.docente-autocomplete-limpar::before {
-    transform: translate(-50%, -50%) rotate(45deg);
-}
-
-.docente-autocomplete-limpar::after {
-    transform: translate(-50%, -50%) rotate(-45deg);
-}
-
-.docente-autocomplete-limpar:hover,
-.docente-autocomplete-limpar:focus {
-    background: var(--cinza-100);
-    color: var(--vermelho-700);
-}
 
 .docente-autocomplete-resultados {
     background: var(--branco);
@@ -1689,33 +1642,29 @@ textarea:focus-visible {
    ========================================================= */
 
 .docente-autocomplete-input.form-input {
-    padding-right: 54px;
-}
-
-/* Desativa definitivamente o desenho anterior por CSS. */
-.docente-autocomplete-limpar::before,
-.docente-autocomplete-limpar::after {
-    content: none !important;
-    display: none !important;
+    padding-right: 52px;
 }
 
 .docente-autocomplete-limpar {
     -webkit-appearance: none;
     appearance: none;
+    align-items: center;
     background: transparent;
     border: 0;
-    border-radius: 8px;
+    border-radius: 7px;
+    bottom: auto;
     color: var(--cinza-500);
     cursor: pointer;
-    display: grid;
+    display: flex;
     height: 32px;
-    line-height: 1;
+    justify-content: center;
+    line-height: 0;
+    margin: 0;
     padding: 0;
-    place-items: center;
     position: absolute;
     right: 6px;
-    top: 50%;
-    transform: translateY(-50%);
+    top: 11px;
+    transform: none;
     width: 32px;
     z-index: 2;
 }
@@ -1723,6 +1672,7 @@ textarea:focus-visible {
 .docente-autocomplete-limpar svg {
     display: block;
     fill: none;
+    flex: 0 0 16px;
     height: 16px;
     overflow: visible;
     pointer-events: none;
@@ -1764,5 +1714,5 @@ textarea:focus-visible {
 }
 
 .docente-autocomplete-limpar:not([hidden]) {
-    display: grid;
+    display: flex;
 }
