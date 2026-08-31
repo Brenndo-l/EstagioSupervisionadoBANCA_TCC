@@ -1382,7 +1382,18 @@ class AvaliacaoSolicitacaoTests(TestCase):
             nome='Laboratório de Avaliação'
         )
 
-        inicio = timezone.now() + timedelta(days=30)
+        inicio = (
+            timezone.localtime(
+                timezone.now()
+            )
+            + timedelta(days=30)
+        ).replace(
+            hour=14,
+            minute=0,
+            second=0,
+            microsecond=0
+        )
+
         fim = inicio + timedelta(hours=2)
 
         self.solicitacao = SolicitacaoAgendamento.objects.create(
@@ -1688,6 +1699,8 @@ class AvaliacaoSolicitacaoTests(TestCase):
             )
             + timedelta(days=40)
         ).replace(
+            hour=14,
+            minute=0,
             second=0,
             microsecond=0
         )

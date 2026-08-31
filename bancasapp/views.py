@@ -2935,16 +2935,16 @@ def gerenciar_espacos(request):
                 pk=disponibilidade_id
             )
 
-            if _disponibilidade_possui_registro_vinculado(
+            if _disponibilidade_possui_compromisso(
                 disponibilidade
             ):
 
                 messages.error(
                     request,
                     'Esta disponibilidade possui uma solicitação '
-                    'ou banca vinculada e não pode ser excluída. '
-                    'Utilize a opção de desativar para preservar '
-                    'o histórico.'
+                    'em análise, uma solicitação aprovada ou uma '
+                    'banca futura ou em andamento e não pode ser '
+                    'excluída.'
                 )
 
                 return redirect(
@@ -2963,12 +2963,6 @@ def gerenciar_espacos(request):
 
             return redirect(
                 'gerenciar_espacos'
-            )
-
-        else:
-            messages.error(
-                request,
-                'Formulário enviado de maneira inválida.'
             )
 
     espacos = EspacoFisico.objects.all()
@@ -3052,49 +3046,6 @@ def _disponibilidade_possui_compromisso(disponibilidade):
     return (
         solicitacao_existente
         or banca_existente
-    )
-
-def _disponibilidade_possui_registro_vinculado(disponibilidade):
-    """
-    Verifica se a disponibilidade possui qualquer
-    solicitação ou banca no mesmo espaço e período.
-
-    Diferentemente da verificação de compromisso futuro,
-    esta função também considera registros antigos e
-    solicitações recusadas, protegendo o histórico.
-    """
-
-    possui_solicitacao = (
-        SolicitacaoAgendamento.objects
-        .filter(
-            espaco=disponibilidade.espaco,
-            opcao_data_inicio__lt=(
-                disponibilidade.data_hora_fim
-            ),
-            opcao_data_fim__gt=(
-                disponibilidade.data_hora_inicio
-            ),
-        )
-        .exists()
-    )
-
-    possui_banca = (
-        BancaTCC.objects
-        .filter(
-            espaco=disponibilidade.espaco,
-            data_horario_inicio__lt=(
-                disponibilidade.data_hora_fim
-            ),
-            data_horario_fim__gt=(
-                disponibilidade.data_hora_inicio
-            ),
-        )
-        .exists()
-    )
-
-    return (
-        possui_solicitacao
-        or possui_banca
     )
 
 @coordenacao_required

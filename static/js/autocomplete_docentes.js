@@ -47,8 +47,9 @@
         );
 
         const input = document.createElement('input');
+        input.type = 'text';
 
-        input.type = 'search';
+        input.type = 'text';
 
         input.className = (
             'form-input docente-autocomplete-input'
