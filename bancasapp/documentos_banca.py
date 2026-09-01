@@ -4,15 +4,12 @@ from decimal import Decimal
 from html import escape
 from io import BytesIO
 
+import reportlab
 from django.utils import timezone
 from docx import Document
-from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Cm, Mm, Pt
-import reportlab
-from reportlab.lib import colors
 from reportlab.lib.enums import (
     TA_CENTER,
     TA_JUSTIFY,
@@ -28,8 +25,6 @@ from reportlab.platypus import (
     Paragraph,
     SimpleDocTemplate,
     Spacer,
-    Table,
-    TableStyle,
 )
 
 
@@ -202,6 +197,7 @@ def montar_integrantes(composicao):
                     perfil,
                     funcao
                 ),
+                'instituicao': 'UFAC',
             }
         )
 
@@ -217,18 +213,14 @@ def montar_integrantes(composicao):
                 f'{nome_externo}'
             )
 
-        funcao_externo = 'Avaliador(a) externo(a)'
-
-        if composicao.instituicao_avaliador_externo:
-            funcao_externo = (
-                f'{funcao_externo} - '
-                f'{composicao.instituicao_avaliador_externo}'
-            )
-
         integrantes.append(
             {
                 'nome': nome_externo,
-                'funcao': funcao_externo,
+                'funcao': 'Avaliador(a) externo(a)',
+                'instituicao': (
+                    composicao.instituicao_avaliador_externo
+                    or 'Não informada'
+                ),
             }
         )
 
@@ -331,6 +323,22 @@ def _registrar_fontes_pdf():
     )
 
 
+def _linha_integrante_pdf(integrante):
+
+    texto = (
+        f'<b>{escape(integrante["nome"])}</b> - '
+        f'{escape(integrante["funcao"])}'
+    )
+
+    if integrante['instituicao']:
+        texto += (
+            ' - Instituição: '
+            f'{escape(integrante["instituicao"])}'
+        )
+
+    return texto
+
+
 def gerar_pdf_ata(dados):
 
     _registrar_fontes_pdf()
@@ -340,9 +348,9 @@ def gerar_pdf_ata(dados):
     documento = SimpleDocTemplate(
         saida,
         pagesize=A4,
-        rightMargin=1.8 * cm,
-        leftMargin=1.8 * cm,
-        topMargin=1.7 * cm,
+        rightMargin=2.0 * cm,
+        leftMargin=2.0 * cm,
+        topMargin=1.5 * cm,
         bottomMargin=1.7 * cm,
         title=(
             'Ata de Apresentação do Trabalho '
@@ -351,13 +359,22 @@ def gerar_pdf_ata(dados):
         author='Universidade Federal do Acre',
     )
 
+    estilo_cabecalho_principal = ParagraphStyle(
+        'CabecalhoPrincipalAta',
+        fontName='AtaSans-Bold',
+        fontSize=11,
+        leading=13,
+        alignment=TA_CENTER,
+        spaceAfter=1,
+    )
+
     estilo_cabecalho = ParagraphStyle(
         'CabecalhoAta',
-        fontName='AtaSans-Bold',
+        fontName='AtaSans',
         fontSize=10.5,
         leading=13,
         alignment=TA_CENTER,
-        spaceAfter=0,
+        spaceAfter=1,
     )
 
     estilo_titulo = ParagraphStyle(
@@ -366,17 +383,18 @@ def gerar_pdf_ata(dados):
         fontSize=13,
         leading=16,
         alignment=TA_CENTER,
+        spaceBefore=20,
         spaceAfter=18,
     )
 
-    estilo_subtitulo = ParagraphStyle(
-        'SubtituloAta',
-        fontName='AtaSans-Bold',
-        fontSize=10.5,
-        leading=13,
-        alignment=TA_CENTER,
-        spaceBefore=12,
-        spaceAfter=6,
+    estilo_resumo = ParagraphStyle(
+        'ResumoAta',
+        fontName='AtaSans',
+        fontSize=10,
+        leading=14,
+        alignment=TA_JUSTIFY,
+        leftIndent=7.5 * cm,
+        spaceAfter=22,
     )
 
     estilo_corpo = ParagraphStyle(
@@ -389,55 +407,60 @@ def gerar_pdf_ata(dados):
         spaceAfter=10,
     )
 
+    estilo_secao = ParagraphStyle(
+        'SecaoAta',
+        fontName='AtaSans-Bold',
+        fontSize=10.5,
+        leading=14,
+        alignment=TA_CENTER,
+        spaceBefore=8,
+        spaceAfter=7,
+    )
+
+    estilo_integrante = ParagraphStyle(
+        'IntegranteAta',
+        fontName='AtaSans',
+        fontSize=10,
+        leading=14,
+        alignment=TA_CENTER,
+        spaceAfter=4,
+    )
+
     estilo_campos = ParagraphStyle(
         'CamposAta',
-        parent=estilo_corpo,
         fontName='AtaSans-Bold',
+        fontSize=10.5,
+        leading=15,
         alignment=TA_LEFT,
-        firstLineIndent=0,
         leftIndent=1.25 * cm,
+        spaceAfter=10,
     )
 
     estilo_data = ParagraphStyle(
         'DataAta',
-        parent=estilo_corpo,
-        alignment=TA_RIGHT,
-        firstLineIndent=0,
-        spaceBefore=8,
-    )
-
-    estilo_tabela = ParagraphStyle(
-        'TabelaAta',
         fontName='AtaSans',
-        fontSize=9.5,
-        leading=12,
-        alignment=TA_LEFT,
-    )
-
-    estilo_tabela_cabecalho = ParagraphStyle(
-        'TabelaCabecalhoAta',
-        parent=estilo_tabela,
-        fontName='AtaSans-Bold',
-        alignment=TA_CENTER,
+        fontSize=10.5,
+        leading=15,
+        alignment=TA_RIGHT,
+        spaceBefore=8,
     )
 
     elementos = [
         Paragraph(
             'UNIVERSIDADE FEDERAL DO ACRE',
-            estilo_cabecalho
+            estilo_cabecalho_principal
         ),
         Paragraph(
-            'CENTRO DE CIÊNCIAS EXATAS E TECNOLÓGICAS',
+            'Centro de Ciências Exatas e Tecnológicas',
             estilo_cabecalho
         ),
         Paragraph(
             (
-                'COORDENAÇÃO DO CURSO DE BACHARELADO '
-                'EM SISTEMAS DE INFORMAÇÃO'
+                'Coordenação do Curso de Bacharelado '
+                'em Sistemas de Informação'
             ),
             estilo_cabecalho
         ),
-        Spacer(1, 18),
         Paragraph(
             (
                 'ATA DE APRESENTAÇÃO DO TRABALHO '
@@ -445,20 +468,30 @@ def gerar_pdf_ata(dados):
             ),
             estilo_titulo
         ),
+        Paragraph(
+            (
+                'Ata de apresentação do Trabalho de Conclusão '
+                'do Curso de Bacharelado em Sistemas de '
+                'Informação, realizada no dia '
+                f'<b>{escape(dados["data_defesa_extenso"])}</b>.'
+            ),
+            estilo_resumo
+        ),
     ]
 
     texto_corpo = (
-        f'Em {escape(dados["data_defesa_extenso"])}, às '
-        f'{escape(dados["hora_defesa"])}, no espaço '
-        f'{escape(dados["espaco"])}, da Universidade Federal '
-        f'do Acre, na presença da Banca Examinadora presidida '
-        f'por {escape(dados["presidente"])} e composta conforme '
-        f'a relação abaixo, o(a) discente '
-        f'{escape(dados["discente"])} apresentou o Trabalho de '
-        f'Conclusão de Curso intitulado “'
-        f'{escape(dados["titulo_tcc"])}”, como requisito '
-        f'curricular para a integralização do Curso de '
-        f'Bacharelado em Sistemas de Informação.'
+        'No dia '
+        f'<b>{escape(dados["data_defesa_extenso"])}</b>, às '
+        f'<b>{escape(dados["hora_defesa"])}</b>, no espaço '
+        f'{escape(dados["espaco"])}, desta Universidade e na '
+        'presença da Banca Examinadora presidida por '
+        f'{escape(dados["presidente"])} e composta pelos '
+        'membros relacionados abaixo, o(a) discente '
+        f'<b>{escape(dados["discente"])}</b> realizou a Defesa '
+        'Pública do Trabalho de Conclusão de Curso, intitulado '
+        f'<b>“{escape(dados["titulo_tcc"])}”</b>, como requisito '
+        'curricular indispensável à integralização do Curso de '
+        'Bacharelado em Sistemas de Informação.'
     )
 
     elementos.append(
@@ -467,68 +500,29 @@ def gerar_pdf_ata(dados):
 
     elementos.append(
         Paragraph(
-            'BANCA EXAMINADORA',
-            estilo_subtitulo
+            'Banca Examinadora',
+            estilo_secao
         )
     )
-
-    dados_tabela = [
-        [
-            Paragraph(
-                'Integrante',
-                estilo_tabela_cabecalho
-            ),
-            Paragraph(
-                'Função',
-                estilo_tabela_cabecalho
-            ),
-        ]
-    ]
 
     for integrante in dados['integrantes']:
-        dados_tabela.append(
-            [
-                Paragraph(
-                    escape(integrante['nome']),
-                    estilo_tabela
-                ),
-                Paragraph(
-                    escape(integrante['funcao']),
-                    estilo_tabela
-                ),
-            ]
+        elementos.append(
+            Paragraph(
+                _linha_integrante_pdf(integrante),
+                estilo_integrante
+            )
         )
 
-    tabela = Table(
-        dados_tabela,
-        colWidths=[10.5 * cm, 6.0 * cm],
-        repeatRows=1,
-        hAlign='CENTER',
-    )
-
-    tabela.setStyle(
-        TableStyle(
-            [
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#EEEEEE')),
-                ('GRID', (0, 0), (-1, -1), 0.75, colors.black),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('LEFTPADDING', (0, 0), (-1, -1), 6),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-                ('TOPPADDING', (0, 0), (-1, -1), 5),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-            ]
-        )
-    )
-
-    elementos.append(tabela)
-    elementos.append(Spacer(1, 14))
+    elementos.append(Spacer(1, 9))
 
     if dados['finalizada']:
         texto_resultado = (
             'A Banca Examinadora, após reunião em sessão '
             'reservada, deliberou e atribuiu ao referido '
             'Trabalho de Conclusão de Curso a nota '
-            f'{escape(dados["nota_formatada"])}.'
+            f'<b>{escape(dados["nota_formatada"])}</b>, '
+            'divulgando o resultado formalmente ao(à) discente '
+            'e aos demais presentes.'
         )
     else:
         texto_resultado = (
@@ -558,32 +552,33 @@ def gerar_pdf_ata(dados):
             'Ao final, o(a) discente foi informado(a) da '
             'obrigatoriedade da apresentação da versão final '
             'do Trabalho de Conclusão de Curso no prazo máximo '
-            'de 30 (trinta) dias corridos, até '
-            f'{escape(dados["data_limite_extenso"])}, contendo '
-            'os ajustes sugeridos pela Banca Examinadora, sob '
-            'consentimento do(a) orientador(a).'
+            'de <b>30 (trinta) dias corridos</b>, até '
+            f'<b>{escape(dados["data_limite_extenso"])}</b>, '
+            'contendo todos os ajustes sugeridos pela Banca '
+            'Examinadora, sob consentimento do(a) orientador(a).'
         )
     else:
         texto_prazo = (
             'Após a defesa, o(a) discente deverá ser '
             'informado(a) da obrigatoriedade da apresentação '
             'da versão final do Trabalho de Conclusão de Curso '
-            'no prazo máximo de 30 (trinta) dias corridos, até '
-            f'{escape(dados["data_limite_extenso"])}, contendo '
-            'os ajustes sugeridos pela Banca Examinadora, sob '
-            'consentimento do(a) orientador(a).'
+            'no prazo máximo de <b>30 (trinta) dias corridos</b>, '
+            'até '
+            f'<b>{escape(dados["data_limite_extenso"])}</b>, '
+            'contendo todos os ajustes sugeridos pela Banca '
+            'Examinadora, sob consentimento do(a) orientador(a).'
         )
 
     elementos.extend(
         [
             Paragraph(texto_prazo, estilo_corpo),
             Paragraph(
-                'Por ser verdade, registra-se a presente ata.',
+                'Por ser verdade, firmamos o presente.',
                 estilo_corpo
             ),
             Paragraph(
                 (
-                    'Rio Branco - AC, '
+                    'Rio Branco-AC, '
                     f'{escape(dados["data_defesa_extenso"])}.'
                 ),
                 estilo_data
@@ -597,55 +592,38 @@ def gerar_pdf_ata(dados):
     return saida
 
 
-def _configurar_fonte_run(run, tamanho=11, negrito=False):
+def _configurar_fonte_run(
+    run,
+    tamanho=11,
+    negrito=False
+):
 
-    run.font.name = 'Arial'
+    run.font.name = 'Times New Roman'
     run.font.size = Pt(tamanho)
     run.font.bold = negrito
 
     run._element.rPr.rFonts.set(
         qn('w:eastAsia'),
-        'Arial'
+        'Times New Roman'
     )
 
 
-def _definir_margens_celula(
-    celula,
-    superior=100,
-    inferior=100,
-    esquerda=120,
-    direita=120
+def _adicionar_run(
+    paragrafo,
+    texto,
+    tamanho=11,
+    negrito=False
 ):
 
-    propriedades = celula._tc.get_or_add_tcPr()
-    margens = propriedades.first_child_found_in(
-        'w:tcMar'
+    run = paragrafo.add_run(texto)
+
+    _configurar_fonte_run(
+        run,
+        tamanho=tamanho,
+        negrito=negrito
     )
 
-    if margens is None:
-        margens = OxmlElement('w:tcMar')
-        propriedades.append(margens)
-
-    valores = {
-        'top': superior,
-        'bottom': inferior,
-        'start': esquerda,
-        'end': direita,
-    }
-
-    for lado, valor in valores.items():
-        elemento = margens.find(
-            qn(f'w:{lado}')
-        )
-
-        if elemento is None:
-            elemento = OxmlElement(
-                f'w:{lado}'
-            )
-            margens.append(elemento)
-
-        elemento.set(qn('w:w'), str(valor))
-        elemento.set(qn('w:type'), 'dxa')
+    return run
 
 
 def _adicionar_paragrafo_centralizado(
@@ -662,14 +640,63 @@ def _adicionar_paragrafo_centralizado(
         espaco_depois
     )
 
-    run = paragrafo.add_run(texto)
-    _configurar_fonte_run(
-        run,
+    _adicionar_run(
+        paragrafo,
+        texto,
         tamanho=tamanho,
         negrito=negrito
     )
 
     return paragrafo
+
+
+def _novo_paragrafo_corpo(
+    documento,
+    espaco_depois=10
+):
+
+    paragrafo = documento.add_paragraph()
+    paragrafo.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    paragrafo.paragraph_format.first_line_indent = Cm(1.25)
+    paragrafo.paragraph_format.line_spacing = 1.15
+    paragrafo.paragraph_format.space_after = Pt(
+        espaco_depois
+    )
+
+    return paragrafo
+
+
+def _adicionar_linha_integrante_docx(
+    documento,
+    integrante
+):
+
+    paragrafo = documento.add_paragraph()
+    paragrafo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    paragrafo.paragraph_format.space_after = Pt(3)
+
+    _adicionar_run(
+        paragrafo,
+        integrante['nome'],
+        tamanho=10.5,
+        negrito=True
+    )
+
+    _adicionar_run(
+        paragrafo,
+        f' - {integrante["funcao"]}',
+        tamanho=10.5
+    )
+
+    if integrante['instituicao']:
+        _adicionar_run(
+            paragrafo,
+            (
+                ' - Instituição: '
+                f'{integrante["instituicao"]}'
+            ),
+            tamanho=10.5
+        )
 
 
 def gerar_docx_ata(dados):
@@ -679,17 +706,17 @@ def gerar_docx_ata(dados):
     secao = documento.sections[0]
     secao.page_width = Mm(210)
     secao.page_height = Mm(297)
-    secao.top_margin = Cm(1.8)
-    secao.bottom_margin = Cm(1.8)
+    secao.top_margin = Cm(1.5)
+    secao.bottom_margin = Cm(1.7)
     secao.left_margin = Cm(2.0)
     secao.right_margin = Cm(2.0)
 
     estilo_normal = documento.styles['Normal']
-    estilo_normal.font.name = 'Arial'
+    estilo_normal.font.name = 'Times New Roman'
     estilo_normal.font.size = Pt(11)
     estilo_normal._element.rPr.rFonts.set(
         qn('w:eastAsia'),
-        'Arial'
+        'Times New Roman'
     )
 
     _adicionar_paragrafo_centralizado(
@@ -701,198 +728,248 @@ def gerar_docx_ata(dados):
 
     _adicionar_paragrafo_centralizado(
         documento,
-        'CENTRO DE CIÊNCIAS EXATAS E TECNOLÓGICAS',
-        tamanho=11,
+        'Centro de Ciências Exatas e Tecnológicas',
+        tamanho=10.5
+    )
+
+    _adicionar_paragrafo_centralizado(
+        documento,
+        (
+            'Coordenação do Curso de Bacharelado '
+            'em Sistemas de Informação'
+        ),
+        tamanho=10.5,
+        espaco_depois=18
+    )
+
+    _adicionar_paragrafo_centralizado(
+        documento,
+        (
+            'ATA DE APRESENTAÇÃO DO TRABALHO '
+            'DE CONCLUSÃO DE CURSO'
+        ),
+        tamanho=13,
+        negrito=True,
+        espaco_depois=14
+    )
+
+    resumo = documento.add_paragraph()
+    resumo.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    resumo.paragraph_format.left_indent = Cm(7.5)
+    resumo.paragraph_format.space_after = Pt(18)
+
+    _adicionar_run(
+        resumo,
+        (
+            'Ata de apresentação do Trabalho de Conclusão '
+            'do Curso de Bacharelado em Sistemas de '
+            'Informação, realizada no dia '
+        ),
+        tamanho=10.5
+    )
+
+    _adicionar_run(
+        resumo,
+        f'{dados["data_defesa_extenso"]}.',
+        tamanho=10.5,
         negrito=True
     )
 
-    _adicionar_paragrafo_centralizado(
+    corpo = _novo_paragrafo_corpo(
         documento,
-        'COORDENAÇÃO DO CURSO DE BACHARELADO EM SISTEMAS DE INFORMAÇÃO',
-        tamanho=11,
-        negrito=True,
-        espaco_depois=18
+        espaco_depois=10
     )
 
-    _adicionar_paragrafo_centralizado(
-        documento,
-        'ATA DE APRESENTAÇÃO DO TRABALHO DE CONCLUSÃO DE CURSO',
-        tamanho=13,
-        negrito=True,
-        espaco_depois=18
+    _adicionar_run(corpo, 'No dia ')
+
+    _adicionar_run(
+        corpo,
+        dados['data_defesa_extenso'],
+        negrito=True
     )
 
-    corpo = documento.add_paragraph()
-    corpo.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    corpo.paragraph_format.first_line_indent = Cm(1.25)
-    corpo.paragraph_format.line_spacing = 1.15
-    corpo.paragraph_format.space_after = Pt(12)
+    _adicionar_run(corpo, ', às ')
 
-    texto_corpo = (
-        f'Em {dados["data_defesa_extenso"]}, às '
-        f'{dados["hora_defesa"]}, no espaço '
-        f'{dados["espaco"]}, da Universidade Federal do '
-        f'Acre, na presença da Banca Examinadora presidida '
-        f'por {dados["presidente"]} e composta conforme a '
-        f'relação abaixo, o(a) discente {dados["discente"]} '
-        f'apresentou o Trabalho de Conclusão de Curso '
-        f'intitulado "{dados["titulo_tcc"]}", como requisito '
-        f'curricular para a integralização do Curso de '
-        f'Bacharelado em Sistemas de Informação.'
+    _adicionar_run(
+        corpo,
+        dados['hora_defesa'],
+        negrito=True
     )
 
-    run_corpo = corpo.add_run(texto_corpo)
-    _configurar_fonte_run(run_corpo)
-
-    _adicionar_paragrafo_centralizado(
-        documento,
-        'BANCA EXAMINADORA',
-        tamanho=11,
-        negrito=True,
-        espaco_depois=6
-    )
-
-    tabela = documento.add_table(
-        rows=1,
-        cols=2
-    )
-
-    tabela.style = 'Table Grid'
-    tabela.alignment = WD_TABLE_ALIGNMENT.CENTER
-    tabela.autofit = False
-
-    cabecalho = tabela.rows[0].cells
-    cabecalho[0].width = Cm(10.5)
-    cabecalho[1].width = Cm(6.0)
-
-    for celula, texto in zip(
-        cabecalho,
-        ('Integrante', 'Função')
-    ):
-        celula.vertical_alignment = (
-            WD_CELL_VERTICAL_ALIGNMENT.CENTER
+    _adicionar_run(
+        corpo,
+        (
+            f', no espaço {dados["espaco"]}, desta '
+            'Universidade e na presença da Banca '
+            'Examinadora presidida por '
+            f'{dados["presidente"]} e composta pelos '
+            'membros relacionados abaixo, o(a) discente '
         )
-        _definir_margens_celula(celula)
-        paragrafo = celula.paragraphs[0]
-        paragrafo.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = paragrafo.add_run(texto)
-        _configurar_fonte_run(
-            run,
-            tamanho=10,
+    )
+
+    _adicionar_run(
+        corpo,
+        dados['discente'],
+        negrito=True
+    )
+
+    _adicionar_run(
+        corpo,
+        (
+            ' realizou a Defesa Pública do Trabalho de '
+            'Conclusão de Curso, intitulado '
+        )
+    )
+
+    _adicionar_run(
+        corpo,
+        f'“{dados["titulo_tcc"]}”',
+        negrito=True
+    )
+
+    _adicionar_run(
+        corpo,
+        (
+            ', como requisito curricular indispensável à '
+            'integralização do Curso de Bacharelado em '
+            'Sistemas de Informação.'
+        )
+    )
+
+    _adicionar_paragrafo_centralizado(
+        documento,
+        'Banca Examinadora',
+        tamanho=11,
+        negrito=True,
+        espaco_depois=5
+    )
+
+    for integrante in dados['integrantes']:
+        _adicionar_linha_integrante_docx(
+            documento,
+            integrante
+        )
+
+    resultado = _novo_paragrafo_corpo(
+        documento,
+        espaco_depois=10
+    )
+    resultado.paragraph_format.space_before = Pt(9)
+
+    if dados['finalizada']:
+        _adicionar_run(
+            resultado,
+            (
+                'A Banca Examinadora, após reunião em sessão '
+                'reservada, deliberou e atribuiu ao referido '
+                'Trabalho de Conclusão de Curso a nota '
+            )
+        )
+
+        _adicionar_run(
+            resultado,
+            dados['nota_formatada'],
             negrito=True
         )
 
-    for integrante in dados['integrantes']:
-        celulas = tabela.add_row().cells
-        celulas[0].width = Cm(10.5)
-        celulas[1].width = Cm(6.0)
-
-        for celula, texto in zip(
-            celulas,
+        _adicionar_run(
+            resultado,
             (
-                integrante['nome'],
-                integrante['funcao'],
+                ', divulgando o resultado formalmente ao(à) '
+                'discente e aos demais presentes.'
             )
-        ):
-            celula.vertical_alignment = (
-                WD_CELL_VERTICAL_ALIGNMENT.CENTER
-            )
-            _definir_margens_celula(celula)
-            paragrafo = celula.paragraphs[0]
-            paragrafo.alignment = (
-                WD_ALIGN_PARAGRAPH.LEFT
-            )
-            run = paragrafo.add_run(texto)
-            _configurar_fonte_run(
-                run,
-                tamanho=10
-            )
-
-    resultado = documento.add_paragraph()
-    resultado.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    resultado.paragraph_format.first_line_indent = Cm(1.25)
-    resultado.paragraph_format.line_spacing = 1.15
-    resultado.paragraph_format.space_before = Pt(14)
-    resultado.paragraph_format.space_after = Pt(10)
-
-    if dados['finalizada']:
-        texto_resultado = (
-            'A Banca Examinadora, após reunião em sessão '
-            'reservada, deliberou e atribuiu ao referido '
-            'Trabalho de Conclusão de Curso a nota '
-            f'{dados["nota_formatada"]}.'
         )
+
     else:
-        texto_resultado = (
-            'A Banca Examinadora, após reunião em sessão '
-            'reservada, registrará o resultado da avaliação '
-            'e a nota final nos campos abaixo.'
+        _adicionar_run(
+            resultado,
+            (
+                'A Banca Examinadora, após reunião em sessão '
+                'reservada, registrará o resultado da avaliação '
+                'e a nota final nos campos abaixo.'
+            )
         )
 
-    run_resultado = resultado.add_run(
-        texto_resultado
-    )
-    _configurar_fonte_run(run_resultado)
-
-    if not dados['finalizada']:
         campos = documento.add_paragraph()
         campos.alignment = WD_ALIGN_PARAGRAPH.LEFT
         campos.paragraph_format.left_indent = Cm(1.25)
         campos.paragraph_format.space_after = Pt(10)
-        run_campos = campos.add_run(
-            'Resultado: ______________________________    '
-            'Nota: __________________'
-        )
-        _configurar_fonte_run(
-            run_campos,
+
+        _adicionar_run(
+            campos,
+            (
+                'Resultado: ______________________________    '
+                'Nota: __________________'
+            ),
             negrito=True
         )
 
-    prazo = documento.add_paragraph()
-    prazo.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    prazo.paragraph_format.first_line_indent = Cm(1.25)
-    prazo.paragraph_format.line_spacing = 1.15
-    prazo.paragraph_format.space_after = Pt(10)
+    prazo = _novo_paragrafo_corpo(
+        documento,
+        espaco_depois=10
+    )
 
     if dados['finalizada']:
-        texto_prazo = (
-            'Ao final, o(a) discente foi informado(a) da '
-            'obrigatoriedade da apresentação da versão final '
-            'do Trabalho de Conclusão de Curso no prazo máximo '
-            'de 30 (trinta) dias corridos, até '
-            f'{dados["data_limite_extenso"]}, contendo os '
-            'ajustes sugeridos pela Banca Examinadora, sob '
-            'consentimento do(a) orientador(a).'
+        _adicionar_run(
+            prazo,
+            (
+                'Ao final, o(a) discente foi informado(a) da '
+                'obrigatoriedade da apresentação da versão '
+                'final do Trabalho de Conclusão de Curso no '
+                'prazo máximo de '
+            )
         )
     else:
-        texto_prazo = (
-            'Após a defesa, o(a) discente deverá ser '
-            'informado(a) da obrigatoriedade da apresentação '
-            'da versão final do Trabalho de Conclusão de Curso '
-            'no prazo máximo de 30 (trinta) dias corridos, até '
-            f'{dados["data_limite_extenso"]}, contendo os '
-            'ajustes sugeridos pela Banca Examinadora, sob '
-            'consentimento do(a) orientador(a).'
+        _adicionar_run(
+            prazo,
+            (
+                'Após a defesa, o(a) discente deverá ser '
+                'informado(a) da obrigatoriedade da apresentação '
+                'da versão final do Trabalho de Conclusão de '
+                'Curso no prazo máximo de '
+            )
         )
 
-    run_prazo = prazo.add_run(texto_prazo)
-    _configurar_fonte_run(run_prazo)
-
-    encerramento = documento.add_paragraph()
-    encerramento.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-    encerramento.paragraph_format.first_line_indent = Cm(1.25)
-    encerramento.paragraph_format.space_after = Pt(18)
-    run_encerramento = encerramento.add_run(
-        'Por ser verdade, registra-se a presente ata.'
+    _adicionar_run(
+        prazo,
+        '30 (trinta) dias corridos',
+        negrito=True
     )
-    _configurar_fonte_run(run_encerramento)
+
+    _adicionar_run(prazo, ', até ')
+
+    _adicionar_run(
+        prazo,
+        dados['data_limite_extenso'],
+        negrito=True
+    )
+
+    _adicionar_run(
+        prazo,
+        (
+            ', contendo todos os ajustes sugeridos pela '
+            'Banca Examinadora, sob consentimento do(a) '
+            'orientador(a).'
+        )
+    )
+
+    encerramento = _novo_paragrafo_corpo(
+        documento,
+        espaco_depois=16
+    )
+
+    _adicionar_run(
+        encerramento,
+        'Por ser verdade, firmamos o presente.'
+    )
 
     data = documento.add_paragraph()
     data.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    run_data = data.add_run(
-        f'Rio Branco - AC, {dados["data_defesa_extenso"]}.'
+
+    _adicionar_run(
+        data,
+        f'Rio Branco-AC, {dados["data_defesa_extenso"]}.'
     )
-    _configurar_fonte_run(run_data)
 
     saida = BytesIO()
     documento.save(saida)

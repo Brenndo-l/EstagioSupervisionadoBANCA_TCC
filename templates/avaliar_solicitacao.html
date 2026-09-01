@@ -189,14 +189,6 @@
             </p>
         {% endif %}
 
-        {% if form.presidente.errors %}
-            <ul class="errorlist" role="alert">
-                {% for erro in form.presidente.errors %}
-                    <li>{{ erro }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
-
         <p>
             <label for="{{ form.motivo_decisao.id_for_label }}">
                 <strong>{{ form.motivo_decisao.label }}</strong>
@@ -204,14 +196,6 @@
         </p>
 
         {{ form.motivo_decisao }}
-
-        {% if form.motivo_decisao.errors %}
-            <ul class="errorlist" role="alert">
-                {% for erro in form.motivo_decisao.errors %}
-                    <li>{{ erro }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
 
         <div style="
             display: flex;

@@ -2251,6 +2251,31 @@ def avaliar_solicitacao(
                 'dashboard'
             )
 
+        else:
+
+            # Os erros da decisão são exibidos no sistema
+            # global de mensagens, no topo da página.
+            # O conjunto evita mostrar o mesmo texto duas vezes.
+            mensagens_exibidas = set()
+
+            for erros in form.errors.values():
+
+                for erro in erros:
+
+                    texto_erro = str(erro)
+
+                    if texto_erro in mensagens_exibidas:
+                        continue
+
+                    mensagens_exibidas.add(
+                        texto_erro
+                    )
+
+                    messages.error(
+                        request,
+                        texto_erro
+                    )
+
     else:
 
         form = AvaliacaoSolicitacaoForm(

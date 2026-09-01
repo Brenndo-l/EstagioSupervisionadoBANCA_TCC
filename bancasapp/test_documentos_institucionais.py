@@ -170,10 +170,37 @@ class DocumentosInstitucionaisTests(TestCase):
             'Orientador(a) e presidente'
         )
 
+        integrante_externo = next(
+            integrante
+            for integrante in dados['integrantes']
+            if 'Carlos Externo' in integrante['nome']
+        )
+
+        self.assertEqual(
+            integrante_externo['funcao'],
+            'Avaliador(a) externo(a)'
+        )
+
+        self.assertEqual(
+            integrante_externo['instituicao'],
+            'IFAC'
+        )
+
     def test_docx_pre_defesa_mantem_campos_em_branco(self):
 
-        texto = self._texto_docx(
-            gerar_docx_ata(self._dados())
+        arquivo = gerar_docx_ata(self._dados())
+        documento = Document(arquivo)
+
+        texto = '\n'.join(
+            paragrafo.text
+            for paragrafo in documento.paragraphs
+        )
+
+        texto_negrito = ''.join(
+            run.text
+            for paragrafo in documento.paragraphs
+            for run in paragrafo.runs
+            if run.bold
         )
 
         self.assertIn(
@@ -188,6 +215,26 @@ class DocumentosInstitucionaisTests(TestCase):
 
         self.assertIn(
             'Nota: __________________',
+            texto
+        )
+
+        self.assertIn(
+            'Ana Discente',
+            texto_negrito
+        )
+
+        self.assertIn(
+            'Sistema de Gestão de Bancas de TCC',
+            texto_negrito
+        )
+
+        self.assertIn(
+            self._dados()['data_defesa_extenso'],
+            texto_negrito
+        )
+
+        self.assertIn(
+            'Instituição: IFAC',
             texto
         )
 
@@ -332,3 +379,114 @@ class DocumentosInstitucionaisTests(TestCase):
         )
 
         self.assertContains(response, 'Pré-defesa')
+
+
+class NotificacaoGlobalAvaliacaoTests(TestCase):
+
+    def setUp(self):
+
+        self.usuario_coordenacao = User.objects.create_user(
+            username='coordenacao.alerta@ufac.br',
+            password='Senha123!',
+            is_active=True
+        )
+
+        pUsuario.objects.create(
+            usuario=self.usuario_coordenacao,
+            perfil='COORDENACAO'
+        )
+
+        usuario_orientador = User.objects.create_user(
+            username='orientador.alerta@ufac.br',
+            password='Senha123!',
+            is_active=True
+        )
+
+        orientador = pUsuario.objects.create(
+            usuario=usuario_orientador,
+            perfil='DOCENTE'
+        )
+
+        usuario_avaliador = User.objects.create_user(
+            username='avaliador.alerta@ufac.br',
+            password='Senha123!',
+            is_active=True
+        )
+
+        avaliador = pUsuario.objects.create(
+            usuario=usuario_avaliador,
+            perfil='DOCENTE'
+        )
+
+        espaco = EspacoFisico.objects.create(
+            nome='Sala de avaliação do alerta'
+        )
+
+        discente = Discente.objects.create(
+            nome='Discente do alerta',
+            matricula='20260000888'
+        )
+
+        projeto = ProjetoTCC.objects.create(
+            titulo='TCC do alerta global',
+            resumo='Resumo.',
+            semestre_letivo='2026.2',
+            discente=discente
+        )
+
+        inicio = timezone.now() + timedelta(days=15)
+
+        self.solicitacao = SolicitacaoAgendamento.objects.create(
+            usuario_solicitante=orientador,
+            projeto_tcc=projeto,
+            espaco=espaco,
+            opcao_data_inicio=inicio,
+            opcao_data_fim=(
+                inicio + timedelta(hours=2)
+            ),
+            status='EM_ANÁLISE'
+        )
+
+        ComposicaoBanca.objects.create(
+            projeto_tcc=projeto,
+            solicitacao=self.solicitacao,
+            orientador=orientador,
+            avaliador_interno=avaliador,
+            presidente=None
+        )
+
+    def test_presidente_ausente_usa_notificacao_global(self):
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.post(
+            reverse(
+                'avaliar_solicitacao',
+                args=[self.solicitacao.id]
+            ),
+            {
+                'acao': 'aprovar',
+                'presidente': '',
+                'motivo_decisao': 'Aprovação de teste.',
+            }
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        self.assertContains(
+            response,
+            'class="alerta alerta-error"'
+        )
+
+        self.assertContains(
+            response,
+            'Selecione o presidente da banca antes '
+            'de aprovar a solicitação.'
+        )
+
+        self.assertNotContains(
+            response,
+            'class="errorlist"'
+        )
