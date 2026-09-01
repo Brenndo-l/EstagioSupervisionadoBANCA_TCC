@@ -9,6 +9,7 @@ from django.contrib.auth.models import User
 from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
+from zipfile import BadZipFile, ZipFile
 from .models import (
     BancaTCC,
     Discente,
@@ -1592,6 +1593,99 @@ class ProjetoTCCForm(forms.ModelForm):
         fields = '__all__'
 
 class ModeloDocumentoForm(forms.ModelForm):
+
+    def clean_arquivo(self):
+
+        arquivo = self.cleaned_data.get(
+            'arquivo'
+        )
+
+        if not arquivo:
+            return arquivo
+
+        limite_bytes = 10 * 1024 * 1024
+
+        if arquivo.size > limite_bytes:
+            raise forms.ValidationError(
+                'O modelo de documento não pode ultrapassar 10 MB.'
+            )
+
+        extensao = (
+            arquivo.name.rsplit('.', 1)[-1].casefold()
+            if '.' in arquivo.name
+            else ''
+        )
+
+        arquivo.seek(0)
+        cabecalho = arquivo.read(8)
+        arquivo.seek(0)
+
+        if extensao == 'pdf':
+
+            if not cabecalho.startswith(b'%PDF-'):
+                raise forms.ValidationError(
+                    'O arquivo enviado não parece ser um PDF válido.'
+                )
+
+        elif extensao == 'doc':
+
+            assinatura_doc = (
+                b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'
+            )
+
+            if cabecalho != assinatura_doc:
+                raise forms.ValidationError(
+                    'O arquivo enviado não parece ser um DOC válido.'
+                )
+
+        elif extensao in {'docx', 'odt'}:
+
+            try:
+
+                with ZipFile(arquivo) as pacote:
+
+                    nomes = set(
+                        pacote.namelist()
+                    )
+
+                    if extensao == 'docx':
+
+                        valido = {
+                            '[Content_Types].xml',
+                            'word/document.xml',
+                        }.issubset(nomes)
+
+                    else:
+
+                        valido = (
+                            'mimetype' in nomes
+                            and pacote.read(
+                                'mimetype'
+                            ).strip()
+                            == (
+                                b'application/vnd.oasis.'
+                                b'opendocument.text'
+                            )
+                        )
+
+            except (
+                BadZipFile,
+                KeyError,
+                OSError,
+            ):
+                valido = False
+
+            finally:
+                arquivo.seek(0)
+
+            if not valido:
+                raise forms.ValidationError(
+                    'O conteúdo do arquivo não corresponde '
+                    f'ao formato {extensao.upper()} informado.'
+                )
+
+        return arquivo
+
     class Meta:
         model = ModeloDocumento
 
@@ -1612,7 +1706,8 @@ class ModeloDocumentoForm(forms.ModelForm):
             }),
 
             'arquivo': forms.FileInput(attrs={
-                'class': 'form-input'
+                'class': 'form-input',
+                'accept': '.pdf,.doc,.docx,.odt',
             }),
         }
 
@@ -1620,4 +1715,11 @@ class ModeloDocumentoForm(forms.ModelForm):
             'nome': 'Nome do documento',
             'tipo': 'Tipo do documento',
             'arquivo': 'Arquivo',
+        }
+
+        help_texts = {
+            'arquivo': (
+                'Formatos aceitos: PDF, DOC, DOCX ou ODT, '
+                'com no máximo 10 MB.'
+            ),
         }

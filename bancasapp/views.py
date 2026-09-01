@@ -58,6 +58,58 @@ from .emails import (
 )
 from .tokens import token_confirmacao_email
 
+def erro_403(request, exception=None):
+    """Página amigável para tentativas de acesso não autorizado."""
+
+    return render(
+        request,
+        'erro_sistema.html',
+        {
+            'codigo_erro': '403',
+            'titulo_erro': 'Acesso não autorizado',
+            'mensagem_erro': (
+                'Você não possui permissão para acessar este recurso.'
+            ),
+        },
+        status=403
+    )
+
+
+def erro_404(request, exception=None):
+    """Página amigável para endereços que não existem."""
+
+    return render(
+        request,
+        'erro_sistema.html',
+        {
+            'codigo_erro': '404',
+            'titulo_erro': 'Página não encontrada',
+            'mensagem_erro': (
+                'O endereço informado não existe ou não está mais '
+                'disponível.'
+            ),
+        },
+        status=404
+    )
+
+
+def erro_500(request):
+    """Página segura para falhas internas inesperadas."""
+
+    return render(
+        request,
+        'erro_sistema.html',
+        {
+            'codigo_erro': '500',
+            'titulo_erro': 'Não foi possível concluir a operação',
+            'mensagem_erro': (
+                'Ocorreu uma falha inesperada. Tente novamente em '
+                'alguns instantes.'
+            ),
+        },
+        status=500
+    )
+
 def usuario_pode_acessar_solicitacao(
     user,
     solicitacao,

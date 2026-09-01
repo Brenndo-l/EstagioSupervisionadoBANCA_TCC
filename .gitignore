@@ -18,4 +18,11 @@ db.sqlite3
 
 # Variáveis de ambiente (caso crie um arquivo .env no futuro)
 .env
+
+# Arquivos coletados para produção
+staticfiles/
+
+# Artefatos locais de QA
+qa_documentos/
+qa_render_*/
 media/

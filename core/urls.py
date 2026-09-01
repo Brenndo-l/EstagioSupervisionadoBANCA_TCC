@@ -19,6 +19,11 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+
+handler403 = 'bancasapp.views.erro_403'
+handler404 = 'bancasapp.views.erro_404'
+handler500 = 'bancasapp.views.erro_500'
+
 urlpatterns = [
     path('admin/', admin.site.urls),
 
