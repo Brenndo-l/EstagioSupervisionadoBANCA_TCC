@@ -173,8 +173,12 @@ class Command(BaseCommand):
 
         origem = conexao_django.connection
 
-        with sqlite3.connect(destino) as copia:
+        copia = sqlite3.connect(destino)
+
+        try:
             origem.backup(copia)
+        finally:
+            copia.close()
 
     def _criar_zip(
         self,

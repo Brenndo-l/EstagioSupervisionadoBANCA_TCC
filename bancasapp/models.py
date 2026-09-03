@@ -256,6 +256,8 @@ class ProjetoTCC(models.Model):
 #Define a banca e decide a sala, dia e horario.
 class BancaTCC(models.Model):
 
+    NOTA_MINIMA_APROVACAO = Decimal('8.00')
+
     STATUS_BANCA = (
         ('AGENDADA', 'Agendada'),
         ('AGUARDANDO_NOTA', 'Aguardando nota'),
@@ -328,6 +330,17 @@ class BancaTCC(models.Model):
             inicio_local.date()
             + timedelta(days=30)
         )
+
+    @property
+    def resultado_final(self):
+
+        if self.nota is None:
+            return ''
+
+        if Decimal(self.nota) >= self.NOTA_MINIMA_APROVACAO:
+            return 'APROVAÇÃO'
+
+        return 'REPROVAÇÃO'
 
     def __str__(self):
 

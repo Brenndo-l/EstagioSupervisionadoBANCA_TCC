@@ -58,7 +58,7 @@
 
             <thead>
                 <tr>
-                    <th>Discente</th>
+                    <th>Docente solicitante</th>
                     <th>Título do TCC</th>
                     <th>Local</th>
                     <th>Data/Hora</th>
@@ -74,11 +74,21 @@
                     <tr>
 
                         <td>
-                            {{ solicitacao.projeto_tcc.discente.nome }}
+                            <a
+                                href="{% url 'detalhar_solicitacao' solicitacao.id %}"
+                                class="link-tabela"
+                            >
+                                {{ solicitacao.usuario_solicitante }}
+                            </a>
                         </td>
 
                         <td>
-                            {{ solicitacao.projeto_tcc.titulo }}
+                            <a
+                                href="{% url 'detalhar_solicitacao' solicitacao.id %}"
+                                class="link-tabela"
+                            >
+                                {{ solicitacao.projeto_tcc.titulo }}
+                            </a>
                         </td>
 
                         <td>
@@ -116,6 +126,13 @@
                                         Pré-defesa
                                     {% endif %}
                                 </span>
+
+                                <a
+                                    href="{% url 'detalhar_solicitacao' solicitacao.id %}"
+                                    class="btn-filter"
+                                >
+                                    DETALHES
+                                </a>
 
                                 <a
                                     href="{% url 'gerar_pdf_banca' solicitacao.id %}"

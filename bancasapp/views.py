@@ -47,6 +47,7 @@ from django.core.exceptions import ValidationError
 from .services import (
     atualizar_status_bancas,
     expirar_solicitacoes_vencidas,
+    montar_agenda_disponibilidades,
 )
 from django.conf import settings
 from django.utils.encoding import force_str
@@ -955,7 +956,7 @@ def solicitar_banca(request):
             orientador=perfil_logado
         )
 
-    disponibilidades = (
+    disponibilidades = montar_agenda_disponibilidades(
         DisponibilidadeEspaco.objects
         .select_related('espaco')
         .filter(

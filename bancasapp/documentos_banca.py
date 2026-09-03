@@ -285,7 +285,7 @@ def montar_dados_ata(
         ),
         'finalizada': finalizada,
         'resultado': (
-            'APROVAÇÃO'
+            banca.resultado_final
             if finalizada
             else ''
         ),

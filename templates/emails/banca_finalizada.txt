@@ -4,6 +4,7 @@ A banca do TCC "{{ solicitacao.projeto_tcc.titulo }}" foi finalizada no SGTCC.
 
 Discente: {{ solicitacao.projeto_tcc.discente.nome }}
 Nota final: {{ banca.nota|floatformat:2 }}
+Resultado final: {{ banca.resultado_final }}
 Prazo para a versão final: {{ banca.data_limite_versao_final|date:"d/m/Y" }}
 Status da banca: {{ banca.get_status_display }}
 

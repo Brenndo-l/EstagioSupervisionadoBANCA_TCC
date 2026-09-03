@@ -326,6 +326,23 @@
                     </td>
                 </tr>
 
+                {% if banca.nota is not None %}
+                    <tr>
+                        <th>Resultado final</th>
+                        <td>
+                            {% if banca.resultado_final == 'APROVAÇÃO' %}
+                                <span class="status-badge status-aprovada">
+                                    Aprovação
+                                </span>
+                            {% else %}
+                                <span class="status-badge status-recusada">
+                                    Reprovação
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endif %}
+
                 <tr>
                     <th>Prazo da versão final</th>
                     <td>

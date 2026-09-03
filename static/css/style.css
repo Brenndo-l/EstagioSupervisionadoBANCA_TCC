@@ -1737,3 +1737,103 @@ textarea:focus-visible {
     font-size: 0.72rem;
     font-weight: 650;
 }
+
+/* =========================================================
+   AGENDA VISUAL DA SOLICITAÇÃO
+   ========================================================= */
+
+.agenda-intervalos {
+    min-width: 185px;
+}
+
+.agenda-periodo {
+    border: 1px solid transparent;
+    border-radius: 9px;
+    display: inline-flex;
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 750;
+    line-height: 1.2;
+    margin: 3px 4px 3px 0;
+    padding: 8px 10px;
+    vertical-align: middle;
+}
+
+button.agenda-periodo {
+    cursor: pointer;
+}
+
+.agenda-periodo--livre {
+    align-items: flex-start;
+    background: var(--verde-50);
+    border-color: #bce7cf;
+    color: var(--verde-700);
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+    transition:
+        background-color var(--transicao),
+        border-color var(--transicao),
+        transform var(--transicao);
+}
+
+.agenda-periodo--livre small {
+    color: inherit;
+    font-size: 0.65rem;
+    font-weight: 650;
+    margin: 0;
+    opacity: 0.8;
+}
+
+.agenda-periodo--livre:hover,
+.agenda-periodo--livre:focus-visible {
+    background: #d8f5e5;
+    border-color: var(--verde-700);
+    outline: none;
+    transform: translateY(-1px);
+}
+
+.agenda-periodo--livre:focus-visible {
+    box-shadow: 0 0 0 3px rgba(22, 130, 91, 0.16);
+}
+
+.agenda-periodo--ocupado {
+    background: var(--vermelho-50);
+    border-color: #f5c6cb;
+    color: var(--vermelho-700);
+}
+
+.agenda-sem-horario {
+    color: var(--vermelho-700);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.agenda-totalmente-livre {
+    color: var(--verde-700);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.link-tabela {
+    color: var(--azul-800);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.link-tabela:hover,
+.link-tabela:focus-visible {
+    color: var(--azul-600);
+    text-decoration: underline;
+}
+
+.aviso-regra-nota {
+    background: var(--azul-50);
+    border: 1px solid #cad6f4;
+    border-left: 4px solid var(--azul-600);
+    border-radius: var(--raio-md);
+    color: var(--azul-900) !important;
+    line-height: 1.55;
+    margin: 0 0 20px !important;
+    padding: 13px 15px;
+}

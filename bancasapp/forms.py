@@ -1408,7 +1408,8 @@ class RegistroNotaBancaForm(forms.ModelForm):
         help_texts = {
             'nota': (
                 'Informe um valor de 0,00 a 10,00, '
-                'com no máximo duas casas decimais.'
+                'com no máximo duas casas decimais. '
+                'A nota mínima para aprovação é 8,00.'
             ),
         }
 
