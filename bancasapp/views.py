@@ -2489,7 +2489,7 @@ def documentos(request):
 
             messages.success(
                 request,
-                'Modelo de documento enviado com sucesso.'
+                'Arquivo institucional salvo no repositório com sucesso.'
             )
 
             return redirect(
@@ -2627,7 +2627,7 @@ def baixar_documento(request, modelo_id):
 
         messages.warning(
             request,
-            'Este modelo não possui um arquivo disponível.'
+            'Este registro não possui um arquivo disponível.'
         )
 
         return redirect(
@@ -2691,13 +2691,13 @@ def excluir_documento(
                 )
             )
 
-    messages.success(
-        request,
-        (
-            f'O modelo "{nome_documento}" '
-            'foi excluído com sucesso.'
+        messages.success(
+            request,
+            (
+                f'O arquivo "{nome_documento}" '
+                'foi excluído com sucesso.'
+            )
         )
-    )
 
     return redirect(
         'documentos'

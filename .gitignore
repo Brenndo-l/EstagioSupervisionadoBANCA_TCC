@@ -26,3 +26,6 @@ staticfiles/
 qa_documentos/
 qa_render_*/
 media/
+
+# Backups locais do ambiente de demonstração
+backups/

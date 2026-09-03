@@ -197,7 +197,10 @@ def montar_integrantes(composicao):
                     perfil,
                     funcao
                 ),
-                'instituicao': 'UFAC',
+                # Nos modelos oficiais, a instituição é necessária
+                # para identificar o membro externo. Para docentes da
+                # UFAC, a vinculação já está indicada pela função.
+                'instituicao': '',
             }
         )
 
@@ -281,6 +284,11 @@ def montar_dados_ata(
             else data_defesa.strftime('%Hh')
         ),
         'finalizada': finalizada,
+        'resultado': (
+            'APROVAÇÃO'
+            if finalizada
+            else ''
+        ),
         'nota': nota,
         'nota_formatada': formatar_nota(nota),
         'data_limite_versao_final': data_limite,
@@ -518,8 +526,9 @@ def gerar_pdf_ata(dados):
     if dados['finalizada']:
         texto_resultado = (
             'A Banca Examinadora, após reunião em sessão '
-            'reservada, deliberou e atribuiu ao referido '
-            'Trabalho de Conclusão de Curso a nota '
+            'reservada, deliberou pela '
+            f'<b>{escape(dados["resultado"])}</b> do referido '
+            'Trabalho de Conclusão de Curso e atribuiu a nota '
             f'<b>{escape(dados["nota_formatada"])}</b>, '
             'divulgando o resultado formalmente ao(à) discente '
             'e aos demais presentes.'
@@ -703,6 +712,19 @@ def gerar_docx_ata(dados):
 
     documento = Document()
 
+    documento.core_properties.title = (
+        'Ata de Apresentação do Trabalho de Conclusão de Curso'
+    )
+    documento.core_properties.subject = (
+        'Registro institucional de banca de TCC'
+    )
+    documento.core_properties.author = (
+        'Universidade Federal do Acre'
+    )
+    documento.core_properties.keywords = (
+        'UFAC; SGTCC; banca de TCC; ata de apresentação'
+    )
+
     secao = documento.sections[0]
     secao.page_width = Mm(210)
     secao.page_height = Mm(297)
@@ -861,8 +883,21 @@ def gerar_docx_ata(dados):
             resultado,
             (
                 'A Banca Examinadora, após reunião em sessão '
-                'reservada, deliberou e atribuiu ao referido '
-                'Trabalho de Conclusão de Curso a nota '
+                'reservada, deliberou pela '
+            )
+        )
+
+        _adicionar_run(
+            resultado,
+            dados['resultado'],
+            negrito=True
+        )
+
+        _adicionar_run(
+            resultado,
+            (
+                ' do referido Trabalho de Conclusão de Curso '
+                'e atribuiu a nota '
             )
         )
 

@@ -3,10 +3,11 @@
 {% block content %}
 
 <div class="dashboard-header">
-    <h1>Documentos</h1>
+    <h1>Documentos da banca</h1>
 
     <p>
-        Modelos de documentos utilizados nas bancas de TCC.
+        Gere as atas preenchidas automaticamente e consulte os
+        arquivos institucionais disponibilizados pela Coordenação.
     </p>
 </div>
 
@@ -16,11 +17,13 @@
 
     <div class="form-container" style="margin-top: 20px;">
 
-        <h2>Adicionar modelo</h2>
+        <h2>Adicionar arquivo institucional de referência</h2>
 
         <p>
-            Envie modelos em branco que serão utilizados
-            posteriormente nas bancas.
+            Utilize esta área para guardar modelos oficiais em branco,
+            orientações e arquivos auxiliares. Esses arquivos ficam
+            disponíveis para consulta e não alteram automaticamente
+            o conteúdo das atas geradas pelo sistema.
         </p>
 
         <form method="POST" enctype="multipart/form-data">
@@ -30,7 +33,7 @@
             {{ form.as_p }}
 
             <button type="submit" class="btn-enviar">
-                Enviar Documento
+                Salvar no repositório
             </button>
 
         </form>
@@ -41,7 +44,7 @@
 
 <div class="table-container" style="margin-top: 30px;">
 
-    <h2>Bancas aprovadas</h2>
+    <h2>Atas geradas automaticamente</h2>
 
     <p>
         Gere a Ata de Apresentação em PDF ou DOCX. Antes da defesa,
@@ -151,7 +154,13 @@
 
 <div class="table-container" style="margin-top: 30px;">
 
-    <h2>Modelos cadastrados</h2>
+    <h2>Repositório institucional de referência</h2>
+
+    <p>
+        Arquivos oficiais ou auxiliares mantidos pela Coordenação para
+        consulta. Eles não são preenchidos automaticamente e não
+        substituem as atas em PDF e DOCX exibidas acima.
+    </p>
 
     {% if modelos %}
 
@@ -231,7 +240,7 @@
     {% else %}
 
         <p>
-            Nenhum modelo de documento foi cadastrado.
+            Nenhum arquivo institucional de referência foi cadastrado.
         </p>
 
     {% endif %}
