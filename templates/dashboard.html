@@ -170,9 +170,8 @@
                 <table>
                     <thead>
                         <tr>
-                            <th>Discente</th>
+                            <th>Docente solicitante</th>
                             <th>Título do TCC</th>
-                            <th>Solicitante</th>
                             <th>Status</th>
                             <th>Justificativa</th>
                             <th>Data da decisão</th>
@@ -184,15 +183,11 @@
                         {% for decisao in historico_decisoes %}
                             <tr>
                                 <td>
-                                    {{ decisao.projeto_tcc.discente.nome }}
+                                    {{ decisao.usuario_solicitante }}
                                 </td>
 
                                 <td>
                                     {{ decisao.projeto_tcc.titulo }}
-                                </td>
-
-                                <td>
-                                    {{ decisao.usuario_solicitante }}
                                 </td>
 
                                 <td>

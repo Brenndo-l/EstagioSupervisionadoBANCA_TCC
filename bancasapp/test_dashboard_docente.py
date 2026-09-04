@@ -404,3 +404,42 @@ class DashboardDocenteTests(TestCase):
             response,
             'Próximos horários livres'
         )
+
+    def test_historico_identifica_o_docente_solicitante(self):
+
+        sala = EspacoFisico.objects.create(
+            nome='Sala do histórico administrativo'
+        )
+
+        self.criar_solicitacao(
+            self.docente,
+            sala,
+            self.inicio,
+            self.inicio + timedelta(hours=1),
+            status='APROVADA',
+            titulo='Decisão identificada pelo docente',
+        )
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.get(
+            reverse('dashboard')
+        )
+
+        self.assertContains(
+            response,
+            'Docente solicitante'
+        )
+
+        self.assertContains(
+            response,
+            str(self.docente)
+        )
+
+        self.assertNotContains(
+            response,
+            '<th>Discente</th>',
+            html=True,
+        )
