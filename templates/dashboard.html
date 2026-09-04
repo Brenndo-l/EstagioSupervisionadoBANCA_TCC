@@ -43,7 +43,14 @@
         </article>
 
         <article class="card">
-            <h3>Salas cadastradas</h3>
+            <h3>
+                {% if is_coordenacao %}
+                    Salas cadastradas
+                {% else %}
+                    Salas disponíveis
+                {% endif %}
+            </h3>
+
             <p>{{ total_salas }}</p>
         </article>
     </section>
@@ -53,8 +60,12 @@
         <section class="coordenacao-panel">
             <div class="panel-header">
                 <div>
-                    <span class="page-eyebrow">Ação necessária</span>
+                    <span class="page-eyebrow">
+                        Ação necessária
+                    </span>
+
                     <h2>Pendentes de análise</h2>
+
                     <p>
                         Solicitações recentes que aguardam uma decisão
                         da Coordenação.
@@ -104,8 +115,10 @@
             {% else %}
                 <div class="sem-resultados">
                     <h3>Nenhuma solicitação pendente</h3>
+
                     <p>
-                        Todas as solicitações recebidas já foram analisadas.
+                        Todas as solicitações recebidas já foram
+                        analisadas.
                     </p>
                 </div>
             {% endif %}
@@ -114,15 +127,23 @@
         <section class="table-container">
             <div class="section-header">
                 <div>
-                    <span class="page-eyebrow">Registro administrativo</span>
+                    <span class="page-eyebrow">
+                        Registro administrativo
+                    </span>
+
                     <h2>Histórico de Decisões</h2>
+
                     <p>
-                        Solicitações aprovadas e recusadas pela Coordenação.
+                        Solicitações aprovadas e recusadas pela
+                        Coordenação.
                     </p>
                 </div>
             </div>
 
-            <nav class="filter-menu" aria-label="Filtrar histórico">
+            <nav
+                class="filter-menu"
+                aria-label="Filtrar histórico"
+            >
                 <a
                     href="{% url 'dashboard' %}"
                     class="btn-filter {% if not status_historico %}active{% endif %}"
@@ -216,7 +237,10 @@
                 </table>
 
                 {% if historico_decisoes.has_other_pages %}
-                    <nav class="paginacao" aria-label="Paginação do histórico">
+                    <nav
+                        class="paginacao"
+                        aria-label="Paginação do histórico"
+                    >
                         {% if historico_decisoes.has_previous %}
                             <a
                                 class="btn-filter"
@@ -228,7 +252,8 @@
 
                         <span>
                             Página {{ historico_decisoes.number }}
-                            de {{ historico_decisoes.paginator.num_pages }}
+                            de
+                            {{ historico_decisoes.paginator.num_pages }}
                         </span>
 
                         {% if historico_decisoes.has_next %}
@@ -244,11 +269,179 @@
             {% else %}
                 <div class="sem-resultados">
                     <h3>Nenhuma decisão encontrada</h3>
+
                     <p>
                         Não existem decisões para o filtro selecionado.
                     </p>
                 </div>
             {% endif %}
+        </section>
+
+    {% else %}
+
+        <section class="docente-dashboard-grid">
+
+            <article class="docente-dashboard-panel">
+                <div class="panel-header">
+                    <div>
+                        <span class="page-eyebrow">
+                            Agenda da Coordenação
+                        </span>
+
+                        <h2>Próximos horários livres</h2>
+
+                        <p>
+                            Consulte os intervalos ainda disponíveis e
+                            informe manualmente a sala, a data e o horário
+                            ao solicitar a banca.
+                        </p>
+                    </div>
+
+                    <a
+                        href="{% url 'solicitar_banca' %}"
+                        class="btn-filter"
+                    >
+                        Ver agenda completa
+                    </a>
+                </div>
+
+                {% if agenda_resumida %}
+                    <ul class="agenda-dashboard-lista">
+                        {% for disponibilidade in agenda_resumida %}
+                            <li class="agenda-dashboard-item">
+                                <div class="agenda-dashboard-data">
+                                    <span>
+                                        {{ disponibilidade.data_hora_inicio|date:"d" }}
+                                    </span>
+
+                                    <small>
+                                        {{ disponibilidade.data_hora_inicio|date:"M" }}
+                                    </small>
+                                </div>
+
+                                <div class="agenda-dashboard-conteudo">
+                                    <strong>
+                                        {{ disponibilidade.espaco.nome }}
+                                    </strong>
+
+                                    <span>
+                                        Período da Coordenação:
+                                        {{ disponibilidade.data_hora_inicio|date:"H:i" }}–{{ disponibilidade.data_hora_fim|date:"H:i" }}
+                                    </span>
+
+                                    {% if disponibilidade.observacao %}
+                                        <small>
+                                            {{ disponibilidade.observacao }}
+                                        </small>
+                                    {% endif %}
+                                </div>
+
+                                <div
+                                    class="agenda-dashboard-livres"
+                                    aria-label="Horários livres"
+                                >
+                                    {% for intervalo in disponibilidade.intervalos_livres %}
+                                        <span class="agenda-periodo agenda-periodo--livre">
+                                            {{ intervalo.inicio|date:"H:i" }}–{{ intervalo.fim|date:"H:i" }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="docente-dashboard-vazio">
+                        <strong>
+                            Nenhum horário livre no momento
+                        </strong>
+
+                        <p>
+                            A Coordenação ainda não publicou novas
+                            disponibilidades ou os períodos atuais já
+                            foram reservados.
+                        </p>
+                    </div>
+                {% endif %}
+            </article>
+
+            <article class="docente-dashboard-panel">
+                <div class="panel-header">
+                    <div>
+                        <span class="page-eyebrow">
+                            Acompanhamento
+                        </span>
+
+                        <h2>Solicitações recentes</h2>
+
+                        <p>
+                            Veja rapidamente a situação dos seus últimos
+                            pedidos de banca.
+                        </p>
+                    </div>
+
+                    <a
+                        href="{% url 'visualizar_bancas' %}"
+                        class="btn-filter"
+                    >
+                        Ver todas
+                    </a>
+                </div>
+
+                {% if solicitacoes_recentes %}
+                    <ul class="solicitacoes-dashboard-lista">
+                        {% for solicitacao in solicitacoes_recentes %}
+                            <li class="solicitacao-dashboard-item">
+                                <a
+                                    href="{% url 'detalhar_solicitacao' solicitacao.id %}"
+                                    class="solicitacao-dashboard-link"
+                                >
+                                    <span class="solicitacao-dashboard-conteudo">
+                                        <strong>
+                                            {{ solicitacao.projeto_tcc.titulo }}
+                                        </strong>
+
+                                        <small>
+                                            {{ solicitacao.projeto_tcc.discente.nome }}
+                                            · {{ solicitacao.espaco.nome }}
+                                            · {{ solicitacao.opcao_data_inicio|date:"d/m/Y H:i" }}
+                                        </small>
+                                    </span>
+
+                                    {% if solicitacao.status == 'APROVADA' %}
+                                        <span class="status-badge status-aprovada">
+                                            Aprovada
+                                        </span>
+                                    {% elif solicitacao.status == 'RECUSADA' %}
+                                        <span class="status-badge status-recusada">
+                                            Recusada
+                                        </span>
+                                    {% elif solicitacao.status == 'EXPIRADA' %}
+                                        <span class="status-badge status-expirada">
+                                            Expirada
+                                        </span>
+                                    {% else %}
+                                        <span class="status-badge status-analise">
+                                            Em análise
+                                        </span>
+                                    {% endif %}
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="docente-dashboard-vazio">
+                        <strong>
+                            Nenhuma solicitação enviada
+                        </strong>
+
+                        <p>
+                            Seus pedidos aparecerão aqui depois do
+                            primeiro envio.
+                        </p>
+                    </div>
+                {% endif %}
+            </article>
+
         </section>
 
     {% endif %}

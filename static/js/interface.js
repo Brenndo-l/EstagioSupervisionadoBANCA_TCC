@@ -99,48 +99,4 @@
         }
     );
 
-    document.querySelectorAll('[data-usar-periodo]').forEach(
-        function (botao) {
-            botao.addEventListener('click', function () {
-                const campoEspaco = document.querySelector('#id_espaco');
-                const campoInicio = document.querySelector(
-                    '#id_opcao_data_inicio'
-                );
-                const campoFim = document.querySelector(
-                    '#id_opcao_data_fim'
-                );
-
-                if (!campoEspaco || !campoInicio || !campoFim) {
-                    return;
-                }
-
-                campoEspaco.value = botao.dataset.espaco;
-                campoInicio.value = botao.dataset.inicio;
-                campoFim.value = botao.dataset.fim;
-
-                [campoEspaco, campoInicio, campoFim].forEach(
-                    function (campo) {
-                        campo.dispatchEvent(
-                            new Event('change', { bubbles: true })
-                        );
-                    }
-                );
-
-                const formulario = document.querySelector(
-                    '.form-container--amplo'
-                );
-
-                if (formulario) {
-                    formulario.scrollIntoView({
-                        behavior: window.matchMedia(
-                            '(prefers-reduced-motion: reduce)'
-                        ).matches ? 'auto' : 'smooth',
-                        block: 'start',
-                    });
-                }
-
-                campoInicio.focus({ preventScroll: true });
-            });
-        }
-    );
 }());

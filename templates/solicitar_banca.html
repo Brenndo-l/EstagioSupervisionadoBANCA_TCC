@@ -17,12 +17,13 @@
     <p>
         Os períodos em análise ou já aprovados aparecem como ocupados.
         Solicitações recusadas ou expiradas liberam novamente o horário.
-        Use um período livre para preencher o formulário automaticamente.
+        Consulte os intervalos livres e escolha manualmente no formulário
+        a sala, a data e os horários desejados.
     </p>
 
     {% if disponibilidades %}
 
-        <table>
+        <table class="agenda-tabela">
             <thead>
                 <tr>
                     <th>Espaço</th>
@@ -53,20 +54,9 @@
 
                         <td class="agenda-intervalos">
                             {% for intervalo in disponibilidade.intervalos_livres %}
-                                <button
-                                    type="button"
-                                    class="agenda-periodo agenda-periodo--livre"
-                                    data-usar-periodo
-                                    data-espaco="{{ disponibilidade.espaco_id }}"
-                                    data-inicio="{{ intervalo.inicio|date:'Y-m-d\TH:i' }}"
-                                    data-fim="{{ intervalo.fim|date:'Y-m-d\TH:i' }}"
-                                    title="Preencher o formulário com este período"
-                                >
-                                    <span>
-                                        {{ intervalo.inicio|date:"H:i" }}–{{ intervalo.fim|date:"H:i" }}
-                                    </span>
-                                    <small>Usar período</small>
-                                </button>
+                                <span class="agenda-periodo agenda-periodo--livre">
+                                    {{ intervalo.inicio|date:"H:i" }}–{{ intervalo.fim|date:"H:i" }}
+                                </span>
                             {% empty %}
                                 <span class="agenda-sem-horario">
                                     Sem horário livre

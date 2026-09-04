@@ -81,6 +81,7 @@ class BaseAgendaResultadoTests(TestCase):
             second=0,
             microsecond=0,
         )
+
         self.fim = self.inicio.replace(hour=12)
 
         self.disponibilidade = DisponibilidadeEspaco.objects.create(
@@ -132,16 +133,19 @@ class AgendaDisponibilidadesTests(BaseAgendaResultadoTests):
             self.inicio.replace(hour=10),
             'EM_ANÁLISE',
         )
+
         self.criar_solicitacao(
             self.inicio.replace(hour=10),
             self.inicio.replace(hour=10, minute=30),
             'APROVADA',
         )
+
         self.criar_solicitacao(
             self.inicio.replace(hour=10, minute=30),
             self.inicio.replace(hour=11),
             'RECUSADA',
         )
+
         self.criar_solicitacao(
             self.inicio.replace(hour=11),
             self.inicio.replace(hour=11, minute=30),
@@ -160,10 +164,12 @@ class AgendaDisponibilidadesTests(BaseAgendaResultadoTests):
         ocupados = agenda[0].intervalos_ocupados
 
         self.assertEqual(len(ocupados), 1)
+
         self.assertEqual(
             ocupados[0]['inicio'],
             self.inicio.replace(hour=9),
         )
+
         self.assertEqual(
             ocupados[0]['fim'],
             self.inicio.replace(hour=10, minute=30),
@@ -181,6 +187,7 @@ class AgendaDisponibilidadesTests(BaseAgendaResultadoTests):
         livres = agenda[0].intervalos_livres
 
         self.assertEqual(len(livres), 2)
+
         self.assertEqual(
             (livres[0]['inicio'], livres[0]['fim']),
             (
@@ -188,6 +195,7 @@ class AgendaDisponibilidadesTests(BaseAgendaResultadoTests):
                 self.inicio.replace(hour=9),
             ),
         )
+
         self.assertEqual(
             (livres[1]['inicio'], livres[1]['fim']),
             (
@@ -196,17 +204,42 @@ class AgendaDisponibilidadesTests(BaseAgendaResultadoTests):
             ),
         )
 
-    def test_tela_exibe_agenda_e_atalho_de_preenchimento(self):
+    def test_tela_exibe_agenda_apenas_para_consulta(self):
 
         self.preparar_reservas()
-        self.client.force_login(self.docente.usuario)
 
-        response = self.client.get(reverse('solicitar_banca'))
+        self.client.force_login(
+            self.docente.usuario
+        )
 
-        self.assertContains(response, 'Agenda de horários disponíveis')
-        self.assertContains(response, 'Usar período')
-        self.assertContains(response, 'Reservados ou em análise')
-        self.assertContains(response, 'data-usar-periodo')
+        response = self.client.get(
+            reverse('solicitar_banca')
+        )
+
+        self.assertContains(
+            response,
+            'Agenda de horários disponíveis'
+        )
+
+        self.assertContains(
+            response,
+            'Horários livres'
+        )
+
+        self.assertContains(
+            response,
+            'Reservados ou em análise'
+        )
+
+        self.assertNotContains(
+            response,
+            'Usar período'
+        )
+
+        self.assertNotContains(
+            response,
+            'data-usar-periodo'
+        )
 
 
 class DocumentoNavegacaoTests(BaseAgendaResultadoTests):
@@ -240,12 +273,24 @@ class DocumentoNavegacaoTests(BaseAgendaResultadoTests):
 
     def test_documentos_mostra_docente_e_link_para_detalhes(self):
 
-        self.client.force_login(self.usuario_coordenacao)
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
 
-        response = self.client.get(reverse('documentos'))
+        response = self.client.get(
+            reverse('documentos')
+        )
 
-        self.assertContains(response, 'Docente solicitante')
-        self.assertContains(response, 'Helena Orientadora')
+        self.assertContains(
+            response,
+            'Docente solicitante'
+        )
+
+        self.assertContains(
+            response,
+            'Helena Orientadora'
+        )
+
         self.assertContains(
             response,
             reverse(
@@ -253,11 +298,17 @@ class DocumentoNavegacaoTests(BaseAgendaResultadoTests):
                 args=[self.solicitacao.id],
             ),
         )
-        self.assertContains(response, 'DETALHES')
+
+        self.assertContains(
+            response,
+            'DETALHES'
+        )
 
     def test_docente_tambem_acessa_detalhes_pela_area_documentos(self):
 
-        self.client.force_login(self.docente.usuario)
+        self.client.force_login(
+            self.docente.usuario
+        )
 
         response = self.client.get(
             reverse(
@@ -266,14 +317,19 @@ class DocumentoNavegacaoTests(BaseAgendaResultadoTests):
             )
         )
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.status_code,
+            200
+        )
 
 
 class ResultadoNotaTests(BaseAgendaResultadoTests):
 
     def test_nota_abaixo_de_oito_resulta_em_reprovacao(self):
 
-        banca = BancaTCC(nota=Decimal('7.99'))
+        banca = BancaTCC(
+            nota=Decimal('7.99')
+        )
 
         self.assertEqual(
             banca.resultado_final,
@@ -282,7 +338,9 @@ class ResultadoNotaTests(BaseAgendaResultadoTests):
 
     def test_nota_oito_resulta_em_aprovacao(self):
 
-        banca = BancaTCC(nota=Decimal('8.00'))
+        banca = BancaTCC(
+            nota=Decimal('8.00')
+        )
 
         self.assertEqual(
             banca.resultado_final,
@@ -330,11 +388,16 @@ class ResultadoNotaTests(BaseAgendaResultadoTests):
             banca,
         )
 
-        documento = Document(gerar_docx_ata(dados))
+        documento = Document(
+            gerar_docx_ata(dados)
+        )
+
         texto = '\n'.join(
             paragrafo.text
             for paragrafo in documento.paragraphs
         )
 
-        self.assertIn('deliberou pela REPROVAÇÃO', texto)
-
+        self.assertIn(
+            'deliberou pela REPROVAÇÃO',
+            texto
+        )

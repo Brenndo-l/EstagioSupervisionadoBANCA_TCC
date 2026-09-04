@@ -218,19 +218,19 @@ def obter_banca_da_solicitacao(solicitacao):
 def dashboard(request):
 
     expirar_solicitacoes_vencidas()
-    atualizar_status_bancas() 
+    atualizar_status_bancas()
 
     is_coordenacao = usuario_e_coordenacao(
         request.user
     )
 
-    # Valores usados somente pela Coordenação.
     historico_decisoes = None
     status_historico = ''
+    agenda_resumida = None
+    solicitacoes_recentes = None
 
     if is_coordenacao:
 
-        # Agora a aprovação cria uma BancaTCC oficial.
         total_bancas = BancaTCC.objects.count()
 
         total_pendentes = (
@@ -239,7 +239,6 @@ def dashboard(request):
             ).count()
         )
 
-        # Últimas cinco solicitações aguardando avaliação.
         ultimos_pedidos = (
             SolicitacaoAgendamento.objects
             .select_related(
@@ -252,22 +251,25 @@ def dashboard(request):
             .filter(
                 status='EM_ANÁLISE'
             )
-            .order_by('-data_solicitacao', '-id')[:5]
+            .order_by(
+                '-data_solicitacao',
+                '-id'
+            )[:5]
         )
 
-        # Lê o filtro selecionado na tela.
         status_historico = (
-            request.GET.get('historico', '').strip()
+            request.GET.get(
+                'historico',
+                ''
+            ).strip()
         )
 
-        # Aceita somente os dois estados possíveis no histórico.
         if status_historico not in [
             'APROVADA',
             'RECUSADA'
         ]:
             status_historico = ''
 
-        # Consulta base do histórico administrativo.
         historico_queryset = (
             SolicitacaoAgendamento.objects
             .select_related(
@@ -279,7 +281,10 @@ def dashboard(request):
                 'decidida_por',
             )
             .filter(
-                status__in=['APROVADA', 'RECUSADA']
+                status__in=[
+                    'APROVADA',
+                    'RECUSADA'
+                ]
             )
             .order_by(
                 '-data_decisao',
@@ -287,24 +292,33 @@ def dashboard(request):
             )
         )
 
-        # Aplica o filtro, caso a Coordenação tenha escolhido um.
         if status_historico:
+
             historico_queryset = (
                 historico_queryset.filter(
                     status=status_historico
                 )
             )
 
-        # Exibe dez decisões por página.
         paginador = Paginator(
             historico_queryset,
             10
         )
 
-        numero_pagina = request.GET.get('pagina')
+        numero_pagina = request.GET.get(
+            'pagina'
+        )
 
-        historico_decisoes = paginador.get_page(
-            numero_pagina
+        historico_decisoes = (
+            paginador.get_page(
+                numero_pagina
+            )
+        )
+
+        # Para a Coordenação, permanece sendo o total
+        # de espaços cadastrados no sistema.
+        total_salas = (
+            EspacoFisico.objects.count()
         )
 
     else:
@@ -314,25 +328,120 @@ def dashboard(request):
             perfil='DOCENTE'
         )
 
+        agora = timezone.now()
+
+        # Conta apenas bancas futuras agendadas das quais
+        # o docente participa ou que foram solicitadas por ele.
         total_bancas = (
-            SolicitacaoAgendamento.objects.filter(
-                usuario_solicitante=perfil_logado,
-                status='APROVADA'
-            ).count()
+            BancaTCC.objects
+            .filter(
+                status='AGENDADA',
+                data_horario_fim__gt=agora,
+            )
+            .filter(
+                Q(
+                    solicitacao__usuario_solicitante=(
+                        perfil_logado
+                    )
+                )
+                | Q(
+                    solicitacao__composicao_banca__orientador=(
+                        perfil_logado
+                    )
+                )
+                | Q(
+                    solicitacao__composicao_banca__coorientador=(
+                        perfil_logado
+                    )
+                )
+                | Q(
+                    solicitacao__composicao_banca__avaliador_interno=(
+                        perfil_logado
+                    )
+                )
+                | Q(
+                    solicitacao__composicao_banca__segundo_avaliador_interno=(
+                        perfil_logado
+                    )
+                )
+                | Q(
+                    solicitacao__composicao_banca__presidente=(
+                        perfil_logado
+                    )
+                )
+            )
+            .distinct()
+            .count()
         )
 
         total_pendentes = (
-            SolicitacaoAgendamento.objects.filter(
+            SolicitacaoAgendamento.objects
+            .filter(
                 usuario_solicitante=perfil_logado,
                 status='EM_ANÁLISE'
-            ).count()
+            )
+            .count()
         )
 
-        # Docentes não recebem informações administrativas.
         ultimos_pedidos = None
         historico_decisoes = None
 
-    total_salas = EspacoFisico.objects.count()
+        disponibilidades = (
+            montar_agenda_disponibilidades(
+                DisponibilidadeEspaco.objects
+                .select_related(
+                    'espaco'
+                )
+                .filter(
+                    ativo=True,
+                    espaco__ativo=True,
+                    data_hora_fim__gt=agora,
+                )
+                .order_by(
+                    'data_hora_inicio',
+                    'espaco__nome',
+                ),
+                agora=agora,
+            )
+        )
+
+        # Disponibilidades completamente ocupadas
+        # não fazem a sala aparecer como disponível.
+        disponibilidades_com_horario = [
+            disponibilidade
+            for disponibilidade in disponibilidades
+            if disponibilidade.possui_horario_livre
+        ]
+
+        # Conta cada sala apenas uma vez, mesmo que ela
+        # possua várias disponibilidades futuras.
+        total_salas = len(
+            {
+                disponibilidade.espaco_id
+                for disponibilidade
+                in disponibilidades_com_horario
+            }
+        )
+
+        agenda_resumida = (
+            disponibilidades_com_horario[:5]
+        )
+
+        solicitacoes_recentes = (
+            SolicitacaoAgendamento.objects
+            .select_related(
+                'projeto_tcc',
+                'projeto_tcc__discente',
+                'espaco',
+            )
+            .filter(
+                usuario_solicitante=perfil_logado
+            )
+            .order_by(
+                '-data_solicitacao',
+                '-id',
+            )[:5]
+        )
 
     contexto = {
         'total_bancas': total_bancas,
@@ -342,6 +451,8 @@ def dashboard(request):
         'ultimos_pedidos': ultimos_pedidos,
         'historico_decisoes': historico_decisoes,
         'status_historico': status_historico,
+        'agenda_resumida': agenda_resumida,
+        'solicitacoes_recentes': solicitacoes_recentes,
     }
 
     return render(

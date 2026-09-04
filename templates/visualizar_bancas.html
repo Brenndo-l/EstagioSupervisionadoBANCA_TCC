@@ -50,7 +50,7 @@
 
         </div>
 
-        <table>
+        <table class="solicitacoes-tabela">
 
             <thead>
                 <tr>
@@ -71,23 +71,23 @@
 
                     <tr>
 
-                        <td>
+                        <td data-label="Projeto (TCC)">
                             {{ solicitacao.projeto_tcc.titulo }}
                         </td>
 
-                        <td>
+                        <td data-label="Local">
                             {{ solicitacao.espaco.nome }}
                         </td>
 
-                        <td>
+                        <td data-label="Início">
                             {{ solicitacao.opcao_data_inicio|date:"d/m/Y H:i" }}
                         </td>
 
-                        <td>
+                        <td data-label="Término">
                             {{ solicitacao.opcao_data_fim|date:"d/m/Y H:i" }}
                         </td>
 
-                        <td>
+                        <td data-label="Status da solicitação">
 
                             {% if solicitacao.status == 'EM_ANÁLISE' %}
                                 <span class="status-badge status-analise">
@@ -112,7 +112,7 @@
 
                         </td>
 
-                        <td>
+                        <td data-label="Situação da banca">
 
                             {% if solicitacao.status == 'APROVADA' %}
 
@@ -141,7 +141,7 @@
 
                         </td>
 
-                        <td>
+                        <td data-label="Arquivo do TCC">
 
                             {% if solicitacao.arquivo_tcc %}
                                 <a
@@ -156,7 +156,7 @@
 
                         </td>
 
-                        <td>
+                        <td data-label="Detalhes">
                             <a
                                 href="{% url 'detalhar_solicitacao' solicitacao.id %}"
                                 class="btn-download"

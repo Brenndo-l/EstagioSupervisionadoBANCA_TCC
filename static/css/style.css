@@ -1744,57 +1744,29 @@ textarea:focus-visible {
 
 .agenda-intervalos {
     min-width: 185px;
+    text-align: center;
 }
 
 .agenda-periodo {
+    align-items: center;
     border: 1px solid transparent;
-    border-radius: 9px;
+    border-radius: 999px;
     display: inline-flex;
     font-family: inherit;
     font-size: 0.78rem;
     font-weight: 750;
+    justify-content: center;
     line-height: 1.2;
-    margin: 3px 4px 3px 0;
+    margin: 3px;
     padding: 8px 10px;
     vertical-align: middle;
-}
-
-button.agenda-periodo {
-    cursor: pointer;
+    white-space: nowrap;
 }
 
 .agenda-periodo--livre {
-    align-items: flex-start;
     background: var(--verde-50);
     border-color: #bce7cf;
     color: var(--verde-700);
-    flex-direction: column;
-    gap: 2px;
-    text-align: left;
-    transition:
-        background-color var(--transicao),
-        border-color var(--transicao),
-        transform var(--transicao);
-}
-
-.agenda-periodo--livre small {
-    color: inherit;
-    font-size: 0.65rem;
-    font-weight: 650;
-    margin: 0;
-    opacity: 0.8;
-}
-
-.agenda-periodo--livre:hover,
-.agenda-periodo--livre:focus-visible {
-    background: #d8f5e5;
-    border-color: var(--verde-700);
-    outline: none;
-    transform: translateY(-1px);
-}
-
-.agenda-periodo--livre:focus-visible {
-    box-shadow: 0 0 0 3px rgba(22, 130, 91, 0.16);
 }
 
 .agenda-periodo--ocupado {
@@ -1813,6 +1785,13 @@ button.agenda-periodo {
     color: var(--verde-700);
     font-size: 0.78rem;
     font-weight: 700;
+}
+
+.agenda-tabela th:nth-child(4),
+.agenda-tabela th:nth-child(5),
+.agenda-tabela td:nth-child(4),
+.agenda-tabela td:nth-child(5) {
+    text-align: center;
 }
 
 .link-tabela {
@@ -1836,4 +1815,205 @@ button.agenda-periodo {
     line-height: 1.55;
     margin: 0 0 20px !important;
     padding: 13px 15px;
+}
+
+/* =========================================================
+   PAINEL DO DOCENTE
+   ========================================================= */
+
+.docente-dashboard-grid {
+    display: grid;
+    gap: 22px;
+    grid-template-columns:
+        minmax(0, 1.15fr)
+        minmax(350px, 0.85fr);
+}
+
+.docente-dashboard-panel {
+    background: var(--branco);
+    border: 1px solid var(--borda);
+    border-radius: var(--raio-lg);
+    box-shadow: var(--sombra-sm);
+    min-width: 0;
+    padding: clamp(20px, 3vw, 28px);
+}
+
+.docente-dashboard-panel .panel-header {
+    margin-bottom: 12px;
+}
+
+.docente-dashboard-panel .panel-header h2 {
+    margin-top: 5px;
+}
+
+.docente-dashboard-panel .panel-header p {
+    max-width: 620px;
+}
+
+.agenda-dashboard-lista,
+.solicitacoes-dashboard-lista {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.agenda-dashboard-item {
+    align-items: center;
+    border-top: 1px solid var(--cinza-200);
+    display: grid;
+    gap: 14px;
+    grid-template-columns: 54px minmax(0, 1fr) auto;
+    padding: 16px 0;
+}
+
+.agenda-dashboard-item:first-child,
+.solicitacao-dashboard-item:first-child {
+    border-top: 0;
+}
+
+.agenda-dashboard-data {
+    align-items: center;
+    background: var(--azul-50);
+    border: 1px solid var(--azul-100);
+    border-radius: var(--raio-md);
+    color: var(--azul-900);
+    display: flex;
+    flex-direction: column;
+    height: 54px;
+    justify-content: center;
+    line-height: 1;
+    width: 54px;
+}
+
+.agenda-dashboard-data span {
+    font-size: 1.18rem;
+    font-weight: 800;
+}
+
+.agenda-dashboard-data small {
+    color: var(--azul-700);
+    font-size: 0.68rem;
+    font-weight: 800;
+    margin-top: 4px;
+    text-transform: uppercase;
+}
+
+.agenda-dashboard-conteudo,
+.solicitacao-dashboard-conteudo {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.agenda-dashboard-conteudo {
+    gap: 3px;
+}
+
+.agenda-dashboard-conteudo strong,
+.solicitacao-dashboard-conteudo strong {
+    color: var(--cinza-950);
+}
+
+.agenda-dashboard-conteudo span,
+.agenda-dashboard-conteudo small,
+.solicitacao-dashboard-conteudo small {
+    color: var(--texto-suave);
+    font-size: 0.78rem;
+}
+
+.agenda-dashboard-conteudo small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.agenda-dashboard-livres {
+    align-items: flex-end;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 104px;
+}
+
+.solicitacao-dashboard-item {
+    border-top: 1px solid var(--cinza-200);
+}
+
+.solicitacao-dashboard-link {
+    align-items: center;
+    border-radius: var(--raio-sm);
+    display: flex;
+    gap: 14px;
+    justify-content: space-between;
+    margin: 0 -8px;
+    padding: 15px 8px;
+    text-decoration: none;
+    transition:
+        background-color var(--transicao),
+        color var(--transicao);
+}
+
+.solicitacao-dashboard-link:hover {
+    background: var(--azul-50);
+}
+
+.solicitacao-dashboard-conteudo {
+    gap: 5px;
+}
+
+.solicitacao-dashboard-link .status-badge {
+    flex: 0 0 auto;
+}
+
+.docente-dashboard-vazio {
+    align-items: flex-start;
+    background: var(--cinza-50);
+    border: 1px dashed var(--cinza-300);
+    border-radius: var(--raio-md);
+    color: var(--texto-suave);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 132px;
+    padding: 22px;
+}
+
+.docente-dashboard-vazio strong {
+    color: var(--cinza-900);
+}
+
+.docente-dashboard-vazio p {
+    margin: 5px 0 0;
+}
+
+@media (max-width: 1080px) {
+    .docente-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 620px) {
+    .agenda-dashboard-item {
+        align-items: start;
+        grid-template-columns: 48px minmax(0, 1fr);
+    }
+
+    .agenda-dashboard-data {
+        height: 48px;
+        width: 48px;
+    }
+
+    .agenda-dashboard-livres {
+        align-items: flex-start;
+        flex-direction: row;
+        flex-wrap: wrap;
+        grid-column: 2;
+        justify-content: flex-start;
+        min-width: 0;
+    }
+
+    .solicitacao-dashboard-link {
+        align-items: flex-start;
+        flex-direction: column;
+    }
 }
