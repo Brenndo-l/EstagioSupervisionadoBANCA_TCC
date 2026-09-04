@@ -2,49 +2,62 @@
 
 {% block content %}
 
-<div class="dashboard-header">
+<section class="dashboard-header coord-page-hero">
+    <span class="page-eyebrow">GESTÃO DE ESPAÇOS</span>
+
     <h1>Gerenciamento de Salas</h1>
 
     <p>
-        Cadastre os espaços físicos e defina os períodos
-        disponíveis para realização das bancas.
+        Cadastre salas e laboratórios e organize os períodos disponíveis
+        para a realização das bancas de TCC.
     </p>
-</div>
+</section>
 
-<div style="display: flex; align-items: flex-start; gap: 25px; flex-wrap: wrap;">
+<section class="coord-form-grid" aria-label="Cadastros de espaços e disponibilidades">
 
-    <div class="form-container" style="flex: 1; min-width: 300px;">
+    <article class="coord-card coord-card--form">
+        <header class="coord-card-header">
+            <span class="coord-card-kicker">NOVO ESPAÇO</span>
+            <h2>Cadastrar sala ou laboratório</h2>
+            <p>
+                Informe o nome pelo qual o espaço será identificado nas
+                solicitações e nos documentos da banca.
+            </p>
+        </header>
 
-        <h2>Cadastrar sala ou laboratório</h2>
-
-        <form method="POST">
+        <form method="POST" class="coord-form">
             {% csrf_token %}
 
-            <input
-                type="hidden"
-                name="tipo_formulario"
-                value="espaco"
-            >
+            <input type="hidden" name="tipo_formulario" value="espaco">
 
-            {{ form_espaco.as_p }}
+            {{ form_espaco.non_field_errors }}
+
+            <div class="form-field">
+                <label for="{{ form_espaco.nome.id_for_label }}">
+                    {{ form_espaco.nome.label }}
+                </label>
+
+                {{ form_espaco.nome }}
+                {{ form_espaco.nome.errors }}
+            </div>
 
             <button type="submit" class="btn-enviar">
                 CADASTRAR ESPAÇO
             </button>
         </form>
+    </article>
 
-    </div>
+    <article class="coord-card coord-card--form">
+        <header class="coord-card-header">
+            <span class="coord-card-kicker">NOVA DISPONIBILIDADE</span>
+            <h2>Cadastrar período disponível</h2>
+            <p>
+                Defina quando uma sala ativa poderá receber novas
+                solicitações de banca.
+            </p>
+        </header>
 
-    <div class="form-container" style="flex: 1; min-width: 300px;">
-
-        <h2>Cadastrar disponibilidade</h2>
-
-        <p>
-            Defina um período em que a sala estará
-            disponível para solicitações.
-        </p>
-
-        <form method="POST">
+        <form method="POST" class="coord-form">
             {% csrf_token %}
 
             <input
@@ -53,356 +66,327 @@
                 value="disponibilidade"
             >
 
-            {{ form_disponibilidade.as_p }}
+            {{ form_disponibilidade.non_field_errors }}
+
+            <div class="form-field">
+                <label for="{{ form_disponibilidade.espaco.id_for_label }}">
+                    {{ form_disponibilidade.espaco.label }}
+                </label>
+
+                {{ form_disponibilidade.espaco }}
+                {{ form_disponibilidade.espaco.errors }}
+            </div>
+
+            <div class="coord-form-row">
+                <div class="form-field">
+                    <label for="{{ form_disponibilidade.data_hora_inicio.id_for_label }}">
+                        {{ form_disponibilidade.data_hora_inicio.label }}
+                    </label>
+
+                    {{ form_disponibilidade.data_hora_inicio }}
+                    {{ form_disponibilidade.data_hora_inicio.errors }}
+                </div>
+
+                <div class="form-field">
+                    <label for="{{ form_disponibilidade.data_hora_fim.id_for_label }}">
+                        {{ form_disponibilidade.data_hora_fim.label }}
+                    </label>
+
+                    {{ form_disponibilidade.data_hora_fim }}
+                    {{ form_disponibilidade.data_hora_fim.errors }}
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label for="{{ form_disponibilidade.observacao.id_for_label }}">
+                    {{ form_disponibilidade.observacao.label }}
+                    <span class="label-opcional">Opcional</span>
+                </label>
+
+                {{ form_disponibilidade.observacao }}
+                {{ form_disponibilidade.observacao.errors }}
+            </div>
 
             <button type="submit" class="btn-enviar">
                 CADASTRAR DISPONIBILIDADE
             </button>
         </form>
+    </article>
 
-    </div>
+</section>
 
-</div>
+<section class="coord-card coord-section-card">
+    <header class="section-header coord-section-header">
+        <div>
+            <span class="coord-card-kicker">ESTRUTURA CADASTRADA</span>
+            <h2>Salas e laboratórios</h2>
+            <p>
+                Espaços inativos permanecem no histórico, mas não recebem
+                novas disponibilidades ou solicitações.
+            </p>
+        </div>
 
-
-<div class="table-container" style="margin-top: 30px;">
-
-    <h2>Salas e laboratórios cadastrados</h2>
+        <span class="coord-count-badge">
+            {{ espacos|length }} cadastrado{{ espacos|length|pluralize }}
+        </span>
+    </header>
 
     {% if espacos %}
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Espaço</th>
-                    <th>Situação</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-
-            <tbody>
-
-                {% for espaco in espacos %}
-
+        <div class="table-scroll" tabindex="0" aria-label="Salas e laboratórios cadastrados">
+            <table class="coord-table coord-table--espacos">
+                <thead>
                     <tr>
-
-                        <td>
-                            {{ espaco.nome }}
-                        </td>
-
-                        <td>
-                            {% if espaco.ativo %}
-                                <span class="status-badge status-aprovada">
-                                    Ativo
-                                </span>
-                            {% else %}
-                                <span class="status-badge status-recusada">
-                                    Inativo
-                                </span>
-                            {% endif %}
-                        </td>
-
-                        <td style="white-space: nowrap;">
-
-                            <a
-                                href="{% url 'editar_espaco' espaco.id %}"
-                                class="btn-download"
-                            >
-                                EDITAR
-                            </a>
-
-                            <form
-                                method="POST"
-                                action="{% url 'alternar_status_espaco' espaco.id %}"
-                                style="display: inline;"
-                            >
-                                {% csrf_token %}
-
-                                {% if espaco.ativo %}
-
-                                    <button
-                                        type="submit"
-                                        style="
-                                            border: none;
-                                            background-color: #d9534f;
-                                            color: white;
-                                            padding: 8px 14px;
-                                            border-radius: 4px;
-                                            font-weight: bold;
-                                            cursor: pointer;
-                                        "
-                                    >
-                                        DESATIVAR
-                                    </button>
-
-                                {% else %}
-
-                                    <button
-                                        type="submit"
-                                        style="
-                                            border: none;
-                                            background-color: #5cb85c;
-                                            color: white;
-                                            padding: 8px 14px;
-                                            border-radius: 4px;
-                                            font-weight: bold;
-                                            cursor: pointer;
-                                        "
-                                    >
-                                        ATIVAR
-                                    </button>
-
-                                {% endif %}
-
-                            </form>
-
-                        </td>
-
+                        <th>Espaço</th>
+                        <th>Situação</th>
+                        <th>Ações</th>
                     </tr>
+                </thead>
 
-                {% endfor %}
+                <tbody>
+                    {% for espaco in espacos %}
+                        <tr>
+                            <td data-label="Espaço">
+                                <strong class="coord-primary-text">
+                                    {{ espaco.nome }}
+                                </strong>
+                            </td>
 
-            </tbody>
-        </table>
+                            <td data-label="Situação">
+                                {% if espaco.ativo %}
+                                    <span class="status-badge status-aprovada">
+                                        Ativo
+                                    </span>
+                                {% else %}
+                                    <span class="status-badge status-recusada">
+                                        Inativo
+                                    </span>
+                                {% endif %}
+                            </td>
 
+                            <td data-label="Ações" class="acoes-tabela">
+                                <div class="coord-actions">
+                                    <a
+                                        href="{% url 'editar_espaco' espaco.id %}"
+                                        class="coord-action coord-action--secondary"
+                                    >
+                                        EDITAR
+                                    </a>
+
+                                    <form
+                                        method="POST"
+                                        action="{% url 'alternar_status_espaco' espaco.id %}"
+                                        class="coord-inline-form"
+                                    >
+                                        {% csrf_token %}
+
+                                        {% if espaco.ativo %}
+                                            <button
+                                                type="submit"
+                                                class="coord-action coord-action--danger"
+                                            >
+                                                DESATIVAR
+                                            </button>
+                                        {% else %}
+                                            <button
+                                                type="submit"
+                                                class="coord-action coord-action--success"
+                                            >
+                                                ATIVAR
+                                            </button>
+                                        {% endif %}
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     {% else %}
-
-        <p>
-            Nenhuma sala ou laboratório cadastrado.
-        </p>
-
+        <div class="coord-empty-state">
+            <strong>Nenhum espaço cadastrado</strong>
+            <p>Use o formulário acima para cadastrar a primeira sala ou laboratório.</p>
+        </div>
     {% endif %}
+</section>
 
-</div>
+<section class="coord-card coord-section-card">
+    <header class="section-header coord-section-header">
+        <div>
+            <span class="coord-card-kicker">AGENDA INSTITUCIONAL</span>
+            <h2>Disponibilidades cadastradas</h2>
+            <p>
+                Consulte, edite, ative, desative ou exclua períodos que ainda
+                não possuam compromissos vinculados.
+            </p>
+        </div>
 
-
-<div class="table-container" style="margin-top: 30px;">
-
-    <h2>Disponibilidades cadastradas</h2>
+        {% if disponibilidades.paginator %}
+            <span class="coord-count-badge">
+                {{ disponibilidades.paginator.count }} período{{ disponibilidades.paginator.count|pluralize }}
+            </span>
+        {% endif %}
+    </header>
 
     {% if disponibilidades %}
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Espaço</th>
-                    <th>Início</th>
-                    <th>Término</th>
-                    <th>Observação</th>
-                    <th>Situação</th>
-                    <th>Cadastrada por</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-
-            <tbody>
-
-                {% for disponibilidade in disponibilidades %}
-
+        <div class="table-scroll" tabindex="0" aria-label="Disponibilidades cadastradas">
+            <table class="coord-table coord-table--disponibilidades">
+                <thead>
                     <tr>
-
-                        <td>
-                            {{ disponibilidade.espaco.nome }}
-                        </td>
-
-                        <td>
-                            {{ disponibilidade.data_hora_inicio|date:"d/m/Y H:i" }}
-                        </td>
-
-                        <td>
-                            {{ disponibilidade.data_hora_fim|date:"d/m/Y H:i" }}
-                        </td>
-
-                        <td>
-                            {{ disponibilidade.observacao|default:"—" }}
-                        </td>
-
-                        <td>
-
-                            {% if disponibilidade.ativo and disponibilidade.espaco.ativo %}
-
-                                <span class="status-badge status-aprovada">
-                                    Disponível
-                                </span>
-
-                            {% elif not disponibilidade.espaco.ativo %}
-
-                                <span class="status-badge status-recusada">
-                                    Sala inativa
-                                </span>
-
-                            {% else %}
-
-                                <span class="status-badge status-recusada">
-                                    Inativa
-                                </span>
-
-                            {% endif %}
-
-                        </td>
-
-                        <td>
-
-                            {% if disponibilidade.criada_por %}
-
-                                {{ disponibilidade.criada_por.get_full_name|default:disponibilidade.criada_por.username }}
-
-                            {% else %}
-
-                                Não registrado
-
-                            {% endif %}
-
-                        </td>
-
-                        <td style="white-space: nowrap;">
-
-                            <a
-                                href="{% url 'editar_disponibilidade' disponibilidade.id %}"
-                                class="btn-download"
-                            >
-                                EDITAR
-                            </a>
-
-                            <form
-                                method="POST"
-                                action="{% url 'alternar_status_disponibilidade' disponibilidade.id %}"
-                                style="display: inline;"
-                            >
-                                {% csrf_token %}
-
-                                {% if disponibilidade.ativo %}
-
-                                    <button
-                                        type="submit"
-                                        style="
-                                            border: none;
-                                            background-color: #d9534f;
-                                            color: white;
-                                            padding: 8px 14px;
-                                            border-radius: 4px;
-                                            font-weight: bold;
-                                            cursor: pointer;
-                                        "
-                                    >
-                                        DESATIVAR
-                                    </button>
-
-                                {% else %}
-
-                                    <button
-                                        type="submit"
-                                        style="
-                                            border: none;
-                                            background-color: #5cb85c;
-                                            color: white;
-                                            padding: 8px 14px;
-                                            border-radius: 4px;
-                                            font-weight: bold;
-                                            cursor: pointer;
-                                        "
-                                    >
-                                        ATIVAR
-                                    </button>
-
-                                {% endif %}
-
-                            </form>
-
-                            <form
-                                method="POST"
-                                style="display: inline;"
-                                onsubmit="return confirm('Deseja excluir permanentemente esta disponibilidade?');"
-                            >
-                                {% csrf_token %}
-
-                                <input
-                                    type="hidden"
-                                    name="tipo_formulario"
-                                    value="excluir_disponibilidade"
-                                >
-
-                                <input
-                                    type="hidden"
-                                    name="disponibilidade_id"
-                                    value="{{ disponibilidade.id }}"
-                                >
-
-                                <button
-                                    type="submit"
-                                    class="btn-excluir"
-                                    style="
-                                        border: none;
-                                        background-color: #7d2630;
-                                        color: white;
-                                        padding: 8px 14px;
-                                        border-radius: 4px;
-                                        font-weight: bold;
-                                        cursor: pointer;
-                                    "
-                                >
-                                    EXCLUIR
-                                </button>
-                            </form>
-
-                        </td>
-
+                        <th>Espaço</th>
+                        <th>Início</th>
+                        <th>Término</th>
+                        <th>Observação</th>
+                        <th>Situação</th>
+                        <th>Cadastrada por</th>
+                        <th>Ações</th>
                     </tr>
+                </thead>
 
-                {% endfor %}
+                <tbody>
+                    {% for disponibilidade in disponibilidades %}
+                        <tr>
+                            <td data-label="Espaço">
+                                <strong class="coord-primary-text">
+                                    {{ disponibilidade.espaco.nome }}
+                                </strong>
+                            </td>
 
-            </tbody>
-        </table>
+                            <td data-label="Início">
+                                {{ disponibilidade.data_hora_inicio|date:"d/m/Y H:i" }}
+                            </td>
+
+                            <td data-label="Término">
+                                {{ disponibilidade.data_hora_fim|date:"d/m/Y H:i" }}
+                            </td>
+
+                            <td data-label="Observação" class="texto-longo">
+                                {{ disponibilidade.observacao|default:"—" }}
+                            </td>
+
+                            <td data-label="Situação">
+                                {% if disponibilidade.ativo and disponibilidade.espaco.ativo %}
+                                    <span class="status-badge status-aprovada">
+                                        Disponível
+                                    </span>
+                                {% elif not disponibilidade.espaco.ativo %}
+                                    <span class="status-badge status-recusada">
+                                        Sala inativa
+                                    </span>
+                                {% else %}
+                                    <span class="status-badge status-recusada">
+                                        Inativa
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <td data-label="Cadastrada por">
+                                {% if disponibilidade.criada_por %}
+                                    {{ disponibilidade.criada_por.get_full_name|default:disponibilidade.criada_por.username }}
+                                {% else %}
+                                    Não registrado
+                                {% endif %}
+                            </td>
+
+                            <td data-label="Ações" class="acoes-tabela">
+                                <div class="coord-actions">
+                                    <a
+                                        href="{% url 'editar_disponibilidade' disponibilidade.id %}"
+                                        class="coord-action coord-action--secondary"
+                                    >
+                                        EDITAR
+                                    </a>
+
+                                    <form
+                                        method="POST"
+                                        action="{% url 'alternar_status_disponibilidade' disponibilidade.id %}"
+                                        class="coord-inline-form"
+                                    >
+                                        {% csrf_token %}
+
+                                        {% if disponibilidade.ativo %}
+                                            <button
+                                                type="submit"
+                                                class="coord-action coord-action--danger"
+                                            >
+                                                DESATIVAR
+                                            </button>
+                                        {% else %}
+                                            <button
+                                                type="submit"
+                                                class="coord-action coord-action--success"
+                                            >
+                                                ATIVAR
+                                            </button>
+                                        {% endif %}
+                                    </form>
+
+                                    <form
+                                        method="POST"
+                                        class="coord-inline-form"
+                                        onsubmit="return confirm('Deseja excluir permanentemente esta disponibilidade?');"
+                                    >
+                                        {% csrf_token %}
+
+                                        <input
+                                            type="hidden"
+                                            name="tipo_formulario"
+                                            value="excluir_disponibilidade"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="disponibilidade_id"
+                                            value="{{ disponibilidade.id }}"
+                                        >
+
+                                        <button
+                                            type="submit"
+                                            class="coord-action coord-action--danger-ghost"
+                                        >
+                                            EXCLUIR
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
         {% if disponibilidades.has_other_pages %}
-
-            <div style="
-                margin-top: 20px;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                gap: 15px;
-            ">
-
+            <nav class="paginacao" aria-label="Paginação das disponibilidades">
                 {% if disponibilidades.has_previous %}
-
                     <a
                         class="btn-filter"
                         href="?pagina={{ disponibilidades.previous_page_number }}"
                     >
                         Anterior
                     </a>
-
                 {% endif %}
 
-                <span>
-                    Página {{ disponibilidades.number }}
-                    de {{ disponibilidades.paginator.num_pages }}
+                <span class="paginacao-info">
+                    Página {{ disponibilidades.number }} de
+                    {{ disponibilidades.paginator.num_pages }}
                 </span>
 
                 {% if disponibilidades.has_next %}
-
                     <a
                         class="btn-filter"
                         href="?pagina={{ disponibilidades.next_page_number }}"
                     >
                         Próxima
                     </a>
-
                 {% endif %}
-
-            </div>
-
+            </nav>
         {% endif %}
-
     {% else %}
-
-        <p>
-            Nenhuma disponibilidade cadastrada.
-        </p>
-
+        <div class="coord-empty-state">
+            <strong>Nenhuma disponibilidade cadastrada</strong>
+            <p>Cadastre um período para que os docentes possam solicitar uma banca.</p>
+        </div>
     {% endif %}
-
-</div>
+</section>
 
 {% endblock %}

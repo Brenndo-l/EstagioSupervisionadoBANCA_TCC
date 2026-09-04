@@ -2,55 +2,56 @@
 
 {% block content %}
 
-<div class="dashboard-header">
+<section class="dashboard-header coord-page-hero">
+    <span class="page-eyebrow">FLUXO DE APROVAÇÃO</span>
 
     <h1>Analisar Solicitações de Bancas</h1>
 
     <p>
-        Consulte as solicitações enviadas pelos docentes
-        e escolha qual deseja avaliar.
+        Consulte os pedidos enviados pelos docentes, acompanhe cada situação
+        e acesse a avaliação das solicitações pendentes.
     </p>
+</section>
 
-</div>
-
-
-<div class="dashboard-cards">
-
-    <div class="card">
-        <h3>Em Análise</h3>
+<section class="dashboard-cards coord-summary-grid" aria-label="Resumo das solicitações">
+    <article class="card card-alerta">
+        <h3>Em análise</h3>
         <p>{{ total_pendentes }}</p>
-    </div>
+    </article>
 
-    <div class="card">
+    <article class="card card-sucesso">
         <h3>Aprovadas</h3>
         <p>{{ total_aprovadas }}</p>
-    </div>
+    </article>
 
-    <div class="card">
+    <article class="card card-perigo">
         <h3>Recusadas</h3>
         <p>{{ total_recusadas }}</p>
-    </div>
+    </article>
 
-    <div class="card">
+    <article class="card coord-card-neutral">
         <h3>Expiradas</h3>
         <p>{{ total_expiradas }}</p>
-    </div>
+    </article>
+</section>
 
-</div>
+<section class="coord-card coord-section-card coord-section-card--table">
+    <header class="section-header coord-section-header">
+        <div>
+            <span class="coord-card-kicker">SOLICITAÇÕES CADASTRADAS</span>
+            <h2>Acompanhamento e decisão</h2>
+            <p>
+                Use os filtros para localizar rapidamente o estágio atual de
+                cada solicitação.
+            </p>
+        </div>
+    </header>
 
-
-<div
-    class="table-container"
-    style="margin-top: 30px;"
->
-
-    <h2>Solicitações cadastradas</h2>
-
-    <div class="filter-menu">
-
+    <nav class="filter-menu" aria-label="Filtrar solicitações por status">
         <a
             href="?status=EM_ANÁLISE"
             class="btn-filter {% if status_atual == 'EM_ANÁLISE' %}active{% endif %}"
+            {% if status_atual == 'EM_ANÁLISE' %}aria-current="page"{% endif %}
         >
             Em Análise
         </a>
@@ -58,6 +59,7 @@
         <a
             href="?status=APROVADA"
             class="btn-filter {% if status_atual == 'APROVADA' %}active{% endif %}"
+            {% if status_atual == 'APROVADA' %}aria-current="page"{% endif %}
         >
             Aprovadas
         </a>
@@ -65,6 +67,7 @@
         <a
             href="?status=RECUSADA"
             class="btn-filter {% if status_atual == 'RECUSADA' %}active{% endif %}"
+            {% if status_atual == 'RECUSADA' %}aria-current="page"{% endif %}
         >
             Recusadas
         </a>
@@ -72,6 +75,7 @@
         <a
             href="?status=EXPIRADA"
             class="btn-filter {% if status_atual == 'EXPIRADA' %}active{% endif %}"
+            {% if status_atual == 'EXPIRADA' %}aria-current="page"{% endif %}
         >
             Expiradas
         </a>
@@ -79,225 +83,171 @@
         <a
             href="?status=TODAS"
             class="btn-filter {% if status_atual == 'TODAS' %}active{% endif %}"
+            {% if status_atual == 'TODAS' %}aria-current="page"{% endif %}
         >
             Todas
         </a>
-
-    </div>
-
+    </nav>
 
     {% if solicitacoes %}
-
-        <table>
-
-            <thead>
-
-                <tr>
-                    <th>Discente</th>
-                    <th>Título do TCC</th>
-                    <th>Solicitante</th>
-                    <th>Local</th>
-                    <th>Data da defesa</th>
-                    <th>Solicitada em</th>
-                    <th>Status da solicitação</th>
-                    <th>Situação da banca</th>
-                    <th>Ações</th>
-                </tr>
-
-            </thead>
-
-            <tbody>
-
-                {% for solicitacao in solicitacoes %}
-
+        <div class="table-scroll" tabindex="0" aria-label="Solicitações de bancas">
+            <table class="coord-table coord-table--solicitacoes">
+                <thead>
                     <tr>
-
-                        <td>
-                            {{ solicitacao.projeto_tcc.discente.nome }}
-                        </td>
-
-                        <td>
-                            {{ solicitacao.projeto_tcc.titulo }}
-                        </td>
-
-                        <td>
-                            {{ solicitacao.usuario_solicitante }}
-                        </td>
-
-                        <td>
-                            {{ solicitacao.espaco.nome }}
-                        </td>
-
-                        <td>
-                            {{ solicitacao.opcao_data_inicio|date:"d/m/Y H:i" }}
-                            até
-                            {{ solicitacao.opcao_data_fim|date:"H:i" }}
-                        </td>
-
-                        <td>
-                            {{ solicitacao.data_solicitacao|date:"d/m/Y H:i" }}
-                        </td>
-
-                        <td>
-
-                            {% if solicitacao.status == 'EM_ANÁLISE' %}
-
-                                <span class="status-badge status-analise">
-                                    Em Análise
-                                </span>
-
-                            {% elif solicitacao.status == 'APROVADA' %}
-
-                                <span class="status-badge status-aprovada">
-                                    Aprovada
-                                </span>
-
-                            {% elif solicitacao.status == 'RECUSADA' %}
-
-                                <span class="status-badge status-recusada">
-                                    Recusada
-                                </span>
-
-                            {% elif solicitacao.status == 'EXPIRADA' %}
-
-                                <span class="status-badge status-expirada">
-                                    Expirada
-                                </span>
-
-                            {% endif %}
-
-                        </td>
-
-                        <td>
-
-                            {% if solicitacao.status == 'APROVADA' %}
-
-                                {% if solicitacao.banca_tcc.status == 'AGENDADA' %}
-                                    <span class="status-badge status-agendada">
-                                        Agendada
-                                    </span>
-
-                                {% elif solicitacao.banca_tcc.status == 'AGUARDANDO_NOTA' %}
-                                    <span class="status-badge status-aguardando-nota">
-                                        Aguardando nota
-                                    </span>
-
-                                {% elif solicitacao.banca_tcc.status == 'FINALIZADA' %}
-                                    <span class="status-badge status-finalizada">
-                                        Finalizada
-                                    </span>
-
-                                {% else %}
-                                    Registro não localizado
-                                {% endif %}
-
-                            {% else %}
-                                —
-                            {% endif %}
-
-                        </td>
-
-                        <td>
-
-                            <a
-                                href="{% url 'detalhar_solicitacao' solicitacao.id %}"
-                                class="btn-download"
-                                style="margin-right: 6px;"
-                            >
-                                DETALHES
-                            </a>
-
-                            {% if solicitacao.status == 'EM_ANÁLISE' %}
-
-                                <a
-                                    href="{% url 'editar_solicitacao_coordenacao' solicitacao.id %}"
-                                    class="btn-download"
-                                    style="margin-right: 6px;"
-                                >
-                                    EDITAR
-                                </a>
-
-                                <a
-                                    href="{% url 'avaliar_solicitacao' solicitacao.id %}"
-                                    class="btn-download"
-                                >
-                                    AVALIAR
-                                </a>
-
-                            {% endif %}
-
-                        </td>
-
+                        <th>Discente</th>
+                        <th>Título do TCC</th>
+                        <th>Docente solicitante</th>
+                        <th>Local</th>
+                        <th>Data da defesa</th>
+                        <th>Solicitada em</th>
+                        <th>Status da solicitação</th>
+                        <th>Situação da banca</th>
+                        <th>Ações</th>
                     </tr>
+                </thead>
 
-                {% endfor %}
+                <tbody>
+                    {% for solicitacao in solicitacoes %}
+                        <tr>
+                            <td data-label="Discente">
+                                <strong class="coord-primary-text">
+                                    {{ solicitacao.projeto_tcc.discente.nome }}
+                                </strong>
+                            </td>
 
-            </tbody>
+                            <td data-label="Título do TCC" class="texto-longo">
+                                {{ solicitacao.projeto_tcc.titulo }}
+                            </td>
 
-        </table>
+                            <td data-label="Docente solicitante">
+                                {{ solicitacao.usuario_solicitante }}
+                            </td>
 
+                            <td data-label="Local">
+                                {{ solicitacao.espaco.nome }}
+                            </td>
+
+                            <td data-label="Data da defesa">
+                                <span class="coord-date-main">
+                                    {{ solicitacao.opcao_data_inicio|date:"d/m/Y H:i" }}
+                                </span>
+                                <small class="coord-date-detail">
+                                    até {{ solicitacao.opcao_data_fim|date:"H:i" }}
+                                </small>
+                            </td>
+
+                            <td data-label="Solicitada em">
+                                {{ solicitacao.data_solicitacao|date:"d/m/Y H:i" }}
+                            </td>
+
+                            <td data-label="Status da solicitação">
+                                {% if solicitacao.status == 'EM_ANÁLISE' %}
+                                    <span class="status-badge status-analise">
+                                        Em Análise
+                                    </span>
+                                {% elif solicitacao.status == 'APROVADA' %}
+                                    <span class="status-badge status-aprovada">
+                                        Aprovada
+                                    </span>
+                                {% elif solicitacao.status == 'RECUSADA' %}
+                                    <span class="status-badge status-recusada">
+                                        Recusada
+                                    </span>
+                                {% elif solicitacao.status == 'EXPIRADA' %}
+                                    <span class="status-badge status-expirada">
+                                        Expirada
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <td data-label="Situação da banca">
+                                {% if solicitacao.status == 'APROVADA' %}
+                                    {% if solicitacao.banca_tcc.status == 'AGENDADA' %}
+                                        <span class="status-badge status-agendada">
+                                            Agendada
+                                        </span>
+                                    {% elif solicitacao.banca_tcc.status == 'AGUARDANDO_NOTA' %}
+                                        <span class="status-badge status-aguardando-nota">
+                                            Aguardando nota
+                                        </span>
+                                    {% elif solicitacao.banca_tcc.status == 'FINALIZADA' %}
+                                        <span class="status-badge status-finalizada">
+                                            Finalizada
+                                        </span>
+                                    {% else %}
+                                        <span class="coord-muted-text">
+                                            Registro não localizado
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="coord-muted-text">—</span>
+                                {% endif %}
+                            </td>
+
+                            <td data-label="Ações" class="acoes-tabela">
+                                <div class="coord-actions">
+                                    <a
+                                        href="{% url 'detalhar_solicitacao' solicitacao.id %}"
+                                        class="coord-action coord-action--secondary"
+                                    >
+                                        DETALHES
+                                    </a>
+
+                                    {% if solicitacao.status == 'EM_ANÁLISE' %}
+                                        <a
+                                            href="{% url 'editar_solicitacao_coordenacao' solicitacao.id %}"
+                                            class="coord-action coord-action--secondary"
+                                        >
+                                            EDITAR
+                                        </a>
+
+                                        <a
+                                            href="{% url 'avaliar_solicitacao' solicitacao.id %}"
+                                            class="coord-action coord-action--primary"
+                                        >
+                                            AVALIAR
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
 
         {% if solicitacoes.has_other_pages %}
-
-            <div
-                style="
-                    margin-top: 20px;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    gap: 15px;
-                    flex-wrap: wrap;
-                "
-            >
-
+            <nav class="paginacao" aria-label="Paginação das solicitações">
                 {% if solicitacoes.has_previous %}
-
                     <a
                         class="btn-filter"
                         href="?status={{ status_atual }}&pagina={{ solicitacoes.previous_page_number }}"
                     >
                         Anterior
                     </a>
-
                 {% endif %}
 
-                <span>
-                    Página
-                    {{ solicitacoes.number }}
-                    de
+                <span class="paginacao-info">
+                    Página {{ solicitacoes.number }} de
                     {{ solicitacoes.paginator.num_pages }}
                 </span>
 
                 {% if solicitacoes.has_next %}
-
                     <a
                         class="btn-filter"
                         href="?status={{ status_atual }}&pagina={{ solicitacoes.next_page_number }}"
                     >
                         Próxima
                     </a>
-
                 {% endif %}
-
-            </div>
-
+            </nav>
         {% endif %}
-
     {% else %}
-
-        <div class="sem-resultados">
-
-            <h3>Nenhuma solicitação encontrada</h3>
-
-            <p>
-                Não existem solicitações correspondentes
-                ao filtro selecionado.
-            </p>
-
+        <div class="coord-empty-state">
+            <strong>Nenhuma solicitação encontrada</strong>
+            <p>Não existem solicitações correspondentes ao filtro selecionado.</p>
         </div>
-
     {% endif %}
-
-</div>
+</section>
 
 {% endblock %}

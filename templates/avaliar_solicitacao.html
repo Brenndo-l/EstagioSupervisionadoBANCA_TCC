@@ -2,255 +2,225 @@
 
 {% block content %}
 
-<div class="dashboard-header">
+<section class="dashboard-header coord-page-hero">
+    <span class="page-eyebrow">DECISÃO DA COORDENAÇÃO</span>
+
     <h1>Avaliar Solicitação de Banca</h1>
 
     <p>
-        Confira os dados antes de aprovar ou recusar a solicitação.
+        Confira os dados acadêmicos, o agendamento e a composição antes de
+        aprovar ou recusar esta solicitação.
     </p>
-</div>
+</section>
 
-<div class="table-container">
+<div class="coord-review-layout">
+    <section class="coord-card coord-section-card coord-review-details">
+        <header class="section-header coord-section-header">
+            <div>
+                <span class="coord-card-kicker">CONFERÊNCIA</span>
+                <h2>Dados da solicitação</h2>
+                <p>Revise as informações registradas pelo docente solicitante.</p>
+            </div>
 
-    <h2>Dados da solicitação</h2>
+            <a
+                href="{% url 'editar_solicitacao_coordenacao' solicitacao.id %}"
+                class="coord-action coord-action--secondary"
+            >
+                EDITAR SOLICITAÇÃO
+            </a>
+        </header>
 
-    <table>
-        <tbody>
-            <tr>
-                <th>Discente</th>
-                <td>
-                    {{ solicitacao.projeto_tcc.discente.nome }}
-                </td>
-            </tr>
+        <div class="coord-detail-list">
+            <div class="coord-detail-item">
+                <span>Discente</span>
+                <strong>{{ solicitacao.projeto_tcc.discente.nome }}</strong>
+            </div>
 
-            <tr>
-                <th>Título do TCC</th>
-                <td>
-                    {{ solicitacao.projeto_tcc.titulo }}
-                </td>
-            </tr>
+            <div class="coord-detail-item coord-detail-item--wide">
+                <span>Título do TCC</span>
+                <strong>{{ solicitacao.projeto_tcc.titulo }}</strong>
+            </div>
 
-            <tr>
-                <th>Docente solicitante</th>
-                <td>
-                    {{ solicitacao.usuario_solicitante }}
-                </td>
-            </tr>
+            <div class="coord-detail-item">
+                <span>Docente solicitante</span>
+                <strong>{{ solicitacao.usuario_solicitante }}</strong>
+            </div>
 
-            <tr>
-                <th>Espaço solicitado</th>
-                <td>
-                    {{ solicitacao.espaco.nome }}
-                </td>
-            </tr>
+            <div class="coord-detail-item">
+                <span>Espaço solicitado</span>
+                <strong>{{ solicitacao.espaco.nome }}</strong>
+            </div>
 
-            <tr>
-                <th>Data e hora de início</th>
-                <td>
-                    {{ solicitacao.opcao_data_inicio|date:"d/m/Y H:i" }}
-                </td>
-            </tr>
+            <div class="coord-detail-item">
+                <span>Data e hora de início</span>
+                <strong>{{ solicitacao.opcao_data_inicio|date:"d/m/Y H:i" }}</strong>
+            </div>
 
-            <tr>
-                <th>Data e hora de término</th>
-                <td>
-                    {{ solicitacao.opcao_data_fim|date:"d/m/Y H:i" }}
-                </td>
-            </tr>
+            <div class="coord-detail-item">
+                <span>Data e hora de término</span>
+                <strong>{{ solicitacao.opcao_data_fim|date:"d/m/Y H:i" }}</strong>
+            </div>
 
-            <tr>
-                <th>Data da solicitação</th>
-                <td>
-                    {{ solicitacao.data_solicitacao|date:"d/m/Y H:i" }}
-                </td>
-            </tr>
+            <div class="coord-detail-item">
+                <span>Solicitada em</span>
+                <strong>{{ solicitacao.data_solicitacao|date:"d/m/Y H:i" }}</strong>
+            </div>
 
-            <tr>
-                <th>Arquivo do TCC</th>
-                <td>
-                    {% if solicitacao.arquivo_tcc %}
-                        <a
-                            href="{% url 'baixar_tcc_solicitacao' solicitacao.id %}"
-                            class="btn-download"
-                        >
-                            BAIXAR PDF DO TCC
-                        </a>
-                    {% else %}
+            <div class="coord-detail-item">
+                <span>TCC anexado</span>
+
+                {% if solicitacao.arquivo_tcc %}
+                    <a
+                        href="{% url 'baixar_tcc_solicitacao' solicitacao.id %}"
+                        class="coord-action coord-action--primary coord-action--fit"
+                    >
+                        BAIXAR TCC
+                    </a>
+                {% else %}
+                    <strong class="coord-muted-text">
                         Não anexado — registro antigo
+                    </strong>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="coord-subsection">
+            <header class="coord-subsection-header">
+                <span class="coord-card-kicker">COMPOSIÇÃO PROPOSTA</span>
+                <h3>Integrantes da banca</h3>
+            </header>
+
+            {% if composicao %}
+                <div class="coord-detail-list coord-detail-list--composition">
+                    <div class="coord-detail-item">
+                        <span>Professor orientador</span>
+                        <strong>{{ composicao.orientador }}</strong>
+                    </div>
+
+                    {% if composicao.coorientador %}
+                        <div class="coord-detail-item">
+                            <span>Professor coorientador</span>
+                            <strong>{{ composicao.coorientador }}</strong>
+                        </div>
                     {% endif %}
-                </td>
-            </tr>
 
-            {% if composicao %}
-                <tr>
-                    <th>Professor orientador</th>
-                    <td>
-                        {{ composicao.orientador }}
-                    </td>
-                </tr>
-                {% if composicao.coorientador %}
-                    <tr>
-                        <th>Professor coorientador</th>
-                        <td>
-                            {{ composicao.coorientador }}
-                        </td>
-                    </tr>
-                {% endif %}
+                    <div class="coord-detail-item">
+                        <span>Avaliador interno</span>
+                        <strong>{{ composicao.avaliador_interno }}</strong>
+                    </div>
 
-                <tr>
-                    <th>Avaliador interno</th>
-                    <td>
-                        {{ composicao.avaliador_interno }}
-                    </td>
-                </tr>
+                    {% if composicao.segundo_avaliador_interno %}
+                        <div class="coord-detail-item">
+                            <span>Segundo avaliador interno</span>
+                            <strong>{{ composicao.segundo_avaliador_interno }}</strong>
+                        </div>
+                    {% endif %}
 
-                {% if composicao.segundo_avaliador_interno %}
-                    <tr>
-                        <th>Segundo avaliador interno</th>
-                        <td>
-                            {{ composicao.segundo_avaliador_interno }}
-                        </td>
-                    </tr>
-                {% endif %}
+                    <div class="coord-detail-item">
+                        <span>Presidente indicado</span>
 
-                <tr>
-                    <th>Presidente indicado</th>
-                    <td>
                         {% if composicao.presidente %}
-                            {{ composicao.presidente }}
+                            <strong>{{ composicao.presidente }}</strong>
                         {% else %}
-                            Não indicado pelo orientador
+                            <strong class="coord-muted-text">
+                                Não indicado pelo orientador
+                            </strong>
                         {% endif %}
-                    </td>
-                </tr>
+                    </div>
 
-                {% if composicao.nome_avaliador_externo %}
-                    <tr>
-                        <th>Avaliador externo</th>
-                        <td>
-                            {% if composicao.titulacao_avaliador_externo %}
-                                {{ composicao.get_titulacao_avaliador_externo_display }}
-                            {% endif %}
+                    {% if composicao.nome_avaliador_externo %}
+                        <div class="coord-detail-item">
+                            <span>Avaliador externo</span>
+                            <strong>
+                                {% if composicao.titulacao_avaliador_externo %}
+                                    {{ composicao.get_titulacao_avaliador_externo_display }}
+                                {% endif %}
+                                {{ composicao.nome_avaliador_externo }}
+                            </strong>
+                        </div>
+                    {% endif %}
 
-                            {{ composicao.nome_avaliador_externo }}
-                        </td>
-                    </tr>
-                {% endif %}
-
-                {% if composicao.instituicao_avaliador_externo %}
-                    <tr>
-                        <th>Instituição externa</th>
-                        <td>
-                            {{ composicao.instituicao_avaliador_externo }}
-                        </td>
-                    </tr>
-                {% endif %}
+                    {% if composicao.instituicao_avaliador_externo %}
+                        <div class="coord-detail-item coord-detail-item--wide">
+                            <span>Instituição do avaliador externo</span>
+                            <strong>{{ composicao.instituicao_avaliador_externo }}</strong>
+                        </div>
+                    {% endif %}
+                </div>
             {% else %}
-                <tr>
-                    <th>Composição da banca</th>
-                    <td style="color: #d9534f;">
-                        Composição não encontrada. Esta solicitação não poderá
-                        ser aprovada.
-                    </td>
-                </tr>
+                <div class="coord-inline-alert coord-inline-alert--danger" role="alert">
+                    <strong>Composição não encontrada</strong>
+                    <p>
+                        Esta solicitação poderá ser recusada, mas não poderá ser
+                        aprovada enquanto não possuir uma composição de banca.
+                    </p>
+                </div>
             {% endif %}
-        </tbody>
-    </table>
+        </div>
+    </section>
 
-</div>
-
-<div
-    style="
-        margin-top: 20px;
-        margin-bottom: 30px;
-    "
->
-    <a href="{% url 'editar_solicitacao_coordenacao' solicitacao.id %}"class="btn-download">EDITAR SOLICITAÇÃO</a>
-</div>
-
-<div class="form-container" style="margin-top: 30px;">
-
-    <h2>Decisão da coordenação</h2>
-
-    <form method="POST">
-        {% csrf_token %}
-
-        <p>
-            <label for="{{ form.presidente.id_for_label }}">
-                <strong>{{ form.presidente.label }}</strong>
-            </label>
-        </p>
-
-        {{ form.presidente }}
-
-        {% if form.presidente.help_text %}
-            <p class="form-ajuda">
-                {{ form.presidente.help_text }}
+    <aside class="coord-card coord-section-card coord-review-decision">
+        <header class="coord-card-header">
+            <span class="coord-card-kicker">REGISTRAR DECISÃO</span>
+            <h2>Decisão da coordenação</h2>
+            <p>
+                A justificativa é obrigatória tanto para aprovação quanto para
+                recusa e ficará registrada no histórico.
             </p>
-        {% endif %}
+        </header>
 
-        <p>
-            <label for="{{ form.motivo_decisao.id_for_label }}">
-                <strong>{{ form.motivo_decisao.label }}</strong>
-            </label>
-        </p>
+        <form method="POST" class="coord-form">
+            {% csrf_token %}
 
-        {{ form.motivo_decisao }}
+            <div class="form-field">
+                <label for="{{ form.presidente.id_for_label }}">
+                    {{ form.presidente.label }}
+                </label>
 
-        <div style="
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        ">
-            {% if composicao %}
+                {{ form.presidente }}
+
+                {% if form.presidente.help_text %}
+                    <p class="form-ajuda">
+                        {{ form.presidente.help_text }}
+                    </p>
+                {% endif %}
+            </div>
+
+            <div class="form-field">
+                <label for="{{ form.motivo_decisao.id_for_label }}">
+                    {{ form.motivo_decisao.label }}
+                </label>
+
+                {{ form.motivo_decisao }}
+            </div>
+
+            <div class="coord-decision-actions">
+                {% if composicao %}
+                    <button
+                        type="submit"
+                        name="acao"
+                        value="aprovar"
+                        class="coord-decision-button coord-decision-button--approve"
+                    >
+                        APROVAR BANCA
+                    </button>
+                {% endif %}
+
                 <button
                     type="submit"
                     name="acao"
-                    value="aprovar"
-                    style="
-                        flex: 1;
-                        min-width: 160px;
-                        padding: 12px;
-                        border: none;
-                        border-radius: 4px;
-                        background-color: #5cb85c;
-                        color: white;
-                        font-weight: bold;
-                        cursor: pointer;
-                    "
+                    value="recusar"
+                    class="coord-decision-button coord-decision-button--reject"
                 >
-                    APROVAR BANCA
+                    RECUSAR SOLICITAÇÃO
                 </button>
-            {% endif %}
+            </div>
+        </form>
 
-            <button
-                type="submit"
-                name="acao"
-                value="recusar"
-                style="
-                    flex: 1;
-                    min-width: 160px;
-                    padding: 12px;
-                    border: none;
-                    border-radius: 4px;
-                    background-color: #d9534f;
-                    color: white;
-                    font-weight: bold;
-                    cursor: pointer;
-                "
-            >
-                RECUSAR SOLICITAÇÃO
-            </button>
-        </div>
-    </form>
-
-    <p style="margin-top: 20px;">
-        <a href="{% url 'dashboard' %}">
+        <a href="{% url 'dashboard' %}" class="coord-back-link">
             Voltar ao painel
         </a>
-    </p>
-
+    </aside>
 </div>
 
 {% endblock %}
