@@ -1244,18 +1244,30 @@ textarea:focus-visible {
 }
 
 .alerta-fechar {
-    align-items: center;
     background: transparent;
     border: 0;
     border-radius: 6px;
     color: currentColor;
     cursor: pointer;
-    display: flex;
+    display: grid;
     flex: 0 0 30px;
-    font-size: 1.25rem;
     height: 30px;
-    justify-content: center;
+    line-height: 0;
     opacity: 0.65;
+    padding: 0;
+    place-items: center;
+    width: 30px;
+}
+
+.alerta-fechar svg {
+    display: block;
+    fill: none;
+    height: 16px;
+    pointer-events: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-width: 2.25;
+    width: 16px;
 }
 
 .alerta-fechar:hover {
@@ -1727,7 +1739,9 @@ textarea:focus-visible {
     display: flex;
     flex-wrap: wrap;
     gap: 7px;
+    justify-content: center;
     min-width: 210px;
+    text-align: center;
 }
 
 .tipo-versao-documento {
@@ -1736,6 +1750,15 @@ textarea:focus-visible {
     flex-basis: 100%;
     font-size: 0.72rem;
     font-weight: 650;
+}
+
+.documentos-table th,
+.documentos-table td {
+    text-align: center;
+}
+
+.documentos-table .acoes-tabela {
+    text-align: center;
 }
 
 /* =========================================================
@@ -2165,9 +2188,9 @@ textarea:focus-visible {
     min-width: 1380px;
 }
 
-.coord-table th:last-child,
-.coord-table td:last-child {
-    text-align: right;
+.coord-table th,
+.coord-table td {
+    text-align: center;
 }
 
 .coord-primary-text {
@@ -2197,7 +2220,7 @@ textarea:focus-visible {
     display: flex;
     flex-wrap: wrap;
     gap: 7px;
-    justify-content: flex-end;
+    justify-content: center;
 }
 
 .coord-inline-form {
@@ -2357,6 +2380,11 @@ textarea:focus-visible {
     top: calc(var(--topbar-altura) + 22px);
 }
 
+.coord-review-decision .docente-autocomplete-limpar {
+    top: 6px;
+    transform: none;
+}
+
 .coord-detail-list {
     border: 1px solid var(--cinza-200);
     border-radius: var(--raio-md);
@@ -2384,9 +2412,6 @@ textarea:focus-visible {
 
 .coord-detail-item--wide {
     grid-column: 1 / -1;
-}
-
-.coord-detail-item--wide:nth-child(odd) {
     border-right: 0;
 }
 
