@@ -1,139 +1,72 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <link
-        rel="stylesheet"
-        href="{% static 'css/login.css' %}"
-    >
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#172554">
     <title>Cadastro de Docente | SGTCC</title>
+    <link rel="icon" type="image/png" href="{% static 'assets/logo_ufac.png' %}">
+    <link rel="stylesheet" href="{% static 'css/login.css' %}?v=20260901-01">
 </head>
-
 <body>
-
     <div class="container">
-
         <aside class="sidebar">
-
-            <img
-                src="{% static 'assets/logo_ufac.png' %}"
-                alt="Universidade Federal do Acre"
-            >
-
+            <img src="{% static 'assets/logo_ufac.png' %}" alt="Brasão da Universidade Federal do Acre">
             <p>SGTCC</p>
-
         </aside>
 
         <main class="form-login">
+            <section class="auth-card auth-card--wide" aria-labelledby="titulo-cadastro">
+                <span class="auth-eyebrow">Primeiro acesso</span>
+                <h1 id="titulo-cadastro">Cadastro de Docente</h1>
+                <p class="auth-intro">
+                    Utilize seu e-mail institucional da UFAC. Enviaremos um link
+                    para confirmar o endereço e ativar automaticamente sua conta.
+                </p>
 
-            <h1>Cadastro de Docente</h1>
+                {% if messages %}
+                    <div class="mensagens-flutuantes" aria-label="Mensagens do sistema">
+                        {% for message in messages %}
+                            <div class="alerta alerta-{{ message.tags }}" role="{% if message.tags == 'error' %}alert{% else %}status{% endif %}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
 
-            {% if messages %}
+                <form method="POST">
+                    {% csrf_token %}
 
-                <div class="mensagens-flutuantes">
-
-                    {% for message in messages %}
-
-                        <div class="alerta alerta-{{ message.tags }}">
-                            {{ message }}
-                        </div>
-
+                    {% for erro in form.non_field_errors %}
+                        <p class="error" role="alert">{{ erro }}</p>
                     {% endfor %}
 
-                </div>
+                    <div class="auth-fields-grid">
+                        {% for campo in form %}
+                            <div class="auth-field {% if campo.name == 'email' or campo.name == 'password1' or campo.name == 'password2' %}auth-field--wide{% endif %}">
+                                <label for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                                {{ campo }}
 
-            {% endif %}
+                                {% if campo.help_text %}
+                                    <div class="auth-help">{{ campo.help_text|safe }}</div>
+                                {% endif %}
 
-            <p style="max-width: 560px; text-align: center;">
-                Utilize seu e-mail institucional da UFAC.
-                Enviaremos um link para confirmar o endereço
-                e ativar automaticamente sua conta.
-            </p>
-
-            <form
-                method="POST"
-                style="
-                    width: 100%;
-                    max-width: 560px;
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                "
-            >
-
-                {% csrf_token %}
-
-                {% for erro in form.non_field_errors %}
-
-                    <p class="error">
-                        {{ erro }}
-                    </p>
-
-                {% endfor %}
-
-                {% for campo in form %}
-
-                    <div
-                        style="
-                            display: flex;
-                            flex-direction: column;
-                            gap: 5px;
-                        "
-                    >
-
-                        <label for="{{ campo.id_for_label }}">
-                            <strong>{{ campo.label }}</strong>
-                        </label>
-
-                        {{ campo }}
-
-                        {% if campo.help_text %}
-
-                            <small style="color: #555;">
-                                {{ campo.help_text|safe }}
-                            </small>
-
-                        {% endif %}
-
-                        {% for erro in campo.errors %}
-
-                            <span class="error">
-                                {{ erro }}
-                            </span>
-
+                                {% for erro in campo.errors %}
+                                    <span class="error" role="alert">{{ erro }}</span>
+                                {% endfor %}
+                            </div>
                         {% endfor %}
-
                     </div>
 
-                {% endfor %}
+                    <button type="submit">Criar cadastro</button>
+                </form>
 
-                <button type="submit">
-                    Criar cadastro
-                </button>
-
-            </form>
-
-            <p style="font-size: 14px;">
-
-                <a href="{% url 'login' %}">
-                    Voltar para o login
-                </a>
-
-            </p>
-
+                <div class="auth-links auth-links--single">
+                    <p><a href="{% url 'login' %}">Voltar para o login</a></p>
+                </div>
+            </section>
         </main>
-
     </div>
-
 </body>
-
 </html>

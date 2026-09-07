@@ -2,266 +2,207 @@
 
 {% block content %}
 
-<div class="dashboard-header">
+<div class="dashboard-header shared-page-hero">
+    <span class="shared-page-eyebrow">Acervo institucional</span>
     <h1>Documentos da banca</h1>
-
     <p>
         Gere as atas preenchidas automaticamente e consulte os
         arquivos institucionais disponibilizados pela Coordenação.
     </p>
 </div>
 
+<div class="shared-page-stack">
+    {% if eh_coordenacao %}
+        <section class="shared-card shared-card--accent" aria-labelledby="titulo-adicionar-documento">
+            <div class="shared-card-header">
+                <span class="shared-card-kicker">Repositório de referência</span>
+                <h2 id="titulo-adicionar-documento">Adicionar arquivo institucional</h2>
+                <p>
+                    Guarde modelos oficiais em branco, orientações e arquivos auxiliares.
+                    Eles ficam disponíveis para consulta e não alteram automaticamente
+                    o conteúdo das atas geradas pelo sistema.
+                </p>
+            </div>
 
-{% if eh_coordenacao %}
+            <form method="POST" enctype="multipart/form-data" class="shared-form shared-form--upload">
+                {% csrf_token %}
+                {{ form.as_p }}
 
+                <button type="submit" class="btn-enviar">
+                    Salvar no repositório
+                </button>
+            </form>
+        </section>
+    {% endif %}
 
-    <div class="form-container" style="margin-top: 20px;">
+    <section class="shared-card shared-card--table" aria-labelledby="titulo-atas-geradas">
+        <div class="shared-card-header shared-card-header--status">
+            <div>
+                <span class="shared-card-kicker">Preenchimento automático</span>
+                <h2 id="titulo-atas-geradas">Atas geradas automaticamente</h2>
+                <p>
+                    Gere a Ata de Apresentação em PDF ou DOCX. Antes da defesa,
+                    o resultado e a nota permanecem em branco; após o registro
+                    da nota, a versão final é preenchida automaticamente.
+                </p>
+            </div>
 
-        <h2>Adicionar arquivo institucional de referência</h2>
+            {% if solicitacoes_aprovadas %}
+                <span class="shared-count-badge">
+                    {{ solicitacoes_aprovadas|length }} registro{{ solicitacoes_aprovadas|length|pluralize }}
+                </span>
+            {% endif %}
+        </div>
 
-        <p>
-            Utilize esta área para guardar modelos oficiais em branco,
-            orientações e arquivos auxiliares. Esses arquivos ficam
-            disponíveis para consulta e não alteram automaticamente
-            o conteúdo das atas geradas pelo sistema.
-        </p>
-
-        <form method="POST" enctype="multipart/form-data">
-
-            {% csrf_token %}
-
-            {{ form.as_p }}
-
-            <button type="submit" class="btn-enviar">
-                Salvar no repositório
-            </button>
-
-        </form>
-
-    </div>
-
-{% endif %}
-
-<div class="table-container" style="margin-top: 30px;">
-
-    <h2>Atas geradas automaticamente</h2>
-
-    <p>
-        Gere a Ata de Apresentação em PDF ou DOCX. Antes da defesa,
-        o documento mantém resultado e nota em branco; depois do
-        registro da nota, a versão final é preenchida automaticamente.
-    </p>
-
-    {% if solicitacoes_aprovadas %}
-
-        <table class="documentos-table documentos-table--atas">
-
-            <thead>
-                <tr>
-                    <th>Docente solicitante</th>
-                    <th>Título do TCC</th>
-                    <th>Local</th>
-                    <th>Data/Hora</th>
-                    <th>Situação da banca</th>
-                    <th>Ação</th>
-                </tr>
-            </thead>
-
-            <tbody>
-
-                {% for solicitacao in solicitacoes_aprovadas %}
-
-                    <tr>
-
-                        <td>
-                            <a
-                                href="{% url 'detalhar_solicitacao' solicitacao.id %}"
-                                class="link-tabela"
-                            >
-                                {{ solicitacao.usuario_solicitante }}
-                            </a>
-                        </td>
-
-                        <td>
-                            <a
-                                href="{% url 'detalhar_solicitacao' solicitacao.id %}"
-                                class="link-tabela"
-                            >
-                                {{ solicitacao.projeto_tcc.titulo }}
-                            </a>
-                        </td>
-
-                        <td>
-                            {{ solicitacao.espaco.nome }}
-                        </td>
-
-                        <td>
-                            {{ solicitacao.opcao_data_inicio|date:"d/m/Y H:i" }}
-                        </td>
-
-                        <td>
-                            {% if solicitacao.banca_tcc.status == 'AGENDADA' %}
-                                <span class="status-badge status-agendada">
-                                    Agendada
-                                </span>
-                            {% elif solicitacao.banca_tcc.status == 'AGUARDANDO_NOTA' %}
-                                <span class="status-badge status-aguardando-nota">
-                                    Aguardando nota
-                                </span>
-                            {% elif solicitacao.banca_tcc.status == 'FINALIZADA' %}
-                                <span class="status-badge status-finalizada">
-                                    Finalizada
-                                </span>
-                            {% else %}
-                                Registro não localizado
-                            {% endif %}
-                        </td>
-
-                        <td>
-                            <div class="acoes-documento-gerado">
-                                <span class="tipo-versao-documento">
-                                    {% if solicitacao.banca_tcc.status == 'FINALIZADA' %}
-                                        Versão final
+        {% if solicitacoes_aprovadas %}
+            <div class="table-scroll" tabindex="0" aria-label="Atas geradas automaticamente">
+                <table class="documentos-table documentos-table--atas shared-responsive-table">
+                    <thead>
+                        <tr>
+                            <th>Docente solicitante</th>
+                            <th>Título do TCC</th>
+                            <th>Local</th>
+                            <th>Data/Hora</th>
+                            <th>Situação da banca</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for solicitacao in solicitacoes_aprovadas %}
+                            <tr>
+                                <td data-label="Docente solicitante">
+                                    <a href="{% url 'detalhar_solicitacao' solicitacao.id %}" class="link-tabela">
+                                        {{ solicitacao.usuario_solicitante }}
+                                    </a>
+                                </td>
+                                <td data-label="Título do TCC">
+                                    <a href="{% url 'detalhar_solicitacao' solicitacao.id %}" class="link-tabela">
+                                        {{ solicitacao.projeto_tcc.titulo }}
+                                    </a>
+                                </td>
+                                <td data-label="Local">{{ solicitacao.espaco.nome }}</td>
+                                <td data-label="Data/Hora">
+                                    {{ solicitacao.opcao_data_inicio|date:"d/m/Y H:i" }}
+                                </td>
+                                <td data-label="Situação da banca">
+                                    {% if solicitacao.banca_tcc.status == 'AGENDADA' %}
+                                        <span class="status-badge status-agendada">Agendada</span>
+                                    {% elif solicitacao.banca_tcc.status == 'AGUARDANDO_NOTA' %}
+                                        <span class="status-badge status-aguardando-nota">Aguardando nota</span>
+                                    {% elif solicitacao.banca_tcc.status == 'FINALIZADA' %}
+                                        <span class="status-badge status-finalizada">Finalizada</span>
                                     {% else %}
-                                        Pré-defesa
+                                        <span class="shared-muted-value">Registro não localizado</span>
                                     {% endif %}
-                                </span>
+                                </td>
+                                <td data-label="Ação">
+                                    <div class="shared-table-actions">
+                                        <span class="tipo-versao-documento">
+                                            {% if solicitacao.banca_tcc.status == 'FINALIZADA' %}
+                                                Versão final
+                                            {% else %}
+                                                Pré-defesa
+                                            {% endif %}
+                                        </span>
+                                        <a href="{% url 'detalhar_solicitacao' solicitacao.id %}" class="coord-action coord-action--secondary">
+                                            DETALHES
+                                        </a>
+                                        <a href="{% url 'gerar_pdf_banca' solicitacao.id %}" class="coord-action coord-action--primary">
+                                            PDF
+                                        </a>
+                                        <a href="{% url 'gerar_docx_banca' solicitacao.id %}" class="coord-action coord-action--primary">
+                                            DOCX
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="shared-empty-state shared-empty-state--inside">
+                <strong>Nenhuma ata disponível</strong>
+                <p>Nenhuma banca aprovada está disponível para geração de documentos.</p>
+            </div>
+        {% endif %}
+    </section>
 
-                                <a
-                                    href="{% url 'detalhar_solicitacao' solicitacao.id %}"
-                                    class="btn-filter"
-                                >
-                                    DETALHES
-                                </a>
+    <section class="shared-card shared-card--table" aria-labelledby="titulo-repositorio">
+        <div class="shared-card-header shared-card-header--status">
+            <div>
+                <span class="shared-card-kicker">Consulta institucional</span>
+                <h2 id="titulo-repositorio">Repositório institucional de referência</h2>
+                <p>
+                    Arquivos oficiais ou auxiliares mantidos pela Coordenação.
+                    Eles não são preenchidos automaticamente e não substituem
+                    as atas em PDF e DOCX exibidas acima.
+                </p>
+            </div>
 
-                                <a
-                                    href="{% url 'gerar_pdf_banca' solicitacao.id %}"
-                                    class="btn-download"
-                                >
-                                    PDF
-                                </a>
+            {% if modelos %}
+                <span class="shared-count-badge">
+                    {{ modelos|length }} arquivo{{ modelos|length|pluralize }}
+                </span>
+            {% endif %}
+        </div>
 
-                                <a
-                                    href="{% url 'gerar_docx_banca' solicitacao.id %}"
-                                    class="btn-download"
-                                >
-                                    DOCX
-                                </a>
-                            </div>
-                        </td>
+        {% if modelos %}
+            <div class="table-scroll" tabindex="0" aria-label="Repositório institucional">
+                <table class="documentos-table documentos-table--repositorio shared-responsive-table">
+                    <thead>
+                        <tr>
+                            <th>Documento</th>
+                            <th>Tipo</th>
+                            <th>Arquivo</th>
+                            <th>Data de envio</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for modelo in modelos %}
+                            <tr>
+                                <td data-label="Documento">{{ modelo.nome }}</td>
+                                <td data-label="Tipo">{{ modelo.get_tipo_display }}</td>
+                                <td data-label="Arquivo" class="shared-file-name">{{ modelo.arquivo.name }}</td>
+                                <td data-label="Data de envio">{{ modelo.data_upload|date:"d/m/Y H:i" }}</td>
+                                <td data-label="Ação">
+                                    <div class="shared-table-actions">
+                                        {% if modelo.arquivo %}
+                                            <a href="{% url 'baixar_documento' modelo.id %}" class="coord-action coord-action--primary">
+                                                BAIXAR
+                                            </a>
+                                        {% else %}
+                                            <span class="shared-muted-value">Arquivo indisponível</span>
+                                        {% endif %}
 
-                    </tr>
-
-                {% endfor %}
-
-            </tbody>
-
-        </table>
-
-    {% else %}
-
-        <p>
-            Nenhuma banca aprovada disponível.
-        </p>
-
-    {% endif %}
-
-</div>
-
-
-<div class="table-container" style="margin-top: 30px;">
-
-    <h2>Repositório institucional de referência</h2>
-
-    <p>
-        Arquivos oficiais ou auxiliares mantidos pela Coordenação para
-        consulta. Eles não são preenchidos automaticamente e não
-        substituem as atas em PDF e DOCX exibidas acima.
-    </p>
-
-    {% if modelos %}
-
-        <table class="documentos-table documentos-table--repositorio">
-
-            <thead>
-                <tr>
-                    <th>Documento</th>
-                    <th>Tipo</th>
-                    <th>Arquivo</th>
-                    <th>Data de envio</th>
-                    <th>Ação</th>
-                </tr>
-            </thead>
-
-            <tbody>
-
-                {% for modelo in modelos %}
-
-                    <tr>
-
-                        <td>
-                            {{ modelo.nome }}
-                        </td>
-
-                        <td>
-                            {{ modelo.get_tipo_display }}
-                        </td>
-
-                        <td>
-                            {{ modelo.arquivo.name }}
-                        </td>
-
-                        <td>
-                            {{ modelo.data_upload|date:"d/m/Y H:i" }}
-                        </td>
-
-                        <td class="acoes-tabela">
-                            {% if modelo.arquivo %}
-                                <a
-                                    href="{% url 'baixar_documento' modelo.id %}"
-                                    class="btn-download"
-                                >
-                                    BAIXAR
-                                </a>
-                            {% else %}
-                                Arquivo indisponível
-                            {% endif %}
-
-                            {% if eh_coordenacao %}
-                                <form
-                                    method="POST"
-                                    action="{% url 'excluir_documento' modelo.id %}"
-                                    class="form-acao-inline"
-                                    onsubmit="return confirm('Deseja excluir permanentemente este modelo?');"
-                                >
-                                    {% csrf_token %}
-
-                                    <button
-                                        type="submit"
-                                        class="btn-perigo"
-                                    >
-                                        EXCLUIR
-                                    </button>
-                                </form>
-                            {% endif %}
-                        </td>
-
-                    </tr>
-
-                {% endfor %}
-
-            </tbody>
-
-        </table>
-
-    {% else %}
-
-        <p>
-            Nenhum arquivo institucional de referência foi cadastrado.
-        </p>
-
-    {% endif %}
-
+                                        {% if eh_coordenacao %}
+                                            <form
+                                                method="POST"
+                                                action="{% url 'excluir_documento' modelo.id %}"
+                                                class="coord-inline-form"
+                                                onsubmit="return confirm('Deseja excluir permanentemente este modelo?');"
+                                            >
+                                                {% csrf_token %}
+                                                <button type="submit" class="coord-action coord-action--danger-ghost">
+                                                    EXCLUIR
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="shared-empty-state shared-empty-state--inside">
+                <strong>Repositório vazio</strong>
+                <p>Nenhum arquivo institucional de referência foi cadastrado.</p>
+            </div>
+        {% endif %}
+    </section>
 </div>
 
 {% endblock %}

@@ -2,39 +2,28 @@
 
 {% block content %}
 
-<div class="dashboard-header">
-
+<div class="dashboard-header shared-page-hero">
+    <span class="shared-page-eyebrow">Dados pessoais</span>
     <h1>Meu Perfil</h1>
-
     <p>
         Atualize seus dados pessoais. A titulação acadêmica
         será utilizada somente nos documentos institucionais.
     </p>
-
 </div>
 
-<div class="form-container">
+<section class="shared-card shared-card--form-narrow shared-card--accent">
+    <div class="shared-profile-email">
+        <span>E-mail institucional</span>
+        <strong>{{ perfil.usuario.email }}</strong>
+        <small>O endereço institucional identifica sua conta e não pode ser alterado aqui.</small>
+    </div>
 
-    <p>
-        <strong>E-mail institucional:</strong>
-        {{ perfil.usuario.email }}
-    </p>
-
-    <form method="POST">
-
+    <form method="POST" class="shared-form">
         {% csrf_token %}
-
         {{ form.as_p }}
 
-        <button
-            type="submit"
-            class="btn-enviar"
-        >
-            SALVAR PERFIL
-        </button>
-
+        <button type="submit" class="btn-enviar">SALVAR PERFIL</button>
     </form>
-
-</div>
+</section>
 
 {% endblock %}

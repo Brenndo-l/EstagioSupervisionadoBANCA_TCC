@@ -1,64 +1,45 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <link
-        rel="stylesheet"
-        href="{% static 'css/login.css' %}"
-    >
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#172554">
     <title>Link enviado | SGTCC</title>
+    <link rel="icon" type="image/png" href="{% static 'assets/logo_ufac.png' %}">
+    <link rel="stylesheet" href="{% static 'css/login.css' %}?v=20260901-01">
 </head>
-
 <body>
-
     <div class="container">
-
         <aside class="sidebar">
-
-            <img
-                src="{% static 'assets/logo_ufac.png' %}"
-                alt="Universidade Federal do Acre"
-            >
-
+            <img src="{% static 'assets/logo_ufac.png' %}" alt="Brasão da Universidade Federal do Acre">
             <p>SGTCC</p>
-
         </aside>
 
         <main class="form-login">
+            <section class="auth-card auth-card--status" aria-labelledby="titulo-link-enviado">
+                <span class="auth-status-icon auth-status-icon--success" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M4 6h16v12H4z"></path>
+                        <path d="m4 7 8 6 8-6"></path>
+                    </svg>
+                </span>
+                <span class="auth-eyebrow">Solicitação recebida</span>
+                <h1 id="titulo-link-enviado">Verifique seu e-mail</h1>
+                <p class="auth-intro">
+                    Se existir uma conta ativa vinculada ao endereço informado,
+                    enviaremos as instruções para redefinir a senha.
+                </p>
 
-            <h1>Verifique seu e-mail</h1>
+                <div class="auth-notice">
+                    Verifique também a pasta de spam ou lixo eletrônico.
+                </div>
 
-            <p style="max-width: 520px; text-align: center;">
-                Se existir uma conta ativa vinculada ao
-                endereço informado, enviaremos as instruções
-                para redefinir a senha.
-            </p>
-
-            <p style="max-width: 520px; text-align: center;">
-                Verifique também a pasta de spam ou lixo eletrônico.
-            </p>
-
-            <p style="font-size: 14px;">
-
-                <a href="{% url 'login' %}">
-                    Voltar para o login
-                </a>
-
-            </p>
-
+                <div class="auth-links auth-links--single">
+                    <p><a href="{% url 'login' %}">Voltar para o login</a></p>
+                </div>
+            </section>
         </main>
-
     </div>
-
 </body>
-
 </html>

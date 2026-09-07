@@ -2,113 +2,73 @@
 
 {% block content %}
 
-<div class="dashboard-header">
-
+<div class="dashboard-header shared-page-hero">
+    <span class="shared-page-eyebrow">Correção administrativa</span>
     <h1>Editar Solicitação de Banca</h1>
-
     <p>
         Corrija o espaço, o horário ou a composição
         enquanto a solicitação estiver em análise.
     </p>
-
 </div>
 
-<div
-    class="table-container"
-    style="margin-bottom: 30px;"
->
+<div class="shared-edit-layout">
+    <section class="shared-card" aria-labelledby="titulo-dados-preservados">
+        <div class="shared-card-header">
+            <span class="shared-card-kicker">Envio original</span>
+            <h2 id="titulo-dados-preservados">Dados preservados do envio</h2>
+            <p>
+                Estes dados pertencem ao envio original e não podem
+                ser modificados pela Coordenação.
+            </p>
+        </div>
 
-    <h2>Dados preservados do envio</h2>
-
-    <p>
-        Estes dados pertencem ao envio original
-        e não podem ser modificados pela Coordenação.
-    </p>
-
-    <table>
-
-        <tbody>
-
-            <tr>
-                <th>Discente</th>
-                <td>
-                    {{ solicitacao.projeto_tcc.discente.nome }}
-                </td>
-            </tr>
-
-            <tr>
-                <th>Título do TCC</th>
-                <td>
-                    {{ solicitacao.projeto_tcc.titulo }}
-                </td>
-            </tr>
-
-            <tr>
-                <th>Docente solicitante / orientador</th>
-                <td>
-                    {{ solicitacao.usuario_solicitante }}
-                </td>
-            </tr>
-
-            <tr>
-                <th>Arquivo original do TCC</th>
-
-                <td>
-
+        <dl class="shared-detail-grid shared-detail-grid--single">
+            <div class="shared-detail-item">
+                <dt>Discente</dt>
+                <dd>{{ solicitacao.projeto_tcc.discente.nome }}</dd>
+            </div>
+            <div class="shared-detail-item">
+                <dt>Título do TCC</dt>
+                <dd>{{ solicitacao.projeto_tcc.titulo }}</dd>
+            </div>
+            <div class="shared-detail-item">
+                <dt>Docente solicitante / orientador</dt>
+                <dd>{{ solicitacao.usuario_solicitante }}</dd>
+            </div>
+            <div class="shared-detail-item shared-detail-item--action">
+                <dt>Arquivo original do TCC</dt>
+                <dd>
                     {% if solicitacao.arquivo_tcc %}
-
-                        <a
-                            href="{% url 'baixar_tcc_solicitacao' solicitacao.id %}"
-                            class="btn-download"
-                        >
+                        <a href="{% url 'baixar_tcc_solicitacao' solicitacao.id %}" class="coord-action coord-action--primary">
                             BAIXAR PDF
                         </a>
-
                     {% else %}
-
-                        Não anexado — registro anterior
-                        à implantação do PDF obrigatório.
-
+                        <span class="shared-muted-value">
+                            Não anexado — registro anterior à implantação do PDF obrigatório.
+                        </span>
                     {% endif %}
+                </dd>
+            </div>
+        </dl>
+    </section>
 
-                </td>
-            </tr>
+    <section class="shared-card shared-card--accent" aria-labelledby="titulo-dados-corrigiveis">
+        <div class="shared-card-header">
+            <span class="shared-card-kicker">Campos editáveis</span>
+            <h2 id="titulo-dados-corrigiveis">Dados que podem ser corrigidos</h2>
+        </div>
 
-        </tbody>
+        <form method="POST" class="shared-form">
+            {% csrf_token %}
+            {{ form.as_p }}
 
-    </table>
+            <button type="submit" class="btn-enviar">SALVAR ALTERAÇÕES</button>
+        </form>
 
-</div>
-
-<div class="form-container">
-
-    <h2>Dados que podem ser corrigidos</h2>
-
-    <form method="POST">
-
-        {% csrf_token %}
-
-        {{ form.as_p }}
-
-        <button
-            type="submit"
-            class="btn-enviar"
-        >
-            SALVAR ALTERAÇÕES
-        </button>
-
-    </form>
-
-    <p style="margin-top: 20px;">
-
-        <a
-            href="{% url 'avaliar_solicitacao' solicitacao.id %}"
-        >
+        <a href="{% url 'avaliar_solicitacao' solicitacao.id %}" class="shared-back-link">
             Voltar para a avaliação
         </a>
-
-    </p>
-
+    </section>
 </div>
 
 {% endblock %}

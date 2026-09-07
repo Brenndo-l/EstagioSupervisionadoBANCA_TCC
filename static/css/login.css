@@ -455,3 +455,131 @@ textarea:focus-visible {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* =========================================================
+   FLUXOS COMPLEMENTARES DE AUTENTICAÇÃO
+   ========================================================= */
+
+.auth-card--wide {
+    max-width: 620px;
+}
+
+.auth-fields-grid {
+    display: grid;
+    gap: 13px 14px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.auth-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.auth-field--wide {
+    grid-column: 1 / -1;
+}
+
+.auth-help {
+    color: var(--auth-suave);
+    font-size: 0.73rem;
+    font-weight: 450;
+    line-height: 1.45;
+}
+
+.auth-help ul {
+    margin: 3px 0 0;
+}
+
+.auth-card--status {
+    text-align: left;
+}
+
+.auth-status-icon {
+    align-items: center;
+    border-radius: 13px;
+    display: inline-flex;
+    height: 48px;
+    justify-content: center;
+    margin-bottom: 18px;
+    width: 48px;
+}
+
+.auth-status-icon svg {
+    fill: none;
+    height: 25px;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.9;
+    width: 25px;
+}
+
+.auth-status-icon--success {
+    background: #e5f7ee;
+    color: var(--auth-verde);
+}
+
+.auth-status-icon--warning {
+    background: #fff3dc;
+    color: var(--auth-laranja);
+}
+
+.auth-notice {
+    background: var(--auth-azul-100);
+    border: 1px solid #d5def8;
+    border-radius: 10px;
+    color: var(--auth-azul-900);
+    font-size: 0.8rem;
+    font-weight: 650;
+    padding: 12px 14px;
+}
+
+.auth-primary-link {
+    align-items: center;
+    background: var(--auth-azul-900);
+    border-radius: 10px;
+    box-shadow: 0 10px 22px rgba(23, 37, 84, 0.18);
+    color: var(--auth-branco);
+    display: flex;
+    font-size: 0.88rem;
+    font-weight: 780;
+    justify-content: center;
+    min-height: 48px;
+    padding: 11px 16px;
+    text-align: center;
+    transition:
+        background-color 180ms ease,
+        box-shadow 180ms ease,
+        transform 180ms ease;
+}
+
+.auth-primary-link:hover,
+.auth-primary-link:focus-visible {
+    background: var(--auth-azul-700);
+    box-shadow: 0 14px 28px rgba(23, 37, 84, 0.22);
+    color: var(--auth-branco);
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+.auth-links--single {
+    justify-items: center;
+}
+
+@media (max-width: 620px) {
+    .auth-fields-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-field--wide {
+        grid-column: auto;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .auth-primary-link {
+        transition-duration: 0.01ms !important;
+    }
+}

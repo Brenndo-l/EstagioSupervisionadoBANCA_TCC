@@ -1,59 +1,37 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <link
-        rel="stylesheet"
-        href="{% static 'css/login.css' %}"
-    >
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#172554">
     <title>Senha alterada | SGTCC</title>
+    <link rel="icon" type="image/png" href="{% static 'assets/logo_ufac.png' %}">
+    <link rel="stylesheet" href="{% static 'css/login.css' %}?v=20260901-01">
 </head>
-
 <body>
-
     <div class="container">
-
         <aside class="sidebar">
-
-            <img
-                src="{% static 'assets/logo_ufac.png' %}"
-                alt="Universidade Federal do Acre"
-            >
-
+            <img src="{% static 'assets/logo_ufac.png' %}" alt="Brasão da Universidade Federal do Acre">
             <p>SGTCC</p>
-
         </aside>
 
         <main class="form-login">
+            <section class="auth-card auth-card--status" aria-labelledby="titulo-senha-alterada">
+                <span class="auth-status-icon auth-status-icon--success" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                        <path d="m5 12 4 4L19 6"></path>
+                    </svg>
+                </span>
+                <span class="auth-eyebrow">Alteração concluída</span>
+                <h1 id="titulo-senha-alterada">Senha alterada</h1>
+                <p class="auth-intro">
+                    Sua nova senha foi salva com sucesso. Você já pode entrar no SGTCC.
+                </p>
 
-            <h1>Senha alterada</h1>
-
-            <p style="max-width: 520px; text-align: center;">
-                Sua nova senha foi salva com sucesso.
-                Você já pode entrar no SGTCC.
-            </p>
-
-            <p style="font-size: 14px;">
-
-                <a href="{% url 'login' %}">
-                    Ir para o login
-                </a>
-
-            </p>
-
+                <a href="{% url 'login' %}" class="auth-primary-link">Ir para o login</a>
+            </section>
         </main>
-
     </div>
-
 </body>
-
 </html>

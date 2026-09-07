@@ -1,132 +1,78 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <link
-        rel="stylesheet"
-        href="{% static 'css/login.css' %}"
-    >
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#172554">
     <title>Definir nova senha | SGTCC</title>
+    <link rel="icon" type="image/png" href="{% static 'assets/logo_ufac.png' %}">
+    <link rel="stylesheet" href="{% static 'css/login.css' %}?v=20260901-01">
 </head>
-
 <body>
-
     <div class="container">
-
         <aside class="sidebar">
-
-            <img
-                src="{% static 'assets/logo_ufac.png' %}"
-                alt="Universidade Federal do Acre"
-            >
-
+            <img src="{% static 'assets/logo_ufac.png' %}" alt="Brasão da Universidade Federal do Acre">
             <p>SGTCC</p>
-
         </aside>
 
         <main class="form-login">
+            <section class="auth-card" aria-labelledby="titulo-redefinicao">
+                {% if validlink %}
+                    <span class="auth-eyebrow">Segurança da conta</span>
+                    <h1 id="titulo-redefinicao">Definir nova senha</h1>
+                    <p class="auth-intro">
+                        Escolha uma senha segura e diferente da utilizada anteriormente.
+                    </p>
 
-            {% if validlink %}
+                    <form method="POST">
+                        {% csrf_token %}
 
-                <h1>Definir nova senha</h1>
+                        {% for erro in form.non_field_errors %}
+                            <p class="error" role="alert">{{ erro }}</p>
+                        {% endfor %}
 
-                <p style="max-width: 520px; text-align: center;">
-                    Escolha uma senha segura e diferente
-                    da utilizada anteriormente.
-                </p>
+                        {% for campo in form %}
+                            <div class="auth-field">
+                                <label for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                                {{ campo }}
 
-                <form method="POST">
-                    {% csrf_token %}
+                                {% if campo.help_text %}
+                                    <div class="auth-help">{{ campo.help_text|safe }}</div>
+                                {% endif %}
 
-                    {% for erro in form.non_field_errors %}
+                                {% for erro in campo.errors %}
+                                    <span class="error" role="alert">{{ erro }}</span>
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
 
-                        <p class="error">
-                            {{ erro }}
-                        </p>
+                        <button type="submit">Salvar nova senha</button>
+                    </form>
+                {% else %}
+                    <span class="auth-status-icon auth-status-icon--warning" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 4 3.5 19h17z"></path>
+                            <path d="M12 9v4"></path>
+                            <path d="M12 16h.01"></path>
+                        </svg>
+                    </span>
+                    <span class="auth-eyebrow">Recuperação indisponível</span>
+                    <h1 id="titulo-redefinicao">Link inválido</h1>
+                    <p class="auth-intro">
+                        Este link de recuperação é inválido, já foi utilizado ou expirou.
+                    </p>
 
-                    {% endfor %}
-
-                    {% for campo in form %}
-
-                        <div
-                            style="
-                                display: flex;
-                                flex-direction: column;
-                                gap: 5px;
-                            "
-                        >
-
-                            <label for="{{ campo.id_for_label }}">
-                                <strong>{{ campo.label }}</strong>
-                            </label>
-
-                            {{ campo }}
-
-                            {% if campo.help_text %}
-
-                                <small style="color: #555;">
-                                    {{ campo.help_text|safe }}
-                                </small>
-
-                            {% endif %}
-
-                            {% for erro in campo.errors %}
-
-                                <span class="error">
-                                    {{ erro }}
-                                </span>
-
-                            {% endfor %}
-
-                        </div>
-
-                    {% endfor %}
-
-                    <button type="submit">
-                        Salvar nova senha
-                    </button>
-                </form>
-
-            {% else %}
-
-                <h1>Link inválido</h1>
-
-                <p style="max-width: 520px; text-align: center;">
-                    Este link de recuperação é inválido,
-                    já foi utilizado ou expirou.
-                </p>
-
-                <p style="font-size: 14px;">
-
-                    <a href="{% url 'recuperar_senha' %}">
+                    <a href="{% url 'recuperar_senha' %}" class="auth-primary-link">
                         Solicitar outro link
                     </a>
+                {% endif %}
 
-                </p>
-
-            {% endif %}
-
-            <p style="font-size: 14px;">
-
-                <a href="{% url 'login' %}">
-                    Voltar para o login
-                </a>
-
-            </p>
-
+                <div class="auth-links auth-links--single">
+                    <p><a href="{% url 'login' %}">Voltar para o login</a></p>
+                </div>
+            </section>
         </main>
-
     </div>
-
 </body>
-
 </html>

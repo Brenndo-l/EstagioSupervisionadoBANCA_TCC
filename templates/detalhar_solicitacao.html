@@ -2,435 +2,293 @@
 
 {% block content %}
 
-<div class="dashboard-header">
+<div class="dashboard-header shared-page-hero">
+    <span class="shared-page-eyebrow">Acompanhamento da banca</span>
     <h1>Detalhes da Solicitação</h1>
-
     <p>
         Consulte o agendamento, a composição da banca
         e a decisão registrada pela Coordenação.
     </p>
 </div>
 
-<div class="table-container">
+<div class="shared-page-stack">
+    <section class="shared-card" aria-labelledby="titulo-dados-solicitacao">
+        <div class="shared-card-header shared-card-header--status">
+            <div>
+                <span class="shared-card-kicker">Visão geral</span>
+                <h2 id="titulo-dados-solicitacao">Dados da solicitação</h2>
+            </div>
 
-    <div style="
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 15px;
-        flex-wrap: wrap;
-    ">
-        <h2 style="margin: 0;">
-            Dados da solicitação
-        </h2>
+            {% if solicitacao.status == 'EM_ANÁLISE' %}
+                <span class="status-badge status-analise">Em Análise</span>
+            {% elif solicitacao.status == 'APROVADA' %}
+                <span class="status-badge status-aprovada">Aprovada</span>
+            {% elif solicitacao.status == 'RECUSADA' %}
+                <span class="status-badge status-recusada">Recusada</span>
+            {% else %}
+                <span class="status-badge status-expirada">Expirada</span>
+            {% endif %}
+        </div>
 
-        {% if solicitacao.status == 'EM_ANÁLISE' %}
-            <span class="status-badge status-analise">
-                Em Análise
-            </span>
-
-        {% elif solicitacao.status == 'APROVADA' %}
-            <span class="status-badge status-aprovada">
-                Aprovada
-            </span>
-
-        {% elif solicitacao.status == 'RECUSADA' %}
-            <span class="status-badge status-recusada">
-                Recusada
-            </span>
-
-        {% else %}
-            <span class="status-badge status-expirada">
-                Expirada
-            </span>
-        {% endif %}
-    </div>
-
-    <table>
-        <tbody>
-            <tr>
-                <th>Discente</th>
-                <td>
-                    {{ solicitacao.projeto_tcc.discente.nome }}
-                </td>
-            </tr>
-
-            <tr>
-                <th>Matrícula</th>
-                <td>
-                    {{ solicitacao.projeto_tcc.discente.matricula }}
-                </td>
-            </tr>
-
-            <tr>
-                <th>Título do TCC</th>
-                <td>
-                    {{ solicitacao.projeto_tcc.titulo }}
-                </td>
-            </tr>
-
-            <tr>
-                <th>Resumo</th>
-                <td>
-                    {{ solicitacao.projeto_tcc.resumo|linebreaksbr }}
-                </td>
-            </tr>
-
-            <tr>
-                <th>Semestre letivo</th>
-                <td>
-                    {{ solicitacao.projeto_tcc.semestre_letivo }}
-                </td>
-            </tr>
-
-            <tr>
-                <th>Docente solicitante</th>
-                <td>
-                    {{ solicitacao.usuario_solicitante }}
-                </td>
-            </tr>
-
-            <tr>
-                <th>Local</th>
-                <td>
-                    {{ solicitacao.espaco.nome }}
-                </td>
-            </tr>
-
-            <tr>
-                <th>Data e hora de início</th>
-                <td>
-                    {{ solicitacao.opcao_data_inicio|date:"d/m/Y H:i" }}
-                </td>
-            </tr>
-
-            <tr>
-                <th>Data e hora de término</th>
-                <td>
-                    {{ solicitacao.opcao_data_fim|date:"d/m/Y H:i" }}
-                </td>
-            </tr>
-
-            <tr>
-                <th>Solicitada em</th>
-                <td>
-                    {{ solicitacao.data_solicitacao|date:"d/m/Y H:i" }}
-                </td>
-            </tr>
-
-            <tr>
-                <th>Arquivo do TCC</th>
-                <td>
+        <dl class="shared-detail-grid">
+            <div class="shared-detail-item">
+                <dt>Discente</dt>
+                <dd>{{ solicitacao.projeto_tcc.discente.nome }}</dd>
+            </div>
+            <div class="shared-detail-item">
+                <dt>Matrícula</dt>
+                <dd>{{ solicitacao.projeto_tcc.discente.matricula }}</dd>
+            </div>
+            <div class="shared-detail-item shared-detail-item--wide">
+                <dt>Título do TCC</dt>
+                <dd>{{ solicitacao.projeto_tcc.titulo }}</dd>
+            </div>
+            <div class="shared-detail-item shared-detail-item--wide">
+                <dt>Resumo</dt>
+                <dd>{{ solicitacao.projeto_tcc.resumo|linebreaksbr }}</dd>
+            </div>
+            <div class="shared-detail-item">
+                <dt>Semestre letivo</dt>
+                <dd>{{ solicitacao.projeto_tcc.semestre_letivo }}</dd>
+            </div>
+            <div class="shared-detail-item">
+                <dt>Docente solicitante</dt>
+                <dd>{{ solicitacao.usuario_solicitante }}</dd>
+            </div>
+            <div class="shared-detail-item">
+                <dt>Local</dt>
+                <dd>{{ solicitacao.espaco.nome }}</dd>
+            </div>
+            <div class="shared-detail-item">
+                <dt>Solicitada em</dt>
+                <dd>{{ solicitacao.data_solicitacao|date:"d/m/Y H:i" }}</dd>
+            </div>
+            <div class="shared-detail-item">
+                <dt>Data e hora de início</dt>
+                <dd>{{ solicitacao.opcao_data_inicio|date:"d/m/Y H:i" }}</dd>
+            </div>
+            <div class="shared-detail-item">
+                <dt>Data e hora de término</dt>
+                <dd>{{ solicitacao.opcao_data_fim|date:"d/m/Y H:i" }}</dd>
+            </div>
+            <div class="shared-detail-item shared-detail-item--wide shared-detail-item--action">
+                <dt>Arquivo do TCC</dt>
+                <dd>
                     {% if solicitacao.arquivo_tcc %}
-                        <a
-                            href="{% url 'baixar_tcc_solicitacao' solicitacao.id %}"
-                            class="btn-download"
-                        >
+                        <a href="{% url 'baixar_tcc_solicitacao' solicitacao.id %}" class="coord-action coord-action--primary">
                             BAIXAR PDF DO TCC
                         </a>
                     {% else %}
-                        Não anexado — registro antigo
+                        <span class="shared-muted-value">Não anexado — registro antigo</span>
                     {% endif %}
-                </td>
-            </tr>
-        </tbody>
-    </table>
+                </dd>
+            </div>
+        </dl>
+    </section>
 
-</div>
+    <section class="shared-card" aria-labelledby="titulo-composicao">
+        <div class="shared-card-header">
+            <span class="shared-card-kicker">Participantes</span>
+            <h2 id="titulo-composicao">Composição da banca</h2>
+        </div>
 
-<div
-    class="table-container"
-    style="margin-top: 30px;"
->
-    <h2>Composição da banca</h2>
-
-    {% if composicao %}
-
-        <table>
-            <tbody>
-                <tr>
-                    <th>Professor orientador</th>
-                    <td>{{ composicao.orientador }}</td>
-                </tr>
-
+        {% if composicao %}
+            <dl class="shared-detail-grid">
+                <div class="shared-detail-item">
+                    <dt>Professor orientador</dt>
+                    <dd>{{ composicao.orientador }}</dd>
+                </div>
                 {% if composicao.coorientador %}
-                    <tr>
-                        <th>Professor coorientador</th>
-                        <td>{{ composicao.coorientador }}</td>
-                    </tr>
+                    <div class="shared-detail-item">
+                        <dt>Professor coorientador</dt>
+                        <dd>{{ composicao.coorientador }}</dd>
+                    </div>
                 {% endif %}
-
-                <tr>
-                    <th>Avaliador interno</th>
-                    <td>{{ composicao.avaliador_interno }}</td>
-                </tr>
-
+                <div class="shared-detail-item">
+                    <dt>Avaliador interno</dt>
+                    <dd>{{ composicao.avaliador_interno }}</dd>
+                </div>
                 {% if composicao.segundo_avaliador_interno %}
-                    <tr>
-                        <th>Segundo avaliador interno</th>
-                        <td>
-                            {{ composicao.segundo_avaliador_interno }}
-                        </td>
-                    </tr>
+                    <div class="shared-detail-item">
+                        <dt>Segundo avaliador interno</dt>
+                        <dd>{{ composicao.segundo_avaliador_interno }}</dd>
+                    </div>
                 {% endif %}
-
-                <tr>
-                    <th>Presidente</th>
-                    <td>
+                <div class="shared-detail-item">
+                    <dt>Presidente</dt>
+                    <dd>
                         {% if composicao.presidente %}
                             {{ composicao.presidente }}
                         {% else %}
-                            Ainda não definido
+                            <span class="shared-muted-value">Ainda não definido</span>
                         {% endif %}
-                    </td>
-                </tr>
-
+                    </dd>
+                </div>
                 {% if composicao.nome_avaliador_externo %}
-                    <tr>
-                        <th>Avaliador externo</th>
-                        <td>
+                    <div class="shared-detail-item">
+                        <dt>Avaliador externo</dt>
+                        <dd>
                             {% if composicao.titulacao_avaliador_externo %}
                                 {{ composicao.get_titulacao_avaliador_externo_display }}
                             {% endif %}
-
                             {{ composicao.nome_avaliador_externo }}
-                        </td>
-                    </tr>
+                        </dd>
+                    </div>
                 {% endif %}
-
                 {% if composicao.instituicao_avaliador_externo %}
-                    <tr>
-                        <th>Instituição externa</th>
-                        <td>
-                            {{ composicao.instituicao_avaliador_externo }}
-                        </td>
-                    </tr>
+                    <div class="shared-detail-item">
+                        <dt>Instituição externa</dt>
+                        <dd>{{ composicao.instituicao_avaliador_externo }}</dd>
+                    </div>
                 {% endif %}
-            </tbody>
-        </table>
+            </dl>
+        {% else %}
+            <div class="shared-inline-alert shared-inline-alert--danger" role="alert">
+                <strong>Composição não localizada</strong>
+                <p>A composição desta solicitação não foi encontrada.</p>
+            </div>
+        {% endif %}
+    </section>
 
-    {% else %}
+    {% if solicitacao.status == 'APROVADA' or solicitacao.status == 'RECUSADA' %}
+        <section class="shared-card" aria-labelledby="titulo-decisao">
+            <div class="shared-card-header">
+                <span class="shared-card-kicker">Registro administrativo</span>
+                <h2 id="titulo-decisao">Decisão da Coordenação</h2>
+            </div>
 
-        <p style="color: #d9534f;">
-            A composição desta solicitação não foi encontrada.
-        </p>
-
-    {% endif %}
-
-</div>
-
-{% if solicitacao.status == 'APROVADA' or solicitacao.status == 'RECUSADA' %}
-
-    <div
-        class="table-container"
-        style="margin-top: 30px;"
-    >
-        <h2>Decisão da Coordenação</h2>
-
-        <table>
-            <tbody>
-                <tr>
-                    <th>Resultado</th>
-                    <td>
-                        {{ solicitacao.get_status_display }}
-                    </td>
-                </tr>
-
-                <tr>
-                    <th>Justificativa</th>
-                    <td>
-                        {{ solicitacao.motivo_decisao|default:"Não informada."|linebreaksbr }}
-                    </td>
-                </tr>
-
-                <tr>
-                    <th>Data da decisão</th>
-                    <td>
+            <dl class="shared-detail-grid">
+                <div class="shared-detail-item">
+                    <dt>Resultado</dt>
+                    <dd>{{ solicitacao.get_status_display }}</dd>
+                </div>
+                <div class="shared-detail-item">
+                    <dt>Data da decisão</dt>
+                    <dd>
                         {% if solicitacao.data_decisao %}
                             {{ solicitacao.data_decisao|date:"d/m/Y H:i" }}
                         {% else %}
-                            Não registrada
+                            <span class="shared-muted-value">Não registrada</span>
                         {% endif %}
-                    </td>
-                </tr>
-
-                <tr>
-                    <th>Decidida por</th>
-                    <td>
+                    </dd>
+                </div>
+                <div class="shared-detail-item shared-detail-item--wide">
+                    <dt>Justificativa</dt>
+                    <dd>{{ solicitacao.motivo_decisao|default:"Não informada."|linebreaksbr }}</dd>
+                </div>
+                <div class="shared-detail-item shared-detail-item--wide">
+                    <dt>Decidida por</dt>
+                    <dd>
                         {% if solicitacao.decidida_por %}
                             {{ solicitacao.decidida_por.get_full_name|default:solicitacao.decidida_por.username }}
                         {% else %}
-                            Não registrado
+                            <span class="shared-muted-value">Não registrado</span>
                         {% endif %}
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+                    </dd>
+                </div>
+            </dl>
+        </section>
+    {% elif solicitacao.status == 'EXPIRADA' %}
+        <div class="shared-empty-state">
+            <strong>Solicitação expirada</strong>
+            <p>O horário solicitado passou antes que a Coordenação registrasse uma decisão.</p>
+        </div>
+    {% endif %}
 
-{% elif solicitacao.status == 'EXPIRADA' %}
+    {% if banca %}
+        <section class="shared-card" aria-labelledby="titulo-situacao-banca">
+            <div class="shared-card-header">
+                <span class="shared-card-kicker">Pós-defesa</span>
+                <h2 id="titulo-situacao-banca">Situação da banca</h2>
+            </div>
 
-    <div
-        class="sem-resultados"
-        style="margin-top: 30px;"
-    >
-        <h3>Solicitação expirada</h3>
-
-        <p>
-            O horário solicitado passou antes que a Coordenação
-            registrasse uma decisão.
-        </p>
-    </div>
-
-{% endif %}
-
-{% if banca %}
-
-    <div
-        class="table-container"
-        style="margin-top: 30px;"
-    >
-        <h2>Situação da banca</h2>
-
-        <table>
-            <tbody>
-                <tr>
-                    <th>Status da banca</th>
-                    <td>
+            <dl class="shared-detail-grid">
+                <div class="shared-detail-item">
+                    <dt>Status da banca</dt>
+                    <dd>
                         {% if banca.status == 'AGENDADA' %}
-                            <span class="status-badge status-aprovada">
-                                Agendada
-                            </span>
-
+                            <span class="status-badge status-aprovada">Agendada</span>
                         {% elif banca.status == 'AGUARDANDO_NOTA' %}
-                            <span class="status-badge status-analise">
-                                Aguardando nota
-                            </span>
-
+                            <span class="status-badge status-analise">Aguardando nota</span>
                         {% else %}
-                            <span class="status-badge status-aprovada">
-                                Finalizada
-                            </span>
+                            <span class="status-badge status-aprovada">Finalizada</span>
                         {% endif %}
-                    </td>
-                </tr>
-
-                <tr>
-                    <th>Nota final</th>
-                    <td>
+                    </dd>
+                </div>
+                <div class="shared-detail-item">
+                    <dt>Nota final</dt>
+                    <dd>
                         {% if banca.nota is not None %}
                             {{ banca.nota|floatformat:2 }}
                         {% else %}
-                            Ainda não registrada
+                            <span class="shared-muted-value">Ainda não registrada</span>
                         {% endif %}
-                    </td>
-                </tr>
-
+                    </dd>
+                </div>
                 {% if banca.nota is not None %}
-                    <tr>
-                        <th>Resultado final</th>
-                        <td>
+                    <div class="shared-detail-item">
+                        <dt>Resultado final</dt>
+                        <dd>
                             {% if banca.resultado_final == 'APROVAÇÃO' %}
-                                <span class="status-badge status-aprovada">
-                                    Aprovação
-                                </span>
+                                <span class="status-badge status-aprovada">Aprovação</span>
                             {% else %}
-                                <span class="status-badge status-recusada">
-                                    Reprovação
-                                </span>
+                                <span class="status-badge status-recusada">Reprovação</span>
                             {% endif %}
-                        </td>
-                    </tr>
+                        </dd>
+                    </div>
                 {% endif %}
-
-                <tr>
-                    <th>Prazo da versão final</th>
-                    <td>
-                        {{ banca.data_limite_versao_final|date:"d/m/Y" }}
-                    </td>
-                </tr>
-
+                <div class="shared-detail-item">
+                    <dt>Prazo da versão final</dt>
+                    <dd>{{ banca.data_limite_versao_final|date:"d/m/Y" }}</dd>
+                </div>
                 {% if banca.data_registro_nota %}
-                    <tr>
-                        <th>Nota registrada em</th>
-                        <td>
-                            {{ banca.data_registro_nota|date:"d/m/Y H:i" }}
-                        </td>
-                    </tr>
+                    <div class="shared-detail-item">
+                        <dt>Nota registrada em</dt>
+                        <dd>{{ banca.data_registro_nota|date:"d/m/Y H:i" }}</dd>
+                    </div>
                 {% endif %}
-
                 {% if banca.nota_registrada_por %}
-                    <tr>
-                        <th>Nota registrada por</th>
-                        <td>
-                            {{ banca.nota_registrada_por.get_full_name|default:banca.nota_registrada_por.username }}
-                        </td>
-                    </tr>
+                    <div class="shared-detail-item">
+                        <dt>Nota registrada por</dt>
+                        <dd>{{ banca.nota_registrada_por.get_full_name|default:banca.nota_registrada_por.username }}</dd>
+                    </div>
                 {% endif %}
-            </tbody>
-        </table>
-    </div>
-
-{% endif %}
-
-<div style="
-    display: flex;
-    gap: 10px;
-    margin-top: 30px;
-    margin-bottom: 30px;
-    flex-wrap: wrap;
-">
-
-    {% if pode_avaliar %}
-        <a
-            href="{% url 'editar_solicitacao_coordenacao' solicitacao.id %}"
-            class="btn-download"
-        >
-            EDITAR SOLICITAÇÃO
-        </a>
-
-        <a
-            href="{% url 'avaliar_solicitacao' solicitacao.id %}"
-            class="btn-download"
-        >
-            AVALIAR SOLICITAÇÃO
-        </a>
+            </dl>
+        </section>
     {% endif %}
 
-    {% if pode_gerar_documento %}
-        <a
-            href="{% url 'gerar_pdf_banca' solicitacao.id %}"
-            class="btn-download"
-        >
-            GERAR DOCUMENTO DA BANCA
-        </a>
-    {% endif %}
+    <nav class="shared-action-bar" aria-label="Ações da solicitação">
+        <div class="shared-action-bar__primary">
+            {% if pode_avaliar %}
+                <a href="{% url 'editar_solicitacao_coordenacao' solicitacao.id %}" class="coord-action coord-action--secondary">
+                    EDITAR SOLICITAÇÃO
+                </a>
+                <a href="{% url 'avaliar_solicitacao' solicitacao.id %}" class="coord-action coord-action--primary">
+                    AVALIAR SOLICITAÇÃO
+                </a>
+            {% endif %}
+            {% if pode_gerar_documento %}
+                <a href="{% url 'gerar_pdf_banca' solicitacao.id %}" class="coord-action coord-action--primary">
+                    GERAR DOCUMENTO DA BANCA
+                </a>
+            {% endif %}
+            {% if pode_registrar_nota %}
+                <a href="{% url 'registrar_nota_banca' banca.id %}" class="coord-action coord-action--success">
+                    REGISTRAR NOTA
+                </a>
+            {% endif %}
+        </div>
 
-    {% if pode_registrar_nota %}
-        <a
-            href="{% url 'registrar_nota_banca' banca.id %}"
-            class="btn-download"
-        >
-            REGISTRAR NOTA
-        </a>
-    {% endif %}
-
-    {% if is_coordenacao %}
-        <a
-            href="{% url 'solicitacoes_coordenacao' %}"
-            class="btn-filter"
-        >
-            VOLTAR ÀS SOLICITAÇÕES
-        </a>
-    {% else %}
-        <a
-            href="{% url 'visualizar_bancas' %}"
-            class="btn-filter"
-        >
-            VOLTAR ÀS MINHAS SOLICITAÇÕES
-        </a>
-    {% endif %}
-
+        {% if is_coordenacao %}
+            <a href="{% url 'solicitacoes_coordenacao' %}" class="coord-action coord-action--secondary">
+                VOLTAR ÀS SOLICITAÇÕES
+            </a>
+        {% else %}
+            <a href="{% url 'visualizar_bancas' %}" class="coord-action coord-action--secondary">
+                VOLTAR ÀS MINHAS SOLICITAÇÕES
+            </a>
+        {% endif %}
+    </nav>
 </div>
 
 {% endblock %}

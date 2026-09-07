@@ -2,34 +2,29 @@
 
 {% block content %}
 
-<div class="dashboard-header">
+<div class="dashboard-header shared-page-hero">
+    <span class="shared-page-eyebrow">Gerenciamento de espaços</span>
     <h1>{{ titulo }}</h1>
     <p>{{ descricao }}</p>
 </div>
 
-<div class="form-container">
+<section class="shared-card shared-card--form-narrow shared-card--accent">
+    <div class="shared-card-header">
+        <span class="shared-card-kicker">Edição</span>
+        <h2>Atualize as informações</h2>
+        <p>Revise os campos abaixo antes de salvar as alterações.</p>
+    </div>
 
-    <form method="POST">
-
+    <form method="POST" class="shared-form">
         {% csrf_token %}
-
         {{ form.as_p }}
 
-        <button
-            type="submit"
-            class="btn-enviar"
-        >
-            {{ texto_botao }}
-        </button>
-
+        <button type="submit" class="btn-enviar">{{ texto_botao }}</button>
     </form>
 
-    <p style="margin-top: 20px;">
-        <a href="{% url 'gerenciar_espacos' %}">
-            Voltar ao gerenciamento de salas
-        </a>
-    </p>
-
-</div>
+    <a href="{% url 'gerenciar_espacos' %}" class="shared-back-link">
+        Voltar ao gerenciamento de salas
+    </a>
+</section>
 
 {% endblock %}

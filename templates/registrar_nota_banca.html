@@ -2,118 +2,90 @@
 
 {% block content %}
 
-<div class="dashboard-header">
-
+<div class="dashboard-header shared-page-hero">
+    <span class="shared-page-eyebrow">Encerramento da defesa</span>
     <h1>Registrar Nota da Banca</h1>
-
     <p>
         Esta ação finaliza a banca e complementa o documento
         institucional com o resultado da defesa.
     </p>
-
 </div>
 
-<div class="table-container">
+<div class="shared-split-layout">
+    <section class="shared-card" aria-labelledby="titulo-dados-defesa">
+        <div class="shared-card-header">
+            <span class="shared-card-kicker">Resumo da banca</span>
+            <h2 id="titulo-dados-defesa">Dados da defesa</h2>
+        </div>
 
-    <h2>Dados da defesa</h2>
-
-    <table>
-        <tbody>
-            <tr>
-                <th>Discente</th>
-                <td>
-                    {{ solicitacao.projeto_tcc.discente.nome }}
-                </td>
-            </tr>
-
-            <tr>
-                <th>Título do TCC</th>
-                <td>
-                    {{ solicitacao.projeto_tcc.titulo }}
-                </td>
-            </tr>
-
-            <tr>
-                <th>Data da defesa</th>
-                <td>
+        <dl class="shared-detail-grid shared-detail-grid--single">
+            <div class="shared-detail-item">
+                <dt>Discente</dt>
+                <dd>{{ solicitacao.projeto_tcc.discente.nome }}</dd>
+            </div>
+            <div class="shared-detail-item">
+                <dt>Título do TCC</dt>
+                <dd>{{ solicitacao.projeto_tcc.titulo }}</dd>
+            </div>
+            <div class="shared-detail-item">
+                <dt>Data da defesa</dt>
+                <dd>
                     {{ banca.data_horario_inicio|date:"d/m/Y H:i" }}
-                    até
-                    {{ banca.data_horario_fim|date:"H:i" }}
-                </td>
-            </tr>
+                    até {{ banca.data_horario_fim|date:"H:i" }}
+                </dd>
+            </div>
+            <div class="shared-detail-item">
+                <dt>Local</dt>
+                <dd>{{ banca.espaco.nome }}</dd>
+            </div>
+            <div class="shared-detail-item">
+                <dt>Prazo da versão final</dt>
+                <dd>{{ banca.data_limite_versao_final|date:"d/m/Y" }}</dd>
+            </div>
+        </dl>
+    </section>
 
-            <tr>
-                <th>Local</th>
-                <td>{{ banca.espaco.nome }}</td>
-            </tr>
+    <section class="shared-card shared-card--accent" aria-labelledby="titulo-resultado-banca">
+        <div class="shared-card-header">
+            <span class="shared-card-kicker">Registro acadêmico</span>
+            <h2 id="titulo-resultado-banca">Resultado da banca</h2>
+        </div>
 
-            <tr>
-                <th>Prazo da versão final</th>
-                <td>
-                    {{ banca.data_limite_versao_final|date:"d/m/Y" }}
-                </td>
-            </tr>
-        </tbody>
-    </table>
-
-</div>
-
-<div
-    class="form-container"
-    style="margin-top: 30px;"
->
-
-    <h2>Resultado da banca</h2>
-
-    <p class="aviso-regra-nota">
-        A nota pode variar de 0,00 a 10,00. Conforme a regra
-        acadêmica informada pela Coordenação, o resultado será
-        <strong>Aprovação</strong> a partir de 8,00 e
-        <strong>Reprovação</strong> abaixo de 8,00.
-    </p>
-
-    <form method="POST">
-
-        {% csrf_token %}
-
-        <p>
-            <label for="{{ form.nota.id_for_label }}">
-                <strong>{{ form.nota.label }}</strong>
-            </label>
-        </p>
-
-        {{ form.nota }}
-
-        {% if form.nota.help_text %}
-            <p style="font-size: 13px; color: #666;">
-                {{ form.nota.help_text }}
+        <div class="shared-rule-callout">
+            <strong>Regra para o resultado</strong>
+            <p>
+                A nota pode variar de 0,00 a 10,00. Conforme a regra
+                acadêmica informada pela Coordenação, o resultado será
+                <strong>Aprovação</strong> a partir de 8,00 e
+                <strong>Reprovação</strong> abaixo de 8,00.
             </p>
-        {% endif %}
+        </div>
 
-        {% for erro in form.nota.errors %}
-            <p style="color: #d9534f;">
-                {{ erro }}
-            </p>
-        {% endfor %}
+        <form method="POST" class="shared-form">
+            {% csrf_token %}
 
-        <button
-            type="submit"
-            class="btn-enviar"
-        >
-            REGISTRAR NOTA E FINALIZAR BANCA
-        </button>
+            <div class="shared-form-field">
+                <label for="{{ form.nota.id_for_label }}">{{ form.nota.label }}</label>
+                {{ form.nota }}
 
-    </form>
+                {% if form.nota.help_text %}
+                    <small class="shared-form-help">{{ form.nota.help_text }}</small>
+                {% endif %}
 
-</div>
+                {% for erro in form.nota.errors %}
+                    <p class="shared-field-error" role="alert">{{ erro }}</p>
+                {% endfor %}
+            </div>
 
-<div style="margin-top: 20px;">
-    <a
-        href="{% url 'detalhar_solicitacao' solicitacao.id %}"
-        class="btn-filter"
-    >
-        VOLTAR AOS DETALHES
-    </a>
+            <button type="submit" class="btn-enviar">
+                REGISTRAR NOTA E FINALIZAR BANCA
+            </button>
+        </form>
+
+        <a href="{% url 'detalhar_solicitacao' solicitacao.id %}" class="shared-back-link">
+            Voltar aos detalhes
+        </a>
+    </section>
 </div>
 
 {% endblock %}
