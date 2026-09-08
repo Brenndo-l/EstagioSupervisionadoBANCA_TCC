@@ -181,7 +181,7 @@
                                                 method="POST"
                                                 action="{% url 'excluir_documento' modelo.id %}"
                                                 class="coord-inline-form"
-                                                onsubmit="return confirm('Deseja excluir permanentemente este modelo?');"
+                                                data-confirm="Deseja excluir permanentemente este modelo?"
                                             >
                                                 {% csrf_token %}
                                                 <button type="submit" class="coord-action coord-action--danger-ghost">

@@ -99,4 +99,16 @@
         }
     );
 
+    document.querySelectorAll('form[data-confirm]').forEach(
+        function (formulario) {
+            formulario.addEventListener('submit', function (evento) {
+                const mensagem = formulario.dataset.confirm;
+
+                if (mensagem && !window.confirm(mensagem)) {
+                    evento.preventDefault();
+                }
+            });
+        }
+    );
+
 }());

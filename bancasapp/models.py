@@ -495,3 +495,51 @@ class ComposicaoBanca(models.Model):
 
     def __str__(self):
         return f"Banca: {self.projeto_tcc.titulo}"
+
+
+class TentativaAcesso(models.Model):
+    """
+    Contador técnico usado para limitar abuso nas rotas de autenticação.
+
+    A chave é um HMAC: nenhum endereço de e-mail, nome de usuário ou IP é
+    armazenado em texto legível.
+    """
+
+    chave = models.CharField(
+        max_length=64,
+        primary_key=True,
+        editable=False,
+    )
+
+    escopo = models.CharField(
+        max_length=50,
+        editable=False,
+    )
+
+    quantidade = models.PositiveIntegerField(
+        default=0,
+        editable=False,
+    )
+
+    inicio_janela = models.DateTimeField(
+        default=timezone.now,
+        editable=False,
+    )
+
+    bloqueado_ate = models.DateTimeField(
+        null=True,
+        blank=True,
+        editable=False,
+    )
+
+    atualizado_em = models.DateTimeField(
+        auto_now=True,
+        db_index=True,
+    )
+
+    class Meta:
+        verbose_name = 'Tentativa de acesso'
+        verbose_name_plural = 'Tentativas de acesso'
+
+    def __str__(self):
+        return f'{self.escopo}: {self.quantidade} tentativa(s)'

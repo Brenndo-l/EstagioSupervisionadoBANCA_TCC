@@ -1,32 +1,50 @@
-"""Configurações do SGTCC para desenvolvimento e produção."""
+"""ConfiguraÃ§Ãµes do SGTCC para desenvolvimento e produÃ§Ã£o."""
 
 import os
 from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.csp import CSP
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def variavel_booleana(nome, padrao=False):
-    """Converte uma variável de ambiente em booleano."""
+    """Converte uma variÃ¡vel de ambiente em booleano."""
 
     valor = os.environ.get(nome)
 
     if valor is None:
         return padrao
 
-    return valor.strip().casefold() in {
+    valor_normalizado = valor.strip().casefold()
+
+    if valor_normalizado in {
         '1',
         'true',
         'sim',
         'yes',
         'on',
-    }
+    }:
+        return True
+
+    if valor_normalizado in {
+        '0',
+        'false',
+        'nao',
+        'nÃ£o',
+        'no',
+        'off',
+    }:
+        return False
+
+    raise ImproperlyConfigured(
+        f'{nome} deve receber True ou False.'
+    )
 
 
 def variavel_lista(nome, padrao=''):
-    """Converte valores separados por vírgula em uma lista limpa."""
+    """Converte valores separados por vÃ­rgula em uma lista limpa."""
 
     return [
         item.strip()
@@ -35,8 +53,30 @@ def variavel_lista(nome, padrao=''):
     ]
 
 
-# O desenvolvimento local continua funcionando sem configuração adicional.
-# Em produção, a chave passa a ser obrigatória por variável de ambiente.
+def variavel_inteira(nome, padrao, minimo=0, maximo=None):
+    """LÃª uma variÃ¡vel inteira e rejeita configuraÃ§Ãµes perigosas."""
+
+    valor_bruto = os.environ.get(nome, str(padrao)).strip()
+
+    try:
+        valor = int(valor_bruto)
+    except ValueError as erro:
+        raise ImproperlyConfigured(
+            f'{nome} deve receber um nÃºmero inteiro.'
+        ) from erro
+
+    if valor < minimo or (maximo is not None and valor > maximo):
+        intervalo = f'entre {minimo} e {maximo}' if maximo else f'maior ou igual a {minimo}'
+
+        raise ImproperlyConfigured(
+            f'{nome} deve ser {intervalo}.'
+        )
+
+    return valor
+
+
+# O desenvolvimento local continua funcionando sem configuraÃ§Ã£o adicional.
+# Em produÃ§Ã£o, a chave passa a ser obrigatÃ³ria por variÃ¡vel de ambiente.
 DEBUG = variavel_booleana(
     'DJANGO_DEBUG',
     True
@@ -61,6 +101,15 @@ if not SECRET_KEY:
             'com DJANGO_DEBUG=False.'
         )
 
+if not DEBUG and (
+    len(SECRET_KEY) < 50
+    or SECRET_KEY.startswith('django-insecure-')
+):
+    raise ImproperlyConfigured(
+        'DJANGO_SECRET_KEY deve possuir pelo menos 50 caracteres, '
+        'ser aleatÃ³ria e nÃ£o pode usar o prefixo de desenvolvimento.'
+    )
+
 ALLOWED_HOSTS = variavel_lista(
     'DJANGO_ALLOWED_HOSTS',
     '127.0.0.1,localhost,[::1],testserver'
@@ -71,7 +120,12 @@ ALLOWED_HOSTS = variavel_lista(
 if not DEBUG and not ALLOWED_HOSTS:
     raise ImproperlyConfigured(
         'Defina DJANGO_ALLOWED_HOSTS antes de iniciar o sistema '
-        'em produção.'
+        'em produÃ§Ã£o.'
+    )
+
+if not DEBUG and '*' in ALLOWED_HOSTS:
+    raise ImproperlyConfigured(
+        'NÃ£o use * em DJANGO_ALLOWED_HOSTS na produÃ§Ã£o.'
     )
 
 CSRF_TRUSTED_ORIGINS = variavel_lista(
@@ -93,10 +147,13 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'django.middleware.csp.ContentSecurityPolicyMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'bancasapp.middleware.CabecalhosSegurancaMiddleware',
+    'bancasapp.middleware.LimiteRequisicoesAutenticacaoMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -141,6 +198,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 12,
+        },
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -177,20 +237,31 @@ STATICFILES_DIRS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Sessão persistente por 14 dias quando o usuário
-# selecionar a opção "Manter conectado".
+# SessÃ£o persistente por 14 dias quando o usuÃ¡rio
+# selecionar a opÃ§Ã£o "Manter conectado".
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 14
 
-# Por padrão, a sessão termina ao fechar o navegador.
-# A tela de login poderá substituir essa configuração
+# Por padrÃ£o, a sessÃ£o termina ao fechar o navegador.
+# A tela de login poderÃ¡ substituir essa configuraÃ§Ã£o
 # individualmente quando "Manter conectado" for marcado.
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Lax'
 
-# Proteções ativadas automaticamente quando DEBUG=False. O HSTS permanece
-# configurável e começa em zero para evitar bloquear o domínio antes de o
+# Limites internos complementam o limite de corpo configurado no proxy.
+# A validaÃ§Ã£o individual dos arquivos continua nos formulÃ¡rios do SGTCC.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 2_621_440
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2_621_440
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 200
+DATA_UPLOAD_MAX_NUMBER_FILES = 1
+FILE_UPLOAD_PERMISSIONS = 0o640
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o750
+
+# ProteÃ§Ãµes ativadas automaticamente quando DEBUG=False. O HSTS permanece
+# configurÃ¡vel e comeÃ§a em zero para evitar bloquear o domÃ­nio antes de o
 # HTTPS definitivo estar validado.
 SESSION_COOKIE_SECURE = variavel_booleana(
     'DJANGO_SESSION_COOKIE_SECURE',
@@ -207,11 +278,10 @@ SECURE_SSL_REDIRECT = variavel_booleana(
     not DEBUG
 )
 
-SECURE_HSTS_SECONDS = int(
-    os.environ.get(
-        'DJANGO_SECURE_HSTS_SECONDS',
-        '0'
-    )
+SECURE_HSTS_SECONDS = variavel_inteira(
+    'DJANGO_SECURE_HSTS_SECONDS',
+    0,
+    minimo=0,
 )
 
 SECURE_HSTS_INCLUDE_SUBDOMAINS = variavel_booleana(
@@ -226,7 +296,71 @@ SECURE_HSTS_PRELOAD = variavel_booleana(
 
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = 'same-origin'
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
 X_FRAME_OPTIONS = 'DENY'
+
+# PolÃ­tica aplicada a todas as respostas HTML. O JavaScript Ã© aceito somente
+# quando vem dos arquivos estÃ¡ticos do prÃ³prio sistema. Estilos inline ainda
+# sÃ£o permitidos porque existem em telas legadas e documentos de visualizaÃ§Ã£o.
+SECURE_CSP = {
+    'default-src': [CSP.SELF],
+    'base-uri': [CSP.SELF],
+    'connect-src': [CSP.SELF],
+    'font-src': [CSP.SELF],
+    'form-action': [CSP.SELF],
+    'frame-ancestors': [CSP.NONE],
+    'frame-src': [CSP.SELF],
+    'img-src': [CSP.SELF, 'data:'],
+    'object-src': [CSP.NONE],
+    'script-src': [CSP.SELF],
+    'style-src': [CSP.SELF, CSP.UNSAFE_INLINE],
+}
+
+# ProteÃ§Ã£o contra forÃ§a bruta e abuso de envio de e-mails. Os contadores sÃ£o
+# armazenados no banco apenas como HMAC, sem e-mail, usuÃ¡rio ou IP legÃ­vel.
+SGTCC_RATE_LIMIT_ENABLED = variavel_booleana(
+    'SGTCC_RATE_LIMIT_ENABLED',
+    True,
+)
+SGTCC_RATE_LIMIT_LOGIN_ATTEMPTS = variavel_inteira(
+    'SGTCC_RATE_LIMIT_LOGIN_ATTEMPTS',
+    8,
+    minimo=2,
+)
+SGTCC_RATE_LIMIT_LOGIN_WINDOW = variavel_inteira(
+    'SGTCC_RATE_LIMIT_LOGIN_WINDOW',
+    900,
+    minimo=60,
+)
+SGTCC_RATE_LIMIT_EMAIL_ATTEMPTS = variavel_inteira(
+    'SGTCC_RATE_LIMIT_EMAIL_ATTEMPTS',
+    5,
+    minimo=2,
+)
+SGTCC_RATE_LIMIT_EMAIL_WINDOW = variavel_inteira(
+    'SGTCC_RATE_LIMIT_EMAIL_WINDOW',
+    3600,
+    minimo=60,
+)
+SGTCC_RATE_LIMIT_IP_ATTEMPTS = variavel_inteira(
+    'SGTCC_RATE_LIMIT_IP_ATTEMPTS',
+    40,
+    minimo=5,
+)
+SGTCC_RATE_LIMIT_IP_WINDOW = variavel_inteira(
+    'SGTCC_RATE_LIMIT_IP_WINDOW',
+    900,
+    minimo=60,
+)
+SGTCC_RATE_LIMIT_RETENTION_DAYS = variavel_inteira(
+    'SGTCC_RATE_LIMIT_RETENTION_DAYS',
+    7,
+    minimo=1,
+)
+SGTCC_TRUST_PROXY_CLIENT_IP = variavel_booleana(
+    'SGTCC_TRUST_PROXY_CLIENT_IP',
+    False,
+)
 
 if variavel_booleana(
     'DJANGO_TRUST_PROXY_SSL_HEADER',
@@ -237,8 +371,8 @@ if variavel_booleana(
         'https',
     )
 
-# Durante o desenvolvimento, o conteúdo do e-mail aparece no terminal.
-# Em produção, todas as opções podem ser definidas pelo serviço de SMTP.
+# Durante o desenvolvimento, o conteÃºdo do e-mail aparece no terminal.
+# Em produÃ§Ã£o, todas as opÃ§Ãµes podem ser definidas pelo serviÃ§o de SMTP.
 EMAIL_BACKEND = os.environ.get(
     'DJANGO_EMAIL_BACKEND',
     'django.core.mail.backends.console.EmailBackend'
@@ -249,11 +383,11 @@ EMAIL_HOST = os.environ.get(
     ''
 )
 
-EMAIL_PORT = int(
-    os.environ.get(
-        'DJANGO_EMAIL_PORT',
-        '587'
-    )
+EMAIL_PORT = variavel_inteira(
+    'DJANGO_EMAIL_PORT',
+    587,
+    minimo=1,
+    maximo=65535,
 )
 
 EMAIL_HOST_USER = os.environ.get(
@@ -276,10 +410,46 @@ EMAIL_USE_SSL = variavel_booleana(
     False
 )
 
+if EMAIL_USE_TLS and EMAIL_USE_SSL:
+    raise ImproperlyConfigured(
+        'Ative somente uma opÃ§Ã£o: DJANGO_EMAIL_USE_TLS ou '
+        'DJANGO_EMAIL_USE_SSL.'
+    )
+
 DEFAULT_FROM_EMAIL = os.environ.get(
     'DJANGO_DEFAULT_FROM_EMAIL',
     'SGTCC <nao-responda@ufac.br>'
 )
 
-# Validade do link de confirmação: 24 horas.
+# Validade do link de confirmaÃ§Ã£o: 24 horas.
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24
+
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'sgtcc': {
+            'format': '{asctime} {levelname} {name}: {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'sgtcc',
+        },
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['console'],
+            'level': os.environ.get('DJANGO_LOG_LEVEL', 'WARNING'),
+            'propagate': False,
+        },
+        'bancasapp': {
+            'handlers': ['console'],
+            'level': os.environ.get('SGTCC_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+    },
+}
