@@ -1,8 +1,27 @@
 from django.contrib.auth.models import User
+from django.contrib.auth.hashers import identify_hasher
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from .models import TentativaAcesso, pUsuario
+
+
+class ArmazenamentoSenhasTests(TestCase):
+
+    def test_senha_e_armazenada_com_hash_e_validada_pelo_django(self):
+        senha_original = 'SenhaForte#2026'
+        usuario = User.objects.create_user(
+            username='hash@ufac.br',
+            password=senha_original,
+        )
+
+        self.assertNotEqual(usuario.password, senha_original)
+        self.assertNotIn(senha_original, usuario.password)
+        self.assertTrue(usuario.check_password(senha_original))
+        self.assertEqual(
+            identify_hasher(usuario.password).algorithm,
+            'pbkdf2_sha256',
+        )
 
 
 class CabecalhosSegurancaTests(TestCase):

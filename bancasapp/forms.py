@@ -20,6 +20,7 @@ from .models import (
     SolicitacaoAgendamento,
     pUsuario,
 )
+from .services import obter_bloqueio_tcc_discente
 
 def autocomplete_docente_widget(
     placeholder,
@@ -956,6 +957,16 @@ class SolicitacaoBancaForm(forms.ModelForm):
                     'matricula_discente',
                     'Esta matrícula já pertence ao discente '
                     f'"{discente_existente.nome}".'
+                )
+
+            bloqueio_tcc = obter_bloqueio_tcc_discente(
+                matricula=matricula_discente
+            )
+
+            if bloqueio_tcc:
+                self.add_error(
+                    'matricula_discente',
+                    bloqueio_tcc.mensagem
                 )
 
         # Relação de todos os docentes internos escolhidos.

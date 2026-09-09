@@ -1,12 +1,225 @@
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import timedelta
+from decimal import Decimal
 
+from django.db import transaction
 from django.utils import timezone
 
 from .models import (
     BancaTCC,
+    ComposicaoBanca,
+    Discente,
+    ProjetoTCC,
     SolicitacaoAgendamento,
 )
+
+
+@dataclass(frozen=True)
+class BloqueioTCCDiscente:
+    """Motivo que impede uma nova solicitação para uma matrícula."""
+
+    codigo: str
+    mensagem: str
+
+
+class SolicitacaoBancaInvalida(Exception):
+    """Falha de regra de negócio detectada na gravação da solicitação."""
+
+    def __init__(self, mensagem):
+        self.mensagem = mensagem
+        super().__init__(mensagem)
+
+
+def obter_bloqueio_tcc_discente(
+    *,
+    matricula=None,
+    discente=None,
+):
+    """
+    Informa se o discente já possui um fluxo de TCC que impede outro.
+
+    A restrição pertence à matrícula, nunca ao docente. Solicitações recusadas
+    ou expiradas e bancas finalizadas com reprovação liberam uma nova
+    tentativa. Uma aprovação acadêmica (nota final maior ou igual a 8,00)
+    bloqueia definitivamente outro TCC para a mesma matrícula.
+
+    Projetos legados sem solicitação não são tratados como fluxo ativo, pois
+    não possuem estado operacional suficiente para determinar se continuam em
+    andamento. Eles permanecem disponíveis para a auditoria de integridade.
+    """
+
+    if discente is None:
+        matricula = (matricula or '').strip()
+
+        if not matricula:
+            return None
+
+        discente = (
+            Discente.objects
+            .filter(matricula=matricula)
+            .first()
+        )
+
+    if discente is None:
+        return None
+
+    nota_minima = BancaTCC.NOTA_MINIMA_APROVACAO
+
+    aprovado = (
+        BancaTCC.objects
+        .filter(
+            projeto_tcc__discente=discente,
+            status='FINALIZADA',
+            nota__gte=nota_minima,
+        )
+        .exists()
+    )
+
+    if aprovado:
+        return BloqueioTCCDiscente(
+            codigo='APROVADO_DEFINITIVAMENTE',
+            mensagem=(
+                'Esta matrícula já possui um TCC finalizado com '
+                'aprovação e não pode receber uma nova solicitação.'
+            ),
+        )
+
+    solicitacoes = (
+        SolicitacaoAgendamento.objects
+        .filter(
+            projeto_tcc__discente=discente,
+            status__in=[
+                'EM ANÁLISE',
+                'APROVADA',
+            ],
+        )
+        .select_related('banca_tcc')
+        .order_by('id')
+    )
+
+    for solicitacao in solicitacoes:
+        if solicitacao.status == 'EM ANÁLISE':
+            return BloqueioTCCDiscente(
+                codigo='SOLICITACAO_EM_ANALISE',
+                mensagem=(
+                    'Esta matrícula já possui uma solicitação de TCC '
+                    'em análise. Aguarde a conclusão desse fluxo antes '
+                    'de cadastrar outro projeto.'
+                ),
+            )
+
+        try:
+            banca = solicitacao.banca_tcc
+        except BancaTCC.DoesNotExist:
+            banca = None
+
+        if banca is None:
+            return BloqueioTCCDiscente(
+                codigo='SOLICITACAO_APROVADA',
+                mensagem=(
+                    'Esta matrícula já possui uma solicitação de TCC '
+                    'aprovada e ainda não finalizada.'
+                ),
+            )
+
+        if banca.status != 'FINALIZADA' or banca.nota is None:
+            return BloqueioTCCDiscente(
+                codigo='BANCA_EM_ANDAMENTO',
+                mensagem=(
+                    'Esta matrícula já possui uma banca agendada, em '
+                    'andamento ou aguardando nota.'
+                ),
+            )
+
+        # A aprovação definitiva foi tratada antes da consulta. Portanto,
+        # uma banca finalizada com nota abaixo de 8,00 libera nova tentativa.
+        if Decimal(banca.nota) < nota_minima:
+            continue
+
+    return None
+
+
+@transaction.atomic
+def criar_solicitacao_banca_segura(*, form, orientador):
+    """
+    Cria todo o fluxo inicial sob uma trava da matrícula do discente.
+
+    O formulário oferece a primeira resposta amigável, mas esta nova
+    verificação dentro da transação é a proteção definitiva contra duas
+    requisições concorrentes para a mesma matrícula.
+    """
+
+    matricula = form.cleaned_data['matricula_discente']
+    nome_discente = form.cleaned_data['nome_discente']
+
+    discente, _ = Discente.objects.get_or_create(
+        matricula=matricula,
+        defaults={
+            'nome': nome_discente,
+        },
+    )
+
+    # No PostgreSQL usado em produção, serializa submissões concorrentes da
+    # mesma matrícula. No SQLite de desenvolvimento, as escritas já são
+    # serializadas pelo próprio banco.
+    discente = (
+        Discente.objects
+        .select_for_update()
+        .get(pk=discente.pk)
+    )
+
+    if discente.nome.casefold() != nome_discente.casefold():
+        raise SolicitacaoBancaInvalida(
+            'Esta matrícula já pertence ao discente '
+            f'"{discente.nome}".'
+        )
+
+    bloqueio = obter_bloqueio_tcc_discente(
+        discente=discente
+    )
+
+    if bloqueio:
+        raise SolicitacaoBancaInvalida(
+            bloqueio.mensagem
+        )
+
+    projeto = ProjetoTCC.objects.create(
+        titulo=form.cleaned_data['titulo_tcc'],
+        resumo=form.cleaned_data['resumo_tcc'],
+        semestre_letivo=form.cleaned_data['semestre_letivo'],
+        discente=discente,
+        status='EM ANÁLISE',
+    )
+
+    solicitacao = form.save(commit=False)
+    solicitacao.projeto_tcc = projeto
+    solicitacao.status = 'EM ANÁLISE'
+    solicitacao.usuario_solicitante = orientador
+    solicitacao.save()
+
+    ComposicaoBanca.objects.create(
+        solicitacao=solicitacao,
+        projeto_tcc=projeto,
+        orientador=orientador,
+        coorientador=form.cleaned_data['coorientador'],
+        avaliador_interno=form.cleaned_data['avaliador_interno'],
+        segundo_avaliador_interno=(
+            form.cleaned_data['segundo_avaliador_interno']
+        ),
+        presidente=form.cleaned_data['presidente'],
+        nome_avaliador_externo=(
+            form.cleaned_data['nome_avaliador_externo']
+        ),
+        titulacao_avaliador_externo=(
+            form.cleaned_data['titulacao_avaliador_externo']
+        ),
+        instituicao_avaliador_externo=(
+            form.cleaned_data['instituicao_avaliador_externo']
+        ),
+    )
+
+    return solicitacao
 
 
 def expirar_solicitacoes_vencidas():

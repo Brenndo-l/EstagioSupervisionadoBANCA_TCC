@@ -46,8 +46,10 @@ from django.views.decorators.http import require_POST
 from django.core.exceptions import ValidationError
 from .services import (
     atualizar_status_bancas,
+    criar_solicitacao_banca_segura,
     expirar_solicitacoes_vencidas,
     montar_agenda_disponibilidades,
+    SolicitacaoBancaInvalida,
 )
 from django.conf import settings
 from django.utils.encoding import force_str
@@ -938,119 +940,25 @@ def solicitar_banca(request):
 
         if form.is_valid():
 
-            with transaction.atomic():
-
-                # A matrícula identifica o discente.
-                # Discente existente é reaproveitado.
-                discente, _ = (
-                    Discente.objects.get_or_create(
-                        matricula=(
-                            form.cleaned_data[
-                                'matricula_discente'
-                            ]
-                        ),
-                        defaults={
-                            'nome': (
-                                form.cleaned_data[
-                                    'nome_discente'
-                                ]
-                            ),
-                        }
-                    )
-                )
-
-                # Cada solicitação recebe seu próprio projeto.
-                # Isso preserva o histórico de tentativas.
-                projeto = ProjetoTCC.objects.create(
-                    titulo=(
-                        form.cleaned_data[
-                            'titulo_tcc'
-                        ]
-                    ),
-                    resumo=(
-                        form.cleaned_data[
-                            'resumo_tcc'
-                        ]
-                    ),
-                    semestre_letivo=(
-                        form.cleaned_data[
-                            'semestre_letivo'
-                        ]
-                    ),
-                    discente=discente,
-                    status='EM_ANÁLISE',
-                )
-
-                solicitacao = form.save(
-                    commit=False
-                )
-
-                solicitacao.projeto_tcc = projeto
-                solicitacao.status = 'EM_ANÁLISE'
-
-                solicitacao.usuario_solicitante = (
-                    perfil_logado
-                )
-
-                solicitacao.save()
-
-                ComposicaoBanca.objects.create(
-                    solicitacao=solicitacao,
-                    projeto_tcc=projeto,
-
+            try:
+                criar_solicitacao_banca_segura(
+                    form=form,
                     orientador=perfil_logado,
-
-                    coorientador=(
-                        form.cleaned_data[
-                            'coorientador'
-                        ]
-                    ),
-
-                    avaliador_interno=(
-                        form.cleaned_data[
-                            'avaliador_interno'
-                        ]
-                    ),
-
-                    segundo_avaliador_interno=(
-                        form.cleaned_data[
-                            'segundo_avaliador_interno'
-                        ]
-                    ),
-
-                    presidente=(
-                        form.cleaned_data[
-                            'presidente'
-                        ]
-                    ),
-
-                    nome_avaliador_externo=(
-                        form.cleaned_data[
-                            'nome_avaliador_externo'
-                        ]
-                    ),
-
-                    titulacao_avaliador_externo=(
-                        form.cleaned_data[
-                            'titulacao_avaliador_externo'
-                        ]
-                    ),
-
-                    instituicao_avaliador_externo=(
-                        form.cleaned_data[
-                            'instituicao_avaliador_externo'
-                        ]
-                    ),
+                )
+            except SolicitacaoBancaInvalida as erro:
+                form.add_error(
+                    'matricula_discente',
+                    erro.mensagem,
+                )
+            else:
+                messages.success(
+                    request,
+                    'Solicitação de banca enviada com sucesso.'
                 )
 
-            messages.success(
-                request,
-                'Solicitação de banca enviada com sucesso.'
-            )
-
-            return redirect(
-                'dashboard'
-            )
+                return redirect(
+                    'dashboard'
+                )
 
         for campo, erros in form.errors.items():
 

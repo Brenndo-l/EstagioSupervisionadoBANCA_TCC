@@ -1,9 +1,10 @@
 from django.core.management.base import BaseCommand, CommandError
-from django.db.models import F, Q
+from django.db.models import Count, F, Q
 
 from bancasapp.models import (
     BancaTCC,
     ComposicaoBanca,
+    Discente,
     SolicitacaoAgendamento,
 )
 
@@ -96,6 +97,67 @@ class Command(BaseCommand):
         )
 
     def _verificacoes(self):
+
+        solicitacoes_em_fluxo = (
+            SolicitacaoAgendamento.objects
+            .filter(
+                Q(status='EM ANÁLISE')
+                | Q(
+                    status='APROVADA',
+                    banca_tcc__isnull=True,
+                )
+                | Q(
+                    status='APROVADA',
+                    banca_tcc__status__in=[
+                        'AGENDADA',
+                        'AGUARDANDO_NOTA',
+                    ],
+                )
+                | Q(
+                    status='APROVADA',
+                    banca_tcc__status='FINALIZADA',
+                    banca_tcc__nota__isnull=True,
+                )
+            )
+        )
+
+        matriculas_com_fluxos_simultaneos_ids = (
+            solicitacoes_em_fluxo
+            .values('projeto_tcc__discente_id')
+            .annotate(quantidade=Count('pk'))
+            .filter(quantidade__gt=1)
+            .values('projeto_tcc__discente_id')
+        )
+
+        matriculas_com_fluxos_simultaneos = (
+            Discente.objects
+            .filter(
+                pk__in=matriculas_com_fluxos_simultaneos_ids
+            )
+        )
+
+        matriculas_aprovadas_ids = (
+            BancaTCC.objects
+            .filter(
+                status='FINALIZADA',
+                nota__gte=BancaTCC.NOTA_MINIMA_APROVACAO,
+            )
+            .values('projeto_tcc__discente_id')
+        )
+
+        matriculas_aprovadas_com_fluxo_ativo = (
+            Discente.objects
+            .filter(
+                Q(pk__in=matriculas_aprovadas_ids)
+                & Q(
+                    pk__in=(
+                        solicitacoes_em_fluxo
+                        .values('projeto_tcc__discente_id')
+                    )
+                )
+            )
+            .distinct()
+        )
 
         solicitacoes_sem_composicao = (
             SolicitacaoAgendamento.objects
@@ -190,6 +252,22 @@ class Command(BaseCommand):
         )
 
         return (
+            (
+                'MATRICULA_COM_FLUXOS_SIMULTANEOS',
+                (
+                    'Matrícula vinculada a mais de uma solicitação de '
+                    'TCC em andamento ao mesmo tempo.'
+                ),
+                matriculas_com_fluxos_simultaneos,
+            ),
+            (
+                'MATRICULA_APROVADA_COM_FLUXO_ATIVO',
+                (
+                    'Matrícula com TCC finalizado e aprovado que também '
+                    'possui outra solicitação em andamento.'
+                ),
+                matriculas_aprovadas_com_fluxo_ativo,
+            ),
             (
                 'SOLICITACAO_SEM_COMPOSICAO',
                 'Solicitação sem composição de banca vinculada.',

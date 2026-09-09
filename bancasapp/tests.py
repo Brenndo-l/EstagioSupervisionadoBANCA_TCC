@@ -996,7 +996,7 @@ class AgendamentoTests(TestCase):
         # A solicitação deve começar Em Análise.
         self.assertEqual(
             solicitacao.status,
-            'EM_ANÁLISE'
+            'EM ANÁLISE'
         )
 
         # Deve pertencer ao docente logado.
