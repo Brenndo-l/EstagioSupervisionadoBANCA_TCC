@@ -134,7 +134,7 @@ class RegraMatriculaTCCTests(TestCase):
                 if status_solicitacao == 'RECUSADA'
                 else 'APROVADO'
                 if status_solicitacao == 'APROVADA'
-                else 'EM ANÁLISE'
+                else 'EM_ANÁLISE'
             ),
         )
 
@@ -202,7 +202,7 @@ class RegraMatriculaTCCTests(TestCase):
     def test_solicitacao_em_analise_bloqueia_qualquer_outro_docente(self):
         self._criar_fluxo(
             matricula='20260001003',
-            status_solicitacao='EM ANÁLISE',
+            status_solicitacao='EM_ANÁLISE',
         )
 
         resposta = self._enviar(
@@ -365,7 +365,7 @@ class RegraMatriculaTCCTests(TestCase):
                 resumo='Fluxo criado para a auditoria.',
                 semestre_letivo='2026.2',
                 discente=discente,
-                status='EM ANÁLISE',
+                status='EM_ANÁLISE',
             )
             solicitacao = SolicitacaoAgendamento.objects.create(
                 usuario_solicitante=self.orientador,
@@ -377,7 +377,7 @@ class RegraMatriculaTCCTests(TestCase):
                 opcao_data_fim=(
                     self.inicio + timedelta(hours=indice + 1)
                 ),
-                status='EM ANÁLISE',
+                status='EM_ANÁLISE',
             )
             ComposicaoBanca.objects.create(
                 solicitacao=solicitacao,

@@ -90,7 +90,7 @@ def obter_bloqueio_tcc_discente(
         .filter(
             projeto_tcc__discente=discente,
             status__in=[
-                'EM ANÁLISE',
+                'EM_ANÁLISE',
                 'APROVADA',
             ],
         )
@@ -99,7 +99,7 @@ def obter_bloqueio_tcc_discente(
     )
 
     for solicitacao in solicitacoes:
-        if solicitacao.status == 'EM ANÁLISE':
+        if solicitacao.status == 'EM_ANÁLISE':
             return BloqueioTCCDiscente(
                 codigo='SOLICITACAO_EM_ANALISE',
                 mensagem=(
@@ -189,12 +189,12 @@ def criar_solicitacao_banca_segura(*, form, orientador):
         resumo=form.cleaned_data['resumo_tcc'],
         semestre_letivo=form.cleaned_data['semestre_letivo'],
         discente=discente,
-        status='EM ANÁLISE',
+        status='EM_ANÁLISE',
     )
 
     solicitacao = form.save(commit=False)
     solicitacao.projeto_tcc = projeto
-    solicitacao.status = 'EM ANÁLISE'
+    solicitacao.status = 'EM_ANÁLISE'
     solicitacao.usuario_solicitante = orientador
     solicitacao.save()
 

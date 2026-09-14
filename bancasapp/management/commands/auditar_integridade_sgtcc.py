@@ -101,7 +101,7 @@ class Command(BaseCommand):
         solicitacoes_em_fluxo = (
             SolicitacaoAgendamento.objects
             .filter(
-                Q(status='EM ANÁLISE')
+                Q(status='EM_ANÁLISE')
                 | Q(
                     status='APROVADA',
                     banca_tcc__isnull=True,
