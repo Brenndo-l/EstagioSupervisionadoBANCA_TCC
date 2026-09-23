@@ -490,16 +490,16 @@ def gerar_pdf_ata(dados):
     texto_corpo = (
         'No dia '
         f'<b>{escape(dados["data_defesa_extenso"])}</b>, às '
-        f'<b>{escape(dados["hora_defesa"])}</b>, no espaço '
-        f'{escape(dados["espaco"])}, desta Universidade e na '
+        f'<b>{escape(dados["hora_defesa"])}</b>, na Universidade '
+        'Federal do Acre, na '
         'presença da Banca Examinadora presidida por '
         f'{escape(dados["presidente"])} e composta pelos '
         'membros relacionados abaixo, o(a) discente '
         f'<b>{escape(dados["discente"])}</b> realizou a Defesa '
         'Pública do Trabalho de Conclusão de Curso, intitulado '
         f'<b>“{escape(dados["titulo_tcc"])}”</b>, como requisito '
-        'curricular indispensável à integralização do Curso de '
-        'Bacharelado em Sistemas de Informação.'
+        'parcial para a obtenção do grau de Bacharel em Sistemas '
+        'de Informação.'
     )
 
     elementos.append(
@@ -821,8 +821,7 @@ def gerar_docx_ata(dados):
     _adicionar_run(
         corpo,
         (
-            f', no espaço {dados["espaco"]}, desta '
-            'Universidade e na presença da Banca '
+            ', na Universidade Federal do Acre, na presença da Banca '
             'Examinadora presidida por '
             f'{dados["presidente"]} e composta pelos '
             'membros relacionados abaixo, o(a) discente '
@@ -852,9 +851,8 @@ def gerar_docx_ata(dados):
     _adicionar_run(
         corpo,
         (
-            ', como requisito curricular indispensável à '
-            'integralização do Curso de Bacharelado em '
-            'Sistemas de Informação.'
+            ', como requisito parcial para a obtenção do grau de '
+            'Bacharel em Sistemas de Informação.'
         )
     )
 

@@ -1,15 +1,20 @@
 from datetime import timedelta
 from decimal import Decimal
+from html import unescape
 from io import BytesIO
+import re
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 from docx import Document
+from reportlab.platypus import Paragraph as ReportLabParagraph
 
 from .documentos_banca import (
     gerar_docx_ata,
+    gerar_pdf_ata,
     montar_dados_ata,
 )
 from .models import (
@@ -185,6 +190,53 @@ class DocumentosInstitucionaisTests(TestCase):
             integrante_externo['instituicao'],
             'IFAC'
         )
+
+    def test_primeiro_paragrafo_da_ata_pdf_e_docx(self):
+
+        dados = self._dados()
+        paragrafos_pdf = []
+
+        def registrar_paragrafo(texto, estilo, *args, **kwargs):
+            if estilo.name == 'CorpoAta':
+                paragrafos_pdf.append(texto)
+
+            return ReportLabParagraph(texto, estilo, *args, **kwargs)
+
+        with patch(
+            'bancasapp.documentos_banca.Paragraph',
+            side_effect=registrar_paragrafo
+        ):
+            pdf = gerar_pdf_ata(dados)
+
+        self.assertTrue(pdf.getvalue().startswith(b'%PDF'))
+
+        texto_pdf = unescape(
+            re.sub(r'<[^>]+>', '', paragrafos_pdf[0])
+        )
+
+        documento = Document(gerar_docx_ata(dados))
+        texto_docx = next(
+            paragrafo.text
+            for paragrafo in documento.paragraphs
+            if paragrafo.text.startswith('No dia ')
+        )
+
+        texto_esperado = (
+            f'No dia {dados["data_defesa_extenso"]}, às '
+            f'{dados["hora_defesa"]}, na Universidade Federal do Acre, '
+            'na presença da Banca Examinadora presidida por '
+            f'{dados["presidente"]} e composta pelos membros '
+            'relacionados abaixo, o(a) discente '
+            f'{dados["discente"]} realizou a Defesa Pública do '
+            'Trabalho de Conclusão de Curso, intitulado '
+            f'“{dados["titulo_tcc"]}”, como requisito parcial para a '
+            'obtenção do grau de Bacharel em Sistemas de Informação.'
+        )
+
+        self.assertEqual(texto_pdf, texto_esperado)
+        self.assertEqual(texto_docx, texto_esperado)
+        self.assertNotIn(dados['espaco'], texto_pdf)
+        self.assertNotIn(dados['espaco'], texto_docx)
 
     def test_docx_pre_defesa_mantem_campos_em_branco(self):
 
