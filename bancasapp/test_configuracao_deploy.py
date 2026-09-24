@@ -38,6 +38,7 @@ class ConfiguracaoDeployTests(SimpleTestCase):
             'DJANGO_EMAIL_USE_TLS',
             'DJANGO_EMAIL_USE_SSL',
             'DJANGO_DEFAULT_FROM_EMAIL',
+            'SGTCC_EMAIL_REQUIRED',
         }
 
         ambiente = {
@@ -75,6 +76,7 @@ class ConfiguracaoDeployTests(SimpleTestCase):
                 'DJANGO_DEFAULT_FROM_EMAIL': (
                     'SGTCC <sgtcc@example.com>'
                 ),
+                'SGTCC_EMAIL_REQUIRED': 'True',
             }
         )
 
@@ -177,3 +179,18 @@ class ConfiguracaoDeployTests(SimpleTestCase):
             'DJANGO_EMAIL_HOST_PASSWORD',
             resultado.stderr,
         )
+
+    def test_vercel_pode_aguardar_credencial_smtp_institucional(self):
+
+        ambiente = self.ambiente_vercel_valido()
+        ambiente.pop('DJANGO_EMAIL_HOST_PASSWORD')
+        ambiente['SGTCC_EMAIL_REQUIRED'] = 'False'
+
+        resultado = self.importar_configuracao(ambiente)
+
+        self.assertEqual(
+            resultado.returncode,
+            0,
+            resultado.stderr,
+        )
+        self.assertIn('smtp.EmailBackend', resultado.stdout)
