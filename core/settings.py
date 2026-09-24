@@ -644,9 +644,27 @@ SMTP_EMAIL_BACKEND = (
     'django.core.mail.backends.smtp.EmailBackend'
 )
 
+# Permite publicar a aplicação enquanto a UFAC ainda não forneceu a
+# credencial SMTP. Quando False, a ausência da credencial não bloqueia o
+# deploy, mas os recursos que dependem de e-mail ainda não estarão
+# operacionais. Depois que a Coordenação cadastrar a credencial real na
+# Vercel, esta opção deve ser alterada para True.
+SGTCC_EMAIL_REQUIRED = variavel_booleana(
+    'SGTCC_EMAIL_REQUIRED',
+    True,
+)
+
 if VERCEL_RUNTIME:
 
-    if EMAIL_BACKEND != SMTP_EMAIL_BACKEND:
+    if not SGTCC_EMAIL_REQUIRED:
+
+        # Enquanto a credencial institucional estiver pendente, mantém o
+        # backend SMTP para impedir que links de confirmação ou redefinição
+        # sejam escritos nos logs da Vercel. As tentativas de envio falharão
+        # de forma controlada até que a UFAC configure a credencial real.
+        EMAIL_BACKEND = SMTP_EMAIL_BACKEND
+
+    elif EMAIL_BACKEND != SMTP_EMAIL_BACKEND:
         raise ImproperlyConfigured(
             'DJANGO_EMAIL_BACKEND deve usar '
             'django.core.mail.backends.smtp.EmailBackend na Vercel. '
@@ -669,7 +687,7 @@ if VERCEL_RUNTIME:
         if not valor
     ]
 
-    if configuracoes_smtp_ausentes:
+    if SGTCC_EMAIL_REQUIRED and configuracoes_smtp_ausentes:
         raise ImproperlyConfigured(
             'Configure o SMTP real na Vercel. Variáveis ausentes: '
             + ', '.join(configuracoes_smtp_ausentes)
