@@ -230,10 +230,22 @@ def dashboard(request):
     status_historico = ''
     agenda_resumida = None
     solicitacoes_recentes = None
+    agora = timezone.now()
 
     if is_coordenacao:
 
-        total_bancas = BancaTCC.objects.count()
+        # O cartão representa bancas que ainda ocorrerão ou estão em
+        # andamento. Bancas cujo horário terminou passam para
+        # AGUARDANDO_NOTA e bancas com nota registrada ficam FINALIZADAS;
+        # nenhuma delas deve continuar aparecendo como agendada.
+        total_bancas = (
+            BancaTCC.objects
+            .filter(
+                status='AGENDADA',
+                data_horario_fim__gt=agora,
+            )
+            .count()
+        )
 
         total_pendentes = (
             SolicitacaoAgendamento.objects.filter(
@@ -329,8 +341,6 @@ def dashboard(request):
             usuario=request.user,
             perfil='DOCENTE'
         )
-
-        agora = timezone.now()
 
         # Conta apenas bancas futuras agendadas das quais
         # o docente participa ou que foram solicitadas por ele.

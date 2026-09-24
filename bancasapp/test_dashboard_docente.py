@@ -405,6 +405,82 @@ class DashboardDocenteTests(TestCase):
             'Próximos horários livres'
         )
 
+    def test_coordenacao_conta_somente_bancas_ainda_agendadas(
+        self
+    ):
+
+        sala = EspacoFisico.objects.create(
+            nome='Sala da contagem administrativa'
+        )
+
+        agora = timezone.now()
+
+        periodos = [
+            (
+                agora + timedelta(days=1),
+                agora + timedelta(days=1, hours=1),
+                'AGENDADA',
+            ),
+            (
+                agora - timedelta(minutes=30),
+                agora + timedelta(minutes=30),
+                'AGENDADA',
+            ),
+            (
+                agora - timedelta(hours=2),
+                agora - timedelta(hours=1),
+                'AGENDADA',
+            ),
+            (
+                agora - timedelta(days=2),
+                agora - timedelta(hours=47),
+                'FINALIZADA',
+            ),
+        ]
+
+        bancas = []
+
+        for inicio, fim, status_banca in periodos:
+
+            solicitacao = self.criar_solicitacao(
+                self.docente,
+                sala,
+                inicio,
+                fim,
+                status='APROVADA',
+            )
+
+            bancas.append(
+                BancaTCC.objects.create(
+                    solicitacao=solicitacao,
+                    projeto_tcc=solicitacao.projeto_tcc,
+                    espaco=sala,
+                    data_horario_inicio=inicio,
+                    data_horario_fim=fim,
+                    status=status_banca,
+                )
+            )
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.get(
+            reverse('dashboard')
+        )
+
+        self.assertEqual(
+            response.context['total_bancas'],
+            2
+        )
+
+        bancas[2].refresh_from_db()
+
+        self.assertEqual(
+            bancas[2].status,
+            'AGUARDANDO_NOTA'
+        )
+
     def test_historico_identifica_o_docente_solicitante(self):
 
         sala = EspacoFisico.objects.create(
