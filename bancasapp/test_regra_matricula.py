@@ -46,6 +46,10 @@ class RegraMatriculaTCCTests(TestCase):
             'avaliador.matricula@ufac.br',
             'Avaliador Matrícula',
         )
+        self.segundo_avaliador = self._criar_docente(
+            'segundo.avaliador.matricula@ufac.br',
+            'Segundo Avaliador Matrícula',
+        )
 
         self.espaco = EspacoFisico.objects.create(
             nome='Laboratório Regra Matrícula',
@@ -102,7 +106,7 @@ class RegraMatriculaTCCTests(TestCase):
             'opcao_data_fim': fim.strftime('%Y-%m-%dT%H:%M'),
             'coorientador': '',
             'avaliador_interno': self.avaliador.id,
-            'segundo_avaliador_interno': '',
+            'segundo_avaliador_interno': self.segundo_avaliador.id,
             'presidente': '',
             'nome_avaliador_externo': '',
             'titulacao_avaliador_externo': '',
@@ -158,6 +162,7 @@ class RegraMatriculaTCCTests(TestCase):
             projeto_tcc=projeto,
             orientador=orientador,
             avaliador_interno=self.avaliador,
+            segundo_avaliador_interno=self.segundo_avaliador,
         )
 
         if status_banca:
@@ -384,6 +389,7 @@ class RegraMatriculaTCCTests(TestCase):
                 projeto_tcc=projeto,
                 orientador=self.orientador,
                 avaliador_interno=self.avaliador,
+                segundo_avaliador_interno=self.segundo_avaliador,
             )
 
         saida = StringIO()

@@ -479,6 +479,16 @@ class AgendamentoTests(TestCase):
             perfil='DOCENTE'
         )
 
+        self.usuario_segundo_avaliador = User.objects.create_user(
+            username='segundo.avaliador@ufac.br',
+            password='Senha123!'
+        )
+
+        self.segundo_avaliador = pUsuario.objects.create(
+            usuario=self.usuario_segundo_avaliador,
+            perfil='DOCENTE'
+        )
+
         # Discente usado no teste
         self.discente = Discente.objects.create(
             nome='Aluno Teste',
@@ -582,6 +592,10 @@ class AgendamentoTests(TestCase):
 
                 'avaliador_interno': self.avaliador.id,
 
+                'segundo_avaliador_interno': (
+                    self.segundo_avaliador.id
+                ),
+
                 'nome_avaliador_externo': '',
 
                 'instituicao_avaliador_externo': '',
@@ -639,6 +653,10 @@ class AgendamentoTests(TestCase):
                 'orientador': self.docente.id,
 
                 'avaliador_interno': self.avaliador.id,
+
+                'segundo_avaliador_interno': (
+                    self.segundo_avaliador.id
+                ),
 
                 'nome_avaliador_externo': '',
 
@@ -751,6 +769,9 @@ class AgendamentoTests(TestCase):
                 'avaliador_interno':
                     self.avaliador.id,
 
+                'segundo_avaliador_interno':
+                    self.segundo_avaliador.id,
+
                 'nome_avaliador_externo':
                     '',
 
@@ -777,6 +798,47 @@ class AgendamentoTests(TestCase):
         self.assertEqual(
             SolicitacaoAgendamento.objects.count(),
             0
+        )
+
+    def test_solicitacao_exige_dois_avaliadores_internos(self):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        response = self.client.post(
+            reverse('solicitar_banca'),
+            {
+                **self.dados_academicos_solicitacao(),
+                'espaco': self.espaco.id,
+                'opcao_data_inicio': (
+                    self.inicio_agendamento.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+                'opcao_data_fim': (
+                    self.fim_agendamento.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    )
+                ),
+                'avaliador_interno': self.avaliador.id,
+                'segundo_avaliador_interno': '',
+                'nome_avaliador_externo': '',
+                'instituicao_avaliador_externo': '',
+                'arquivo_tcc': criar_pdf_teste(),
+            }
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            'A banca deve ter dois avaliadores internos.'
+        )
+        self.assertFalse(
+            SolicitacaoAgendamento.objects.exists()
+        )
+        self.assertFalse(
+            ComposicaoBanca.objects.exists()
         )
 
     def test_docente_nao_pode_ocupar_duas_funcoes(self):
@@ -810,7 +872,9 @@ class AgendamentoTests(TestCase):
 
                 'avaliador_interno': self.avaliador.id,
 
-                'segundo_avaliador_interno': '',
+                'segundo_avaliador_interno': (
+                    self.segundo_avaliador.id
+                ),
 
                 'nome_avaliador_externo': '',
 
@@ -846,14 +910,7 @@ class AgendamentoTests(TestCase):
             perfil='DOCENTE'
         )
 
-        usuario_segundo_avaliador = User.objects.create(
-            username='segundo.avaliador@ufac.br'
-        )
-
-        segundo_avaliador = pUsuario.objects.create(
-            usuario=usuario_segundo_avaliador,
-            perfil='DOCENTE'
-        )
+        segundo_avaliador = self.segundo_avaliador
 
         self.client.force_login(
             self.usuario_docente
@@ -952,6 +1009,9 @@ class AgendamentoTests(TestCase):
                 'avaliador_interno':
                     self.avaliador.id,
 
+                'segundo_avaliador_interno':
+                    self.segundo_avaliador.id,
+
                 'nome_avaliador_externo':
                     '',
 
@@ -1047,13 +1107,14 @@ class AgendamentoTests(TestCase):
             composicao.avaliador_interno,
             self.avaliador
         )
-        # Os participantes adicionais são opcionais.
+        # O coorientador é opcional e o segundo avaliador é obrigatório.
         self.assertIsNone(
             composicao.coorientador
         )
 
-        self.assertIsNone(
-            composicao.segundo_avaliador_interno
+        self.assertEqual(
+            composicao.segundo_avaliador_interno,
+            self.segundo_avaliador
         )
 
         # Após salvar, deve voltar ao Dashboard
@@ -1163,6 +1224,7 @@ class AgendamentoTests(TestCase):
                 ),
                 'orientador': self.docente.id,
                 'avaliador_interno': self.avaliador.id,
+                'segundo_avaliador_interno': self.segundo_avaliador.id,
                 'arquivo_tcc': criar_pdf_teste(),
             }
         )
@@ -1228,6 +1290,7 @@ class AgendamentoTests(TestCase):
                 ),
                 'orientador': self.docente.id,
                 'avaliador_interno': self.avaliador.id,
+                'segundo_avaliador_interno': self.segundo_avaliador.id,
                 'arquivo_tcc': criar_pdf_teste(),
             }
         )
@@ -1275,6 +1338,7 @@ class AgendamentoTests(TestCase):
                 ),
                 'orientador': self.docente.id,
                 'avaliador_interno': self.avaliador.id,
+                'segundo_avaliador_interno': self.segundo_avaliador.id,
                 'nome_avaliador_externo': 'Carlos Souza',
                 'titulacao_avaliador_externo': 'PROF_DR',
                 'instituicao_avaliador_externo': (
@@ -1366,6 +1430,16 @@ class AvaliacaoSolicitacaoTests(TestCase):
             perfil='DOCENTE'
         )
 
+        self.usuario_segundo_avaliador = User.objects.create_user(
+            username='segundo.avaliador.avaliacao@ufac.br',
+            password='Senha123!'
+        )
+
+        self.segundo_avaliador = pUsuario.objects.create(
+            usuario=self.usuario_segundo_avaliador,
+            perfil='DOCENTE'
+        )
+
         self.discente = Discente.objects.create(
             nome='Discente Avaliação',
             matricula='20260000002'
@@ -1426,6 +1500,7 @@ class AvaliacaoSolicitacaoTests(TestCase):
             solicitacao=self.solicitacao,
             orientador=self.docente,
             avaliador_interno=self.avaliador,
+            segundo_avaliador_interno=self.segundo_avaliador,
             presidente=self.avaliador,
             nome_avaliador_externo='Avaliador Externo',
             instituicao_avaliador_externo='Instituição Externa'
@@ -1794,7 +1869,9 @@ class AvaliacaoSolicitacaoTests(TestCase):
                     self.avaliador.id
                 ),
 
-                'segundo_avaliador_interno': '',
+                'segundo_avaliador_interno': (
+                    self.segundo_avaliador.id
+                ),
 
                 'nome_avaliador_externo': (
                     'Nome Externo Corrigido'
@@ -2101,6 +2178,45 @@ class AvaliacaoSolicitacaoTests(TestCase):
         self.assertEqual(
             BancaTCC.objects.count(),
             0
+        )
+
+    def test_banca_legada_sem_segundo_avaliador_nao_pode_ser_aprovada(
+        self
+    ):
+
+        self.composicao.segundo_avaliador_interno = None
+        self.composicao.save(
+            update_fields=['segundo_avaliador_interno']
+        )
+
+        self.client.force_login(
+            self.usuario_coordenacao
+        )
+
+        response = self.client.post(
+            self.url_avaliacao,
+            {
+                'acao': 'aprovar',
+                'presidente': self.avaliador.id,
+                'motivo_decisao': (
+                    'Tentativa de aprovar composição incompleta.'
+                ),
+            }
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            'A banca deve ter dois avaliadores internos.'
+        )
+
+        self.solicitacao.refresh_from_db()
+        self.assertEqual(
+            self.solicitacao.status,
+            'EM_ANÁLISE'
+        )
+        self.assertFalse(
+            BancaTCC.objects.exists()
         )
 
     def test_coordenacao_define_presidente_ao_aprovar(self):
@@ -4619,6 +4735,11 @@ class AutocompleteDocentesTests(TestCase):
             'Avaliador'
         )
 
+        self.segundo_avaliador = self.criar_docente(
+            'segundo.avaliador.autocomplete@ufac.br',
+            'Segundo Avaliador'
+        )
+
         self.presidente = self.criar_docente(
             'presidente.autocomplete@ufac.br',
             'Presidente Documental'
@@ -4702,7 +4823,9 @@ class AutocompleteDocentesTests(TestCase):
             'avaliador_interno': (
                 self.avaliador.id
             ),
-            'segundo_avaliador_interno': '',
+            'segundo_avaliador_interno': (
+                self.segundo_avaliador.id
+            ),
             'presidente': '',
             'nome_avaliador_externo': '',
             'titulacao_avaliador_externo': '',
@@ -4747,6 +4870,7 @@ class AutocompleteDocentesTests(TestCase):
             projeto_tcc=projeto,
             orientador=self.orientador,
             avaliador_interno=self.avaliador,
+            segundo_avaliador_interno=self.segundo_avaliador,
             presidente=presidente
         )
 

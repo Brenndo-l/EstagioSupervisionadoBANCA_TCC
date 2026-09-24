@@ -174,6 +174,11 @@ class Command(BaseCommand):
             )
         )
 
+        composicoes_sem_segundo_avaliador = (
+            ComposicaoBanca.objects
+            .filter(segundo_avaliador_interno__isnull=True)
+        )
+
         presidentes_fora_da_composicao = (
             ComposicaoBanca.objects
             .filter(presidente__isnull=False)
@@ -280,6 +285,15 @@ class Command(BaseCommand):
                     'a solicitação. Pode ser um registro legado.'
                 ),
                 orientadores_divergentes,
+            ),
+            (
+                'COMPOSICAO_SEM_SEGUNDO_AVALIADOR',
+                (
+                    'Composição sem o segundo avaliador interno '
+                    'obrigatório. O registro precisa ser corrigido '
+                    'antes da aprovação.'
+                ),
+                composicoes_sem_segundo_avaliador,
             ),
             (
                 'PRESIDENTE_FORA_DA_COMPOSICAO',

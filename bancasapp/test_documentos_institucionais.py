@@ -71,6 +71,20 @@ class DocumentosInstitucionaisTests(TestCase):
             titulacao='PROF_ME'
         )
 
+        self.usuario_segundo_avaliador = User.objects.create_user(
+            username='segundo.avaliador.ata@ufac.br',
+            password='Senha123!',
+            first_name='Paula',
+            last_name='Lima',
+            is_active=True
+        )
+
+        self.segundo_avaliador = pUsuario.objects.create(
+            usuario=self.usuario_segundo_avaliador,
+            perfil='DOCENTE',
+            titulacao='PROFA_DRA'
+        )
+
         self.espaco = EspacoFisico.objects.create(
             nome='Laboratório Web Academy'
         )
@@ -114,6 +128,7 @@ class DocumentosInstitucionaisTests(TestCase):
             solicitacao=self.solicitacao,
             orientador=self.orientador,
             avaliador_interno=self.avaliador,
+            segundo_avaliador_interno=self.segundo_avaliador,
             presidente=self.orientador,
             nome_avaliador_externo='Carlos Externo',
             titulacao_avaliador_externo='PROF_DR',
@@ -189,6 +204,38 @@ class DocumentosInstitucionaisTests(TestCase):
         self.assertEqual(
             integrante_externo['instituicao'],
             'IFAC'
+        )
+
+        nomes_integrantes = {
+            integrante['nome']
+            for integrante in dados['integrantes']
+        }
+
+        self.assertTrue(
+            any('João Souza' in nome for nome in nomes_integrantes)
+        )
+        self.assertTrue(
+            any('Paula Lima' in nome for nome in nomes_integrantes)
+        )
+
+        primeiro_avaliador = next(
+            integrante
+            for integrante in dados['integrantes']
+            if 'João Souza' in integrante['nome']
+        )
+        segundo_avaliador = next(
+            integrante
+            for integrante in dados['integrantes']
+            if 'Paula Lima' in integrante['nome']
+        )
+
+        self.assertEqual(
+            primeiro_avaliador['funcao'],
+            'Primeiro(a) avaliador(a) interno(a)'
+        )
+        self.assertEqual(
+            segundo_avaliador['funcao'],
+            'Segundo(a) avaliador(a) interno(a)'
         )
 
     def test_primeiro_paragrafo_da_ata_pdf_e_docx(self):
@@ -470,6 +517,17 @@ class NotificacaoGlobalAvaliacaoTests(TestCase):
             perfil='DOCENTE'
         )
 
+        usuario_segundo_avaliador = User.objects.create_user(
+            username='segundo.avaliador.alerta@ufac.br',
+            password='Senha123!',
+            is_active=True
+        )
+
+        segundo_avaliador = pUsuario.objects.create(
+            usuario=usuario_segundo_avaliador,
+            perfil='DOCENTE'
+        )
+
         espaco = EspacoFisico.objects.create(
             nome='Sala de avaliação do alerta'
         )
@@ -504,6 +562,7 @@ class NotificacaoGlobalAvaliacaoTests(TestCase):
             solicitacao=self.solicitacao,
             orientador=orientador,
             avaliador_interno=avaliador,
+            segundo_avaliador_interno=segundo_avaliador,
             presidente=None
         )
 

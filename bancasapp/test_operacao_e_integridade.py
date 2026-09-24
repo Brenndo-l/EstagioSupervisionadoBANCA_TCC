@@ -8,6 +8,7 @@ from unittest.mock import patch
 from zipfile import ZipFile
 
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.test import TestCase
@@ -73,6 +74,20 @@ class BaseIntegridadeTestCase(TestCase):
             titulacao='PROF_DR',
         )
 
+        usuario_segundo_avaliador = User.objects.create_user(
+            username='segundo.avaliador.integridade@ufac.br',
+            password='Senha123!',
+            first_name='Ana',
+            last_name='Segunda Avaliadora',
+            is_active=True,
+        )
+
+        self.segundo_avaliador = pUsuario.objects.create(
+            usuario=usuario_segundo_avaliador,
+            perfil='DOCENTE',
+            titulacao='PROFA_DRA',
+        )
+
         self.espaco = EspacoFisico.objects.create(
             nome='Laboratório de Integridade',
         )
@@ -107,6 +122,7 @@ class BaseIntegridadeTestCase(TestCase):
             solicitacao=self.solicitacao,
             orientador=self.orientador,
             avaliador_interno=self.avaliador,
+            segundo_avaliador_interno=self.segundo_avaliador,
             presidente=self.orientador,
             nome_avaliador_externo='Carlos Externo',
             titulacao_avaliador_externo='PROF_DR',
@@ -212,6 +228,18 @@ class RepositorioEDocumentoTests(BaseIntegridadeTestCase):
 
 class AuditoriaIntegridadeTests(BaseIntegridadeTestCase):
 
+    def test_modelo_exige_segundo_avaliador_interno(self):
+
+        self.composicao.segundo_avaliador_interno = None
+
+        with self.assertRaises(ValidationError) as contexto:
+            self.composicao.full_clean()
+
+        self.assertIn(
+            'segundo_avaliador_interno',
+            contexto.exception.message_dict
+        )
+
     def test_base_coerente_nao_apresenta_inconsistencias(self):
 
         saida = StringIO()
@@ -248,6 +276,35 @@ class AuditoriaIntegridadeTests(BaseIntegridadeTestCase):
 
         self.assertIn(
             'ORIENTADOR_DIFERENTE_DO_SOLICITANTE',
+            texto
+        )
+        self.assertIn(
+            str(self.composicao.id),
+            texto
+        )
+        self.assertIn(
+            'Nenhum dado foi alterado.',
+            texto
+        )
+
+    def test_auditoria_localiza_composicao_sem_segundo_avaliador(self):
+
+        self.composicao.segundo_avaliador_interno = None
+        self.composicao.save(
+            update_fields=['segundo_avaliador_interno']
+        )
+
+        saida = StringIO()
+
+        call_command(
+            'auditar_integridade_sgtcc',
+            stdout=saida,
+        )
+
+        texto = saida.getvalue()
+
+        self.assertIn(
+            'COMPOSICAO_SEM_SEGUNDO_AVALIADOR',
             texto
         )
         self.assertIn(

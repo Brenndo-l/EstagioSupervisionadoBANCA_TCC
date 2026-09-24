@@ -150,6 +150,17 @@ def criar_solicitacao_banca_segura(*, form, orientador):
     requisições concorrentes para a mesma matrícula.
     """
 
+    segundo_avaliador = form.cleaned_data.get(
+        'segundo_avaliador_interno'
+    )
+
+    if segundo_avaliador is None:
+        raise SolicitacaoBancaInvalida(
+            'A banca deve ter dois avaliadores internos. '
+            'Informe o segundo avaliador antes de enviar '
+            'a solicitação.'
+        )
+
     matricula = form.cleaned_data['matricula_discente']
     nome_discente = form.cleaned_data['nome_discente']
 
@@ -204,9 +215,7 @@ def criar_solicitacao_banca_segura(*, form, orientador):
         orientador=orientador,
         coorientador=form.cleaned_data['coorientador'],
         avaliador_interno=form.cleaned_data['avaliador_interno'],
-        segundo_avaliador_interno=(
-            form.cleaned_data['segundo_avaliador_interno']
-        ),
+        segundo_avaliador_interno=segundo_avaliador,
         presidente=form.cleaned_data['presidente'],
         nome_avaliador_externo=(
             form.cleaned_data['nome_avaliador_externo']

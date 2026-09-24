@@ -584,14 +584,14 @@ class SolicitacaoBancaForm(forms.ModelForm):
 
     avaliador_interno = DocenteModelChoiceField(
         queryset=pUsuario.objects.none(),
-        label='Avaliador Interno (UFAC)',
-        empty_label='Selecione o avaliador',
+        label='Primeiro Avaliador Interno (UFAC)',
+        empty_label='Selecione o primeiro avaliador',
         widget=autocomplete_docente_widget(
             'Digite nome ou e-mail',
             grupo_exclusivo=True
         ),
         error_messages={
-            'required': 'Selecione o avaliador interno.',
+            'required': 'Selecione o primeiro avaliador interno.',
             'invalid_choice': (
                 'Selecione um avaliador interno válido nas sugestões.'
             ),
@@ -600,16 +600,21 @@ class SolicitacaoBancaForm(forms.ModelForm):
 
     segundo_avaliador_interno = DocenteModelChoiceField(
         queryset=pUsuario.objects.none(),
-        required=False,
-        label='Segundo Avaliador Interno (Opcional)',
-        empty_label='Sem segundo avaliador',
+        required=True,
+        label='Segundo Avaliador Interno (UFAC)',
+        empty_label='Selecione o segundo avaliador',
         widget=autocomplete_docente_widget(
             'Digite nome ou e-mail',
             grupo_exclusivo=True
         ),
         error_messages={
+            'required': (
+                'A banca deve ter dois avaliadores internos. '
+                'Selecione o segundo avaliador interno.'
+            ),
             'invalid_choice': (
-                'Selecione um segundo avaliador válido nas sugestões.'
+                'Selecione um segundo avaliador interno válido '
+                'nas sugestões.'
             ),
         }
     )
@@ -1403,6 +1408,19 @@ class AvaliacaoSolicitacaoForm(forms.Form):
                 'presidente',
                 'Selecione o presidente da banca antes '
                 'de aprovar a solicitação.'
+            )
+
+        if (
+            self.acao == 'aprovar'
+            and self.composicao
+            and not self.composicao.segundo_avaliador_interno_id
+        ):
+
+            self.add_error(
+                None,
+                'A banca deve ter dois avaliadores internos. '
+                'Edite a solicitação e informe o segundo '
+                'avaliador antes de aprová-la.'
             )
 
         return cleaned_data

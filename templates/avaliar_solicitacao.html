@@ -105,7 +105,7 @@
                     {% endif %}
 
                     <div class="coord-detail-item">
-                        <span>Avaliador interno</span>
+                        <span>Primeiro avaliador interno</span>
                         <strong>{{ composicao.avaliador_interno }}</strong>
                     </div>
 
@@ -113,6 +113,14 @@
                         <div class="coord-detail-item">
                             <span>Segundo avaliador interno</span>
                             <strong>{{ composicao.segundo_avaliador_interno }}</strong>
+                        </div>
+                    {% else %}
+                        <div class="coord-detail-item coord-detail-item--wide">
+                            <span>Segundo avaliador interno</span>
+                            <strong class="coord-muted-text">
+                                Não informado — edite a solicitação antes
+                                de aprová-la.
+                            </strong>
                         </div>
                     {% endif %}
 

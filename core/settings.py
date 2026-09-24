@@ -637,7 +637,7 @@ EMAIL_TIMEOUT = variavel_inteira(
 
 DEFAULT_FROM_EMAIL = os.environ.get(
     'DJANGO_DEFAULT_FROM_EMAIL',
-    'SGTCC <nao-responda@ufac.br>'
+    'SGTCC <sistemas.ccet@ufac.br>'
 ).strip()
 
 SMTP_EMAIL_BACKEND = (

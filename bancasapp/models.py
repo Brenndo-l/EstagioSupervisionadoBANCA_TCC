@@ -486,12 +486,66 @@ class ComposicaoBanca(models.Model):
     solicitacao = models.OneToOneField(SolicitacaoAgendamento,on_delete=models.CASCADE,related_name='composicao_banca',null=True,blank=True,verbose_name='Solicitação')
     orientador = models.ForeignKey(pUsuario, on_delete=models.PROTECT, related_name="bancas_orientador", verbose_name="Professor Orientador")
     coorientador = models.ForeignKey(pUsuario,on_delete=models.PROTECT,related_name='bancas_coorientador',verbose_name='Professor Coorientador',null=True,blank=True)
-    avaliador_interno = models.ForeignKey(pUsuario, on_delete=models.PROTECT, related_name="bancas_avaliador_interno", verbose_name="Avaliador Interno (UFAC)")
-    segundo_avaliador_interno = models.ForeignKey(pUsuario,on_delete=models.PROTECT,related_name='bancas_segundo_avaliador_interno',verbose_name='Segundo Avaliador Interno (UFAC)',null=True,blank=True)
+    avaliador_interno = models.ForeignKey(pUsuario, on_delete=models.PROTECT, related_name="bancas_avaliador_interno", verbose_name="Primeiro Avaliador Interno (UFAC)")
+    # O banco preserva NULL apenas para permitir a leitura e a correção de
+    # registros legados. Em novos cadastros e no Django Admin, o campo é
+    # obrigatório; solicitações antigas incompletas não podem ser aprovadas.
+    segundo_avaliador_interno = models.ForeignKey(pUsuario,on_delete=models.PROTECT,related_name='bancas_segundo_avaliador_interno',verbose_name='Segundo Avaliador Interno (UFAC)',null=True,blank=False)
     presidente = models.ForeignKey(pUsuario,on_delete=models.PROTECT,related_name='bancas_presididas',verbose_name='Presidente da banca',null=True,blank=True)
     nome_avaliador_externo = models.CharField(max_length=150, verbose_name="Nome do Avaliador Externo", blank=True, null=True)
     titulacao_avaliador_externo = models.CharField(max_length=12,choices=pUsuario.TITULACOES_ACADEMICAS,blank=True,default='',verbose_name='Titulação do Avaliador Externo')
     instituicao_avaliador_externo = models.CharField(max_length=100, verbose_name="Instituição Externa", blank=True, null=True)
+
+    def clean(self):
+        super().clean()
+
+        erros = {}
+
+        if not self.segundo_avaliador_interno_id:
+            erros['segundo_avaliador_interno'] = (
+                'A banca deve ter dois avaliadores internos. '
+                'Informe o segundo avaliador interno.'
+            )
+
+        participantes = (
+            ('coorientador', self.coorientador_id),
+            ('avaliador_interno', self.avaliador_interno_id),
+            (
+                'segundo_avaliador_interno',
+                self.segundo_avaliador_interno_id,
+            ),
+        )
+
+        docentes_escolhidos = {
+            self.orientador_id: 'orientador'
+        } if self.orientador_id else {}
+
+        for campo, docente_id in participantes:
+            if not docente_id:
+                continue
+
+            funcao_anterior = docentes_escolhidos.get(docente_id)
+
+            if funcao_anterior:
+                erros[campo] = (
+                    'Cada integrante interno deve ser uma pessoa '
+                    'diferente. Este docente já foi selecionado '
+                    f'como {funcao_anterior.replace("_", " ")}.'
+                )
+            else:
+                docentes_escolhidos[docente_id] = campo
+
+        if (
+            self.presidente_id
+            and self.presidente_id not in docentes_escolhidos
+        ):
+            erros['presidente'] = (
+                'O presidente deve ser um dos integrantes '
+                'internos já indicados para a banca.'
+            )
+
+        if erros:
+            raise ValidationError(erros)
 
     def __str__(self):
         return f"Banca: {self.projeto_tcc.titulo}"

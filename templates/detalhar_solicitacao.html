@@ -105,13 +105,21 @@
                     </div>
                 {% endif %}
                 <div class="shared-detail-item">
-                    <dt>Avaliador interno</dt>
+                    <dt>Primeiro avaliador interno</dt>
                     <dd>{{ composicao.avaliador_interno }}</dd>
                 </div>
                 {% if composicao.segundo_avaliador_interno %}
                     <div class="shared-detail-item">
                         <dt>Segundo avaliador interno</dt>
                         <dd>{{ composicao.segundo_avaliador_interno }}</dd>
+                    </div>
+                {% else %}
+                    <div class="shared-detail-item">
+                        <dt>Segundo avaliador interno</dt>
+                        <dd class="shared-muted-value">
+                            Não informado — a composição precisa ser corrigida
+                            antes da aprovação.
+                        </dd>
                     </div>
                 {% endif %}
                 <div class="shared-detail-item">

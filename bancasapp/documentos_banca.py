@@ -176,7 +176,7 @@ def montar_integrantes(composicao):
         ),
         (
             composicao.avaliador_interno,
-            'Avaliador(a) interno(a)',
+            'Primeiro(a) avaliador(a) interno(a)',
         ),
         (
             composicao.segundo_avaliador_interno,
