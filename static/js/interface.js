@@ -111,4 +111,55 @@
         }
     );
 
+    // A Vercel rejeita corpos maiores antes de a requisição chegar ao
+    // Django. Esta validação dá uma mensagem clara no próprio navegador;
+    // o formulário também repete a validação no servidor.
+    document.querySelectorAll(
+        'input[type="file"][data-max-file-size]'
+    ).forEach(function (campo) {
+        function removerErroTamanho() {
+            campo.setCustomValidity('');
+
+            const erroAtual = campo.parentElement.querySelector(
+                '.arquivo-tamanho-erro'
+            );
+
+            if (erroAtual) {
+                erroAtual.remove();
+            }
+        }
+
+        campo.addEventListener('change', function () {
+            removerErroTamanho();
+
+            const arquivo = campo.files && campo.files[0];
+            const limite = Number(campo.dataset.maxFileSize);
+
+            if (!arquivo || !Number.isFinite(limite)) {
+                return;
+            }
+
+            if (arquivo.size > limite) {
+                const rotulo = campo.dataset.maxFileLabel || 'permitido';
+                const mensagem = (
+                    'O arquivo selecionado ultrapassa o limite de '
+                    + rotulo
+                    + '.'
+                );
+
+                campo.value = '';
+                campo.setCustomValidity(mensagem);
+
+                const aviso = document.createElement('p');
+                aviso.className = (
+                    'shared-field-error arquivo-tamanho-erro'
+                );
+                aviso.setAttribute('role', 'alert');
+                aviso.textContent = mensagem;
+                campo.insertAdjacentElement('afterend', aviso);
+                campo.reportValidity();
+            }
+        });
+    });
+
 }());

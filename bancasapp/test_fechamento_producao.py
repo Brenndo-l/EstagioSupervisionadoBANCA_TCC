@@ -135,6 +135,23 @@ class ValidacaoModeloDocumentoTests(SimpleTestCase):
             str(form.errors['arquivo'])
         )
 
+    @override_settings(SGTCC_MAX_MODELO_UPLOAD_MB=4)
+    def test_modelo_respeita_limite_reduzido_da_hospedagem(self):
+
+        form = self.formulario(
+            SimpleUploadedFile(
+                'modelo.pdf',
+                b'%PDF-' + b'0' * (4 * 1024 * 1024),
+                content_type='application/pdf'
+            )
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn(
+            'não pode ultrapassar 4 MB',
+            str(form.errors['arquivo'])
+        )
+
 
 class PaginasErroTests(SimpleTestCase):
 

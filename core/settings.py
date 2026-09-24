@@ -10,6 +10,14 @@ from django.utils.csp import CSP
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# A Vercel define estas variáveis durante build e execução. A identificação
+# explícita permite aplicar limites compatíveis com o ambiente serverless e
+# falhar cedo quando algum serviço obrigatório não estiver conectado.
+VERCEL_RUNTIME = bool(
+    os.environ.get('VERCEL', '').strip()
+    or os.environ.get('VERCEL_ENV', '').strip()
+)
+
 
 def variavel_booleana(nome, padrao=False):
     """Converte uma variável de ambiente em booleano."""
@@ -132,6 +140,24 @@ ALLOWED_HOSTS = variavel_lista(
     else ''
 )
 
+# Os domínios gerados pela própria Vercel mudam entre Production e Preview.
+# Eles são fornecidos sem protocolo e podem ser incluídos sem abrir o sistema
+# para qualquer host da internet.
+for nome_variavel in (
+    'VERCEL_URL',
+    'VERCEL_BRANCH_URL',
+    'VERCEL_PROJECT_PRODUCTION_URL',
+):
+    host_vercel = os.environ.get(nome_variavel, '').strip().lower()
+
+    if (
+        host_vercel
+        and '://' not in host_vercel
+        and '/' not in host_vercel
+        and host_vercel not in ALLOWED_HOSTS
+    ):
+        ALLOWED_HOSTS.append(host_vercel)
+
 if not DEBUG and not ALLOWED_HOSTS:
     raise ImproperlyConfigured(
         'Defina DJANGO_ALLOWED_HOSTS antes de iniciar o sistema '
@@ -146,6 +172,13 @@ if not DEBUG and '*' in ALLOWED_HOSTS:
 CSRF_TRUSTED_ORIGINS = variavel_lista(
     'DJANGO_CSRF_TRUSTED_ORIGINS'
 )
+
+for host_vercel in ALLOWED_HOSTS:
+    if host_vercel.endswith('.vercel.app'):
+        origem_vercel = f'https://{host_vercel}'
+
+        if origem_vercel not in CSRF_TRUSTED_ORIGINS:
+            CSRF_TRUSTED_ORIGINS.append(origem_vercel)
 
 
 # Application definition
@@ -342,6 +375,61 @@ STATICFILES_DIRS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# O sistema de arquivos da Vercel é somente leitura e não preserva uploads.
+# Ao conectar um Vercel Blob privado, a integração cria automaticamente esta
+# variável. Sem ela, o desenvolvimento local continua usando a pasta media.
+BLOB_READ_WRITE_TOKEN = os.environ.get(
+    'BLOB_READ_WRITE_TOKEN',
+    '',
+).strip()
+
+BLOB_STORE_ID = os.environ.get(
+    'BLOB_STORE_ID',
+    '',
+).strip()
+
+if VERCEL_RUNTIME and not (
+    BLOB_READ_WRITE_TOKEN
+    or BLOB_STORE_ID
+):
+    raise ImproperlyConfigured(
+        'Conecte um Vercel Blob privado ao projeto antes do deploy. '
+        'A integração deve fornecer BLOB_STORE_ID ou '
+        'BLOB_READ_WRITE_TOKEN.'
+    )
+
+STORAGES = {
+    'default': {
+        'BACKEND': (
+            'bancasapp.storage_backends.VercelBlobStorage'
+            if BLOB_READ_WRITE_TOKEN or BLOB_STORE_ID
+            else 'django.core.files.storage.FileSystemStorage'
+        ),
+    },
+    'staticfiles': {
+        'BACKEND': (
+            'django.contrib.staticfiles.storage.StaticFilesStorage'
+        ),
+    },
+}
+
+# A Vercel limita o corpo de cada requisição e resposta da Function. O teto de
+# 4 MB deixa margem para os demais campos do formulário. Em um servidor
+# tradicional, os limites históricos do SGTCC continuam disponíveis.
+SGTCC_MAX_TCC_UPLOAD_MB = variavel_inteira(
+    'SGTCC_MAX_TCC_UPLOAD_MB',
+    4 if VERCEL_RUNTIME else 25,
+    minimo=1,
+    maximo=4 if VERCEL_RUNTIME else 25,
+)
+
+SGTCC_MAX_MODELO_UPLOAD_MB = variavel_inteira(
+    'SGTCC_MAX_MODELO_UPLOAD_MB',
+    4 if VERCEL_RUNTIME else 10,
+    minimo=1,
+    maximo=4 if VERCEL_RUNTIME else 10,
+)
+
 # Sessão persistente por 14 dias quando o usuário
 # selecionar a opção "Manter conectado".
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 14
@@ -385,7 +473,7 @@ SECURE_SSL_REDIRECT = variavel_booleana(
 
 SECURE_HSTS_SECONDS = variavel_inteira(
     'DJANGO_SECURE_HSTS_SECONDS',
-    0,
+    3600 if VERCEL_RUNTIME and not DEBUG else 0,
     minimo=0,
 )
 

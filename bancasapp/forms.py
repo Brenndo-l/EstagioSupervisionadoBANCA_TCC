@@ -661,12 +661,21 @@ class SolicitacaoBancaForm(forms.ModelForm):
         label='Arquivo do TCC em PDF',
         help_text=(
             'Envie o trabalho em formato PDF, '
-            'com no máximo 25 MB.'
+            'com no máximo '
+            f'{settings.SGTCC_MAX_TCC_UPLOAD_MB} MB.'
         ),
         widget=forms.FileInput(
             attrs={
                 'class': 'form-input',
                 'accept': '.pdf,application/pdf',
+                'data-max-file-size': str(
+                    settings.SGTCC_MAX_TCC_UPLOAD_MB
+                    * 1024
+                    * 1024
+                ),
+                'data-max-file-label': (
+                    f'{settings.SGTCC_MAX_TCC_UPLOAD_MB} MB'
+                ),
             }
         ),
         error_messages={
@@ -878,11 +887,13 @@ class SolicitacaoBancaForm(forms.ModelForm):
         if not arquivo:
             return arquivo
 
-        limite_bytes = 25 * 1024 * 1024
+        limite_mb = settings.SGTCC_MAX_TCC_UPLOAD_MB
+        limite_bytes = limite_mb * 1024 * 1024
 
         if arquivo.size > limite_bytes:
             raise forms.ValidationError(
-                'O arquivo do TCC não pode ultrapassar 25 MB.'
+                'O arquivo do TCC não pode ultrapassar '
+                f'{limite_mb} MB.'
             )
 
         # Não confia apenas na extensão informada pelo navegador.
@@ -1615,11 +1626,13 @@ class ModeloDocumentoForm(forms.ModelForm):
         if not arquivo:
             return arquivo
 
-        limite_bytes = 10 * 1024 * 1024
+        limite_mb = settings.SGTCC_MAX_MODELO_UPLOAD_MB
+        limite_bytes = limite_mb * 1024 * 1024
 
         if arquivo.size > limite_bytes:
             raise forms.ValidationError(
-                'O modelo de documento não pode ultrapassar 10 MB.'
+                'O modelo de documento não pode ultrapassar '
+                f'{limite_mb} MB.'
             )
 
         extensao = (
@@ -1720,6 +1733,14 @@ class ModeloDocumentoForm(forms.ModelForm):
             'arquivo': forms.FileInput(attrs={
                 'class': 'form-input',
                 'accept': '.pdf,.doc,.docx,.odt',
+                'data-max-file-size': str(
+                    settings.SGTCC_MAX_MODELO_UPLOAD_MB
+                    * 1024
+                    * 1024
+                ),
+                'data-max-file-label': (
+                    f'{settings.SGTCC_MAX_MODELO_UPLOAD_MB} MB'
+                ),
             }),
         }
 
@@ -1732,6 +1753,7 @@ class ModeloDocumentoForm(forms.ModelForm):
         help_texts = {
             'arquivo': (
                 'Formatos aceitos: PDF, DOC, DOCX ou ODT, '
-                'com no máximo 10 MB.'
+                'com no máximo '
+                f'{settings.SGTCC_MAX_MODELO_UPLOAD_MB} MB.'
             ),
         }
