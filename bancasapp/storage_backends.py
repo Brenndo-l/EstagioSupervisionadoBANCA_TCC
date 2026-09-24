@@ -27,19 +27,18 @@ class VercelBlobStorage(Storage):
                 'BLOB_READ_WRITE_TOKEN',
                 '',
             ).strip()
+            or os.environ.get(
+                'VERCEL_BLOB_READ_WRITE_TOKEN',
+                '',
+            ).strip()
         )
         self.access = access
 
-        if (
-            not self.token
-            and not os.environ.get(
-                'BLOB_STORE_ID',
-                '',
-            ).strip()
-        ):
+        if not self.token:
             raise ImproperlyConfigured(
-                'Conecte um Vercel Blob ao projeto ou defina '
-                'BLOB_READ_WRITE_TOKEN.'
+                'Defina BLOB_READ_WRITE_TOKEN para acessar o '
+                'Vercel Blob privado. BLOB_STORE_ID sozinho não '
+                'autoriza leitura ou gravação.'
             )
 
         if self.access != 'private':
@@ -58,26 +57,7 @@ class VercelBlobStorage(Storage):
         # enquanto o armazenamento padrão for o sistema de arquivos.
         from vercel.blob import BlobClient
 
-        return BlobClient(token=self._obter_token())
-
-    def _obter_token(self):
-
-        if self.token:
-            return self.token
-
-        # Em produção a Vercel fornece um token OIDC curto e rotativo. O SDK
-        # consulta o contexto da requisição para não manter credencial fixa.
-        from vercel.oidc import (
-            VercelOidcTokenError,
-            get_vercel_oidc_token,
-        )
-
-        try:
-            return get_vercel_oidc_token()
-        except VercelOidcTokenError as erro:
-            raise OSError(
-                'Não foi possível autenticar o Vercel Blob por OIDC.'
-            ) from erro
+        return BlobClient(token=self.token)
 
     def _open(self, name, mode='rb'):
 

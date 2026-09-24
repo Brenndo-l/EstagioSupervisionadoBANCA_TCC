@@ -18,7 +18,6 @@ VERCEL_RUNTIME = bool(
     or os.environ.get('VERCEL_ENV', '').strip()
 )
 
-
 def variavel_booleana(nome, padrao=False):
     """Converte uma variável de ambiente em booleano."""
 
@@ -102,8 +101,14 @@ def variavel_inteira(nome, padrao, minimo=0, maximo=None):
 # Em produção, a chave passa a ser obrigatória por variável de ambiente.
 DEBUG = variavel_booleana(
     'DJANGO_DEBUG',
-    True
+    not VERCEL_RUNTIME
 )
+
+if VERCEL_RUNTIME and DEBUG:
+    raise ImproperlyConfigured(
+        'DJANGO_DEBUG deve ser False na Vercel. '
+        'Remova a variável ou altere seu valor antes do deploy.'
+    )
 
 SECRET_KEY = os.environ.get(
     'DJANGO_SECRET_KEY',
@@ -233,6 +238,12 @@ DATABASE_URL = os.environ.get(
     'DATABASE_URL',
     '',
 ).strip()
+
+if VERCEL_RUNTIME and not DATABASE_URL:
+    raise ImproperlyConfigured(
+        'Defina DATABASE_URL na Vercel conectando o banco PostgreSQL '
+        'do Neon ao projeto.'
+    )
 
 if DATABASE_URL:
 
@@ -378,31 +389,35 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # O sistema de arquivos da Vercel é somente leitura e não preserva uploads.
 # Ao conectar um Vercel Blob privado, a integração cria automaticamente esta
 # variável. Sem ela, o desenvolvimento local continua usando a pasta media.
-BLOB_READ_WRITE_TOKEN = os.environ.get(
-    'BLOB_READ_WRITE_TOKEN',
-    '',
-).strip()
+BLOB_READ_WRITE_TOKEN = (
+    os.environ.get(
+        'BLOB_READ_WRITE_TOKEN',
+        '',
+    ).strip()
+    or os.environ.get(
+        'VERCEL_BLOB_READ_WRITE_TOKEN',
+        '',
+    ).strip()
+)
 
 BLOB_STORE_ID = os.environ.get(
     'BLOB_STORE_ID',
     '',
 ).strip()
 
-if VERCEL_RUNTIME and not (
-    BLOB_READ_WRITE_TOKEN
-    or BLOB_STORE_ID
-):
+if VERCEL_RUNTIME and not BLOB_READ_WRITE_TOKEN:
     raise ImproperlyConfigured(
-        'Conecte um Vercel Blob privado ao projeto antes do deploy. '
-        'A integração deve fornecer BLOB_STORE_ID ou '
-        'BLOB_READ_WRITE_TOKEN.'
+        'O Vercel Blob privado precisa fornecer BLOB_READ_WRITE_TOKEN. '
+        'BLOB_STORE_ID e BLOB_WEBHOOK_PUBLIC_KEY não autorizam leitura '
+        'ou gravação. Na conexão do Blob com o projeto, ative a opção '
+        'de adicionar o token de leitura e escrita e faça novo deploy.'
     )
 
 STORAGES = {
     'default': {
         'BACKEND': (
             'bancasapp.storage_backends.VercelBlobStorage'
-            if BLOB_READ_WRITE_TOKEN or BLOB_STORE_ID
+            if BLOB_READ_WRITE_TOKEN
             else 'django.core.files.storage.FileSystemStorage'
         ),
     },
@@ -557,7 +572,7 @@ SGTCC_TRUST_PROXY_CLIENT_IP = variavel_booleana(
 
 if variavel_booleana(
     'DJANGO_TRUST_PROXY_SSL_HEADER',
-    False
+    VERCEL_RUNTIME
 ):
     SECURE_PROXY_SSL_HEADER = (
         'HTTP_X_FORWARDED_PROTO',
@@ -568,13 +583,17 @@ if variavel_booleana(
 # Em produção, todas as opções podem ser definidas pelo serviço de SMTP.
 EMAIL_BACKEND = os.environ.get(
     'DJANGO_EMAIL_BACKEND',
-    'django.core.mail.backends.console.EmailBackend'
-)
+    (
+        'django.core.mail.backends.console.EmailBackend'
+        if DEBUG
+        else 'django.core.mail.backends.smtp.EmailBackend'
+    ),
+).strip()
 
 EMAIL_HOST = os.environ.get(
     'DJANGO_EMAIL_HOST',
     ''
-)
+).strip()
 
 EMAIL_PORT = variavel_inteira(
     'DJANGO_EMAIL_PORT',
@@ -586,12 +605,12 @@ EMAIL_PORT = variavel_inteira(
 EMAIL_HOST_USER = os.environ.get(
     'DJANGO_EMAIL_HOST_USER',
     ''
-)
+).strip()
 
 EMAIL_HOST_PASSWORD = os.environ.get(
     'DJANGO_EMAIL_HOST_PASSWORD',
     ''
-)
+).strip()
 
 EMAIL_USE_TLS = variavel_booleana(
     'DJANGO_EMAIL_USE_TLS',
@@ -609,10 +628,53 @@ if EMAIL_USE_TLS and EMAIL_USE_SSL:
         'DJANGO_EMAIL_USE_SSL.'
     )
 
+EMAIL_TIMEOUT = variavel_inteira(
+    'DJANGO_EMAIL_TIMEOUT',
+    15,
+    minimo=1,
+    maximo=120,
+)
+
 DEFAULT_FROM_EMAIL = os.environ.get(
     'DJANGO_DEFAULT_FROM_EMAIL',
     'SGTCC <nao-responda@ufac.br>'
+).strip()
+
+SMTP_EMAIL_BACKEND = (
+    'django.core.mail.backends.smtp.EmailBackend'
 )
+
+if VERCEL_RUNTIME:
+
+    if EMAIL_BACKEND != SMTP_EMAIL_BACKEND:
+        raise ImproperlyConfigured(
+            'DJANGO_EMAIL_BACKEND deve usar '
+            'django.core.mail.backends.smtp.EmailBackend na Vercel. '
+            'O backend de console apenas escreve o e-mail nos logs.'
+        )
+
+    configuracoes_smtp_obrigatorias = {
+        'DJANGO_EMAIL_HOST': EMAIL_HOST,
+        'DJANGO_EMAIL_HOST_USER': EMAIL_HOST_USER,
+        'DJANGO_EMAIL_HOST_PASSWORD': EMAIL_HOST_PASSWORD,
+        'DJANGO_DEFAULT_FROM_EMAIL': os.environ.get(
+            'DJANGO_DEFAULT_FROM_EMAIL',
+            '',
+        ).strip(),
+    }
+
+    configuracoes_smtp_ausentes = [
+        nome
+        for nome, valor in configuracoes_smtp_obrigatorias.items()
+        if not valor
+    ]
+
+    if configuracoes_smtp_ausentes:
+        raise ImproperlyConfigured(
+            'Configure o SMTP real na Vercel. Variáveis ausentes: '
+            + ', '.join(configuracoes_smtp_ausentes)
+            + '.'
+        )
 
 # Validade do link de confirmação: 24 horas.
 PASSWORD_RESET_TIMEOUT = 60 * 60 * 24

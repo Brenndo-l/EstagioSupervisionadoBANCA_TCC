@@ -81,7 +81,12 @@ DJANGO_ALLOWED_HOSTS=<domínio do sistema>
 DJANGO_CSRF_TRUSTED_ORIGINS=https://<domínio do sistema>
 
 As credenciais SMTP também devem ser cadastradas como variáveis de ambiente.
-Nunca grave senhas, chaves ou credenciais reais no Git.
+Na Vercel, o sistema recusa o backend de console para evitar notificações que
+apareçam apenas nos logs. Nunca grave senhas, chaves ou credenciais reais no
+Git.
+
+O roteiro completo de Neon, Blob privado, SMTP, migrações e criação da primeira
+conta da Coordenação está em DEPLOY_VERCEL.md.
 
 Perfis do sistema
 
@@ -256,6 +261,11 @@ executar check --deploy, auditoria e todos os testes;
 criar a conta real da Coordenação;
 
 homologar o fluxo completo com a Coordenação.
+
+Na Vercel, a aplicação também verifica na inicialização que DEBUG está
+desativado, que existe DATABASE_URL, que o Blob possui
+BLOB_READ_WRITE_TOKEN e que o SMTP real está completo. Dessa forma, um erro
+de configuração aparece no deployment e não durante uma solicitação real.
 
 Observação institucional
 

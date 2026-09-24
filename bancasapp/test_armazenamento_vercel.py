@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from django.core.exceptions import ImproperlyConfigured
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase
 
@@ -94,22 +95,36 @@ class VercelBlobStorageTests(SimpleTestCase):
             'tcc/inexistente.pdf'
         )
 
-    @patch(
-        'vercel.oidc.get_vercel_oidc_token',
-        return_value='token-oidc-de-teste',
-    )
-    def test_usa_oidc_quando_nao_ha_token_fixo(self, obter_token):
+    def test_rejeita_store_id_sem_token_de_leitura_e_escrita(self):
 
         with patch.dict(
             'os.environ',
-            {'BLOB_STORE_ID': 'store_teste'},
+            {
+                'BLOB_STORE_ID': 'store_teste',
+                'BLOB_READ_WRITE_TOKEN': '',
+                'VERCEL_BLOB_READ_WRITE_TOKEN': '',
+            },
+            clear=False,
+        ):
+            with self.assertRaisesMessage(
+                ImproperlyConfigured,
+                'BLOB_READ_WRITE_TOKEN',
+            ):
+                VercelBlobStorage(token='')
+
+    def test_aceita_nome_alternativo_do_token(self):
+
+        with patch.dict(
+            'os.environ',
+            {
+                'BLOB_READ_WRITE_TOKEN': '',
+                'VERCEL_BLOB_READ_WRITE_TOKEN': 'token-alternativo',
+            },
             clear=False,
         ):
             storage = VercelBlobStorage(token='')
 
-            self.assertEqual(
-                storage._obter_token(),
-                'token-oidc-de-teste',
-            )
-
-        obter_token.assert_called_once_with()
+        self.assertEqual(
+            storage.token,
+            'token-alternativo',
+        )

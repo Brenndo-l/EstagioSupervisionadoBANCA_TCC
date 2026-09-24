@@ -1,3 +1,5 @@
+import logging
+
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
@@ -6,6 +8,36 @@ from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
 from .tokens import token_confirmacao_email
+
+
+logger = logging.getLogger(__name__)
+
+
+def _enviar_mensagem(email, *, tipo, referencia):
+    """Envia uma mensagem sem registrar destinatário ou conteúdo nos logs."""
+
+    try:
+        quantidade = email.send(
+            fail_silently=False
+        )
+    except Exception:
+        logger.exception(
+            'Falha no envio do e-mail %s (referência %s).',
+            tipo,
+            referencia,
+        )
+        raise
+
+    if quantidade != 1:
+        erro = RuntimeError(
+            f'O backend de e-mail retornou {quantidade} mensagens enviadas.'
+        )
+        logger.error(
+            'O e-mail %s não foi aceito pelo backend (referência %s).',
+            tipo,
+            referencia,
+        )
+        raise erro
 
 
 def enviar_email_confirmacao_docente(
@@ -77,8 +109,10 @@ def enviar_email_confirmacao_docente(
         'text/html'
     )
 
-    email.send(
-        fail_silently=False
+    _enviar_mensagem(
+        email,
+        tipo='confirmacao-docente',
+        referencia=usuario.pk,
     )
 
 def enviar_email_decisao_solicitacao(
@@ -164,8 +198,10 @@ def enviar_email_decisao_solicitacao(
         'text/html'
     )
 
-    email.send(
-        fail_silently=False
+    _enviar_mensagem(
+        email,
+        tipo='decisao-solicitacao',
+        referencia=solicitacao.pk,
     )
 
     return True
@@ -235,8 +271,10 @@ def enviar_email_banca_finalizada(
         'text/html'
     )
 
-    email.send(
-        fail_silently=False
+    _enviar_mensagem(
+        email,
+        tipo='banca-finalizada',
+        referencia=banca.pk,
     )
 
     return True
