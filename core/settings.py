@@ -2,6 +2,8 @@
 
 import os
 from pathlib import Path
+
+import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.csp import CSP
 
@@ -192,59 +194,104 @@ WSGI_APPLICATION = 'core.wsgi.application'
 
 
 # Banco de dados
-# SQLite continua sendo o padrão local. Em produção, selecione PostgreSQL
-# exclusivamente por variáveis de ambiente, sem gravar credenciais no código.
-SGTCC_DATABASE_ENGINE = os.environ.get(
-    'DJANGO_DB_ENGINE',
-    'sqlite',
-).strip().casefold()
+# Na Vercel/Neon, DATABASE_URL é fornecida automaticamente.
+# Localmente, sem DATABASE_URL, o SQLite continua sendo o padrão.
+DATABASE_URL = os.environ.get(
+    'DATABASE_URL',
+    '',
+).strip()
 
-if SGTCC_DATABASE_ENGINE == 'sqlite':
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': os.environ.get(
-                'DJANGO_DB_NAME',
-                str(BASE_DIR / 'db.sqlite3'),
-            ),
-        }
-    }
-elif SGTCC_DATABASE_ENGINE in {'postgres', 'postgresql'}:
-    opcoes_postgresql = {}
-    modo_ssl = os.environ.get(
-        'DJANGO_DB_SSLMODE',
-        '',
-    ).strip()
-
-    if modo_ssl:
-        opcoes_postgresql['sslmode'] = modo_ssl
+if DATABASE_URL:
 
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': variavel_obrigatoria('DJANGO_DB_NAME'),
-            'USER': variavel_obrigatoria('DJANGO_DB_USER'),
-            'PASSWORD': variavel_obrigatoria('DJANGO_DB_PASSWORD'),
-            'HOST': variavel_obrigatoria('DJANGO_DB_HOST'),
-            'PORT': variavel_inteira(
-                'DJANGO_DB_PORT',
-                5432,
-                minimo=1,
-                maximo=65535,
-            ),
-            'CONN_MAX_AGE': variavel_inteira(
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=variavel_inteira(
                 'DJANGO_DB_CONN_MAX_AGE',
-                60,
+                0,
                 minimo=0,
             ),
-            'CONN_HEALTH_CHECKS': True,
-            'OPTIONS': opcoes_postgresql,
-        }
+            conn_health_checks=True,
+        )
     }
+
+    # O endereço recomendado do Neon utiliza PgBouncer.
+    # Desativar cursores no servidor evita incompatibilidades
+    # com o pool de conexões em ambiente serverless.
+    DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
+
 else:
-    raise ImproperlyConfigured(
-        'DJANGO_DB_ENGINE deve ser sqlite ou postgresql.'
-    )
+
+    # SQLite continua sendo o padrão local. Também permanece possível
+    # configurar PostgreSQL manualmente pelas variáveis DJANGO_DB_*.
+    SGTCC_DATABASE_ENGINE = os.environ.get(
+        'DJANGO_DB_ENGINE',
+        'sqlite',
+    ).strip().casefold()
+
+    if SGTCC_DATABASE_ENGINE == 'sqlite':
+
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': os.environ.get(
+                    'DJANGO_DB_NAME',
+                    str(BASE_DIR / 'db.sqlite3'),
+                ),
+            }
+        }
+
+    elif SGTCC_DATABASE_ENGINE in {
+        'postgres',
+        'postgresql',
+    }:
+
+        opcoes_postgresql = {}
+
+        modo_ssl = os.environ.get(
+            'DJANGO_DB_SSLMODE',
+            '',
+        ).strip()
+
+        if modo_ssl:
+            opcoes_postgresql['sslmode'] = modo_ssl
+
+        DATABASES = {
+            'default': {
+                'ENGINE': 'django.db.backends.postgresql',
+                'NAME': variavel_obrigatoria(
+                    'DJANGO_DB_NAME'
+                ),
+                'USER': variavel_obrigatoria(
+                    'DJANGO_DB_USER'
+                ),
+                'PASSWORD': variavel_obrigatoria(
+                    'DJANGO_DB_PASSWORD'
+                ),
+                'HOST': variavel_obrigatoria(
+                    'DJANGO_DB_HOST'
+                ),
+                'PORT': variavel_inteira(
+                    'DJANGO_DB_PORT',
+                    5432,
+                    minimo=1,
+                    maximo=65535,
+                ),
+                'CONN_MAX_AGE': variavel_inteira(
+                    'DJANGO_DB_CONN_MAX_AGE',
+                    60,
+                    minimo=0,
+                ),
+                'CONN_HEALTH_CHECKS': True,
+                'OPTIONS': opcoes_postgresql,
+            }
+        }
+
+    else:
+
+        raise ImproperlyConfigured(
+            'DJANGO_DB_ENGINE deve ser sqlite ou postgresql.'
+        )
 
 
 # Password validation
