@@ -1215,8 +1215,19 @@ class SolicitacaoBancaForm(forms.ModelForm):
 
                     if docente_ocupado:
 
+                        # O orientador é definido automaticamente pela
+                        # conta logada e, por isso, não existe como campo
+                        # editável do formulário. Nesse caso a mensagem
+                        # precisa ser geral; os demais participantes
+                        # continuam recebendo o erro no próprio campo.
+                        campo_erro = (
+                            None
+                            if campo == 'orientador'
+                            else campo
+                        )
+
                         self.add_error(
-                            campo,
+                            campo_erro,
                             'Este docente já está alocado em '
                             'outra banca neste horário e não '
                             f'pode atuar como {funcao}.'

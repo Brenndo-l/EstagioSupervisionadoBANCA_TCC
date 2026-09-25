@@ -4,6 +4,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from .models import TentativaAcesso, pUsuario
+from .security import obter_ip_cliente
 
 
 class ArmazenamentoSenhasTests(TestCase):
@@ -225,3 +226,47 @@ class LimiteRequisicoesTests(TestCase):
 
         self.assertEqual(segunda.status_code, 200)
         self.assertEqual(bloqueada.status_code, 429)
+
+    @override_settings(SGTCC_TRUST_PROXY_CLIENT_IP=True)
+    def test_x_forwarded_for_e_aceito_atras_de_proxy_confiavel(self):
+        for indice, ip_cliente in enumerate(
+            [
+                '198.51.100.10',
+                '198.51.100.11',
+                '198.51.100.12',
+            ],
+            start=1,
+        ):
+            resposta = self.client.post(
+                reverse('login'),
+                {
+                    'email': self.email,
+                    'senha': f'incorreta-{indice}',
+                },
+                REMOTE_ADDR='192.0.2.10',
+                HTTP_X_FORWARDED_FOR=ip_cliente,
+            )
+
+            self.assertEqual(resposta.status_code, 200)
+
+    @override_settings(
+        VERCEL_RUNTIME=True,
+        SGTCC_TRUST_PROXY_CLIENT_IP=True,
+    )
+    def test_vercel_forwarded_for_tem_prioridade_na_vercel(self):
+        self.assertEqual(
+            obter_ip_cliente(
+                type(
+                    'Requisicao',
+                    (),
+                    {
+                        'META': {
+                            'REMOTE_ADDR': '192.0.2.10',
+                            'HTTP_X_FORWARDED_FOR': '198.51.100.99',
+                            'HTTP_X_VERCEL_FORWARDED_FOR': '203.0.113.50',
+                        },
+                    },
+                )()
+            ),
+            '203.0.113.50',
+        )

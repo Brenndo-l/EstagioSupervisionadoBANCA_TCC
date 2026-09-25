@@ -92,7 +92,8 @@ class ConfiguracaoDeployTests(SimpleTestCase):
                     'import core.settings as s; '
                     'print(s.DEBUG); '
                     'print(s.EMAIL_BACKEND); '
-                    'print(s.STORAGES["default"]["BACKEND"])'
+                    'print(s.STORAGES["default"]["BACKEND"]); '
+                    'print(s.SGTCC_TRUST_PROXY_CLIENT_IP)'
                 ),
             ],
             cwd=self.raiz_projeto,
@@ -117,6 +118,10 @@ class ConfiguracaoDeployTests(SimpleTestCase):
         self.assertIn('False', resultado.stdout)
         self.assertIn('smtp.EmailBackend', resultado.stdout)
         self.assertIn('VercelBlobStorage', resultado.stdout)
+        self.assertEqual(
+            resultado.stdout.strip().splitlines()[-1],
+            'True',
+        )
 
     def test_debug_ativo_e_rejeitado_na_vercel(self):
 

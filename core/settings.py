@@ -5,6 +5,7 @@ from pathlib import Path
 
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
+from django.core.management.utils import get_random_secret_key
 from django.utils.csp import CSP
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -118,10 +119,10 @@ SECRET_KEY = os.environ.get(
 if not SECRET_KEY:
 
     if DEBUG:
-        SECRET_KEY = (
-            'django-insecure-'
-            '=c8+rq6rc7lhgj0koy!saasf%-%q7&9g!7dga&=g_p0+ar91#f'
-        )
+        # Uma chave efêmera atende ao desenvolvimento local sem manter um
+        # segredo conhecido no repositório. Em produção, DJANGO_SECRET_KEY
+        # continua sendo obrigatória e validada logo abaixo.
+        SECRET_KEY = get_random_secret_key()
 
     else:
         raise ImproperlyConfigured(
@@ -567,7 +568,7 @@ SGTCC_RATE_LIMIT_RETENTION_DAYS = variavel_inteira(
 )
 SGTCC_TRUST_PROXY_CLIENT_IP = variavel_booleana(
     'SGTCC_TRUST_PROXY_CLIENT_IP',
-    False,
+    VERCEL_RUNTIME,
 )
 
 if variavel_booleana(

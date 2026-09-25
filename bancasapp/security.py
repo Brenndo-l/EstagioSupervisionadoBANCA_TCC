@@ -30,7 +30,21 @@ def obter_ip_cliente(request):
     valor = request.META.get('REMOTE_ADDR', '')
 
     if settings.SGTCC_TRUST_PROXY_CLIENT_IP:
-        encaminhado = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        # Na Vercel, prioriza o cabeçalho reservado da própria plataforma.
+        # Fora dela, X-Forwarded-For só é usado quando o administrador
+        # habilita explicitamente a confiança no proxy.
+        encaminhado = ''
+
+        if getattr(settings, 'VERCEL_RUNTIME', False):
+            encaminhado = request.META.get(
+                'HTTP_X_VERCEL_FORWARDED_FOR',
+                '',
+            )
+
+        encaminhado = encaminhado or request.META.get(
+            'HTTP_X_FORWARDED_FOR',
+            '',
+        )
 
         if encaminhado:
             valor = encaminhado.split(',', 1)[0].strip()

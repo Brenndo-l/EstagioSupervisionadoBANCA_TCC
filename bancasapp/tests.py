@@ -5270,6 +5270,84 @@ class AutocompleteDocentesTests(TestCase):
             1
         )
 
+    def test_conflito_do_orientador_vira_erro_de_formulario(
+        self
+    ):
+
+        outro_orientador = self.criar_docente(
+            'orientador.existente@ufac.br',
+            'Orientador Existente'
+        )
+
+        outro_avaliador = self.criar_docente(
+            'avaliador.existente@ufac.br',
+            'Avaliador Existente'
+        )
+
+        discente = Discente.objects.create(
+            nome='Discente com Horario Existente',
+            matricula='20267676767'
+        )
+
+        projeto = ProjetoTCC.objects.create(
+            titulo='Projeto no horario do orientador',
+            resumo='Resumo do agendamento que gera o conflito.',
+            semestre_letivo='2026.2',
+            discente=discente
+        )
+
+        outro_espaco = EspacoFisico.objects.create(
+            nome='Sala do Agendamento Existente'
+        )
+
+        existente = SolicitacaoAgendamento.objects.create(
+            usuario_solicitante=outro_orientador,
+            projeto_tcc=projeto,
+            espaco=outro_espaco,
+            opcao_data_inicio=self.inicio,
+            opcao_data_fim=self.fim,
+            status='APROVADA'
+        )
+
+        ComposicaoBanca.objects.create(
+            solicitacao=existente,
+            projeto_tcc=projeto,
+            orientador=outro_orientador,
+            avaliador_interno=self.orientador,
+            segundo_avaliador_interno=outro_avaliador,
+            presidente=outro_orientador
+        )
+
+        self.client.force_login(
+            self.orientador.usuario
+        )
+
+        response = self.client.post(
+            reverse('solicitar_banca'),
+            self.dados_post()
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200
+        )
+
+        self.assertContains(
+            response,
+            'Este docente já está alocado em outra banca '
+            'neste horário e não pode atuar como orientador.'
+        )
+
+        self.assertIn(
+            '__all__',
+            response.context['form'].errors
+        )
+
+        self.assertEqual(
+            SolicitacaoAgendamento.objects.count(),
+            1
+        )
+
     def test_presidente_recebe_acesso_como_integrante(
         self
     ):
