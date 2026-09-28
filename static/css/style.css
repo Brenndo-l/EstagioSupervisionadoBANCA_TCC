@@ -1440,11 +1440,32 @@ textarea:focus-visible {
 
     .sidebar {
         box-shadow: 18px 0 42px rgba(7, 13, 37, 0.24);
+        height: 100vh;
+        height: 100dvh;
         max-width: 86vw;
+        overflow: hidden;
         position: fixed;
         transform: translateX(-105%);
         transition: transform 230ms ease;
         width: 286px;
+    }
+
+    .sidebar .brand,
+    .sidebar .usuario-logado,
+    .sidebar .footer-menu {
+        flex-shrink: 0;
+    }
+
+    .sidebar .app-nav {
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior-y: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .sidebar .footer-menu {
+        margin-top: 8px;
+        padding-bottom: env(safe-area-inset-bottom);
     }
 
     body.menu-aberto .sidebar {

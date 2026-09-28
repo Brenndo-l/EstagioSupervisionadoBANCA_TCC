@@ -111,6 +111,51 @@
         }
     );
 
+    document.querySelectorAll('input[data-digits-only]').forEach(
+        function (campo) {
+            campo.addEventListener('input', function () {
+                const digitos = campo.value.replace(/[^0-9]/g, '').slice(0, 11);
+
+                if (campo.value !== digitos) {
+                    campo.value = digitos;
+                }
+            });
+        }
+    );
+
+    document.querySelectorAll('input[data-semester-format]').forEach(
+        function (campo) {
+            campo.addEventListener('input', function (evento) {
+                const digitos = campo.value.replace(/[^0-9]/g, '').slice(0, 5);
+                const apagouSeparador = (
+                    evento.inputType === 'deleteContentBackward'
+                    && digitos.length === 4
+                );
+                const formatado = digitos.length > 4
+                    ? digitos.slice(0, 4) + '.' + digitos.slice(4)
+                    : digitos + (digitos.length === 4 && !apagouSeparador ? '.' : '');
+
+                if (campo.value !== formatado) {
+                    campo.value = formatado;
+                }
+            });
+        }
+    );
+
+    document.querySelectorAll('input[type="date"][data-date-part]').forEach(
+        function (campo) {
+            campo.addEventListener('input', function () {
+                // O formato nativo varia por navegador. Quando o ano inteiro
+                // estiver disponível em ISO, limite-o sem retirar o calendário.
+                const data = campo.value.match(/^(\d{5,})-(\d{2})-(\d{2})$/);
+
+                if (data) {
+                    campo.value = data[1].slice(0, 4) + '-' + data[2] + '-' + data[3];
+                }
+            });
+        }
+    );
+
     // A Vercel rejeita corpos maiores antes de a requisição chegar ao
     // Django. Esta validação dá uma mensagem clara no próprio navegador;
     // o formulário também repete a validação no servidor.

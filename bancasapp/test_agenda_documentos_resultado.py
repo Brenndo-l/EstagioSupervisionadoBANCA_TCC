@@ -424,6 +424,39 @@ class AgendaDisponibilidadesTests(BaseAgendaResultadoTests):
         self.assertIn('23:59', str(formulario['data_hora_fim']))
         self.assertIn('step="60"', str(formulario['data_hora_fim']))
 
+    def test_datas_limitam_ano_no_formulario_e_rejeitam_ano_extenso(self):
+        formulario = DisponibilidadeEspacoForm(data={
+            'espaco': self.espaco.pk,
+            'data_hora_inicio_0': '222222-02-22',
+            'data_hora_inicio_1': '08:00',
+            'data_hora_fim_0': '222222-02-22',
+            'data_hora_fim_1': '09:00',
+        })
+        self.assertIn('max="9999-12-31"', str(formulario['data_hora_inicio']))
+        self.assertIn('max="9999-12-31"', str(formulario['data_hora_fim']))
+        self.assertFalse(formulario.is_valid())
+        self.assertIn('data_hora_inicio', formulario.errors)
+
+    def test_matricula_e_semestre_rejeitam_digitos_nao_ascii(self):
+        formulario, _ = self.formulario_pronto_para_envio()
+        self.assertIn('data-digits-only', str(formulario['matricula_discente']))
+        self.assertIn('data-semester-format', str(formulario['semestre_letivo']))
+
+        for campo, valor in (
+            ('matricula_discente', '٢٠٢٦٩٩٩٠٠٠١'),
+            ('semestre_letivo', '٢٠٢٦.٢'),
+        ):
+            with self.subTest(campo=campo):
+                dados = dict(formulario.data)
+                dados[campo] = valor
+                invalido = SolicitacaoBancaForm(
+                    data=dados,
+                    files=formulario.files,
+                    orientador=self.docente,
+                )
+                self.assertFalse(invalido.is_valid())
+                self.assertIn(campo, invalido.errors)
+
     def preparar_reservas(self):
 
         self.criar_solicitacao(

@@ -40,6 +40,7 @@ class DataHorarioWidget(forms.MultiWidget):
                 attrs={
                     'class': 'form-input date-time-input',
                     'type': 'date',
+                    'max': '9999-12-31',
                     'autocomplete': 'off',
                     'data-date-part': '',
                 },
@@ -627,6 +628,8 @@ class SolicitacaoBancaForm(forms.ModelForm):
                 'class': 'form-input',
                 'placeholder': 'Informe a matrícula',
                 'inputmode': 'numeric',
+                'pattern': '[0-9]{1,11}',
+                'data-digits-only': '',
                 'autocomplete': 'off',
             }
         )
@@ -662,6 +665,9 @@ class SolicitacaoBancaForm(forms.ModelForm):
             attrs={
                 'class': 'form-input',
                 'placeholder': '2026.2',
+                'inputmode': 'numeric',
+                'pattern': r'[0-9]{4}\.[12]',
+                'data-semester-format': '',
             }
         )
     )
@@ -930,7 +936,7 @@ class SolicitacaoBancaForm(forms.ModelForm):
             ].strip()
         )
 
-        if not matricula.isdigit():
+        if not (matricula.isascii() and matricula.isdigit()):
             raise forms.ValidationError(
                 'A matrícula deve conter somente números.'
             )
@@ -980,6 +986,7 @@ class SolicitacaoBancaForm(forms.ModelForm):
         formato_valido = (
             len(partes) == 2
             and len(partes[0]) == 4
+            and partes[0].isascii()
             and partes[0].isdigit()
             and partes[1] in ['1', '2']
         )
