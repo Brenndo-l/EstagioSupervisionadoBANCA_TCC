@@ -8,10 +8,11 @@ from django.utils import timezone
 from docx import Document
 
 from .documentos_banca import gerar_docx_ata, montar_dados_ata
-from .forms import RegistroNotaBancaForm
+from .forms import DisponibilidadeEspacoForm, RegistroNotaBancaForm
 from .models import (
     BancaTCC,
     ComposicaoBanca,
+    ConfiguracaoAgendamento,
     Discente,
     DisponibilidadeEspaco,
     EspacoFisico,
@@ -19,7 +20,10 @@ from .models import (
     SolicitacaoAgendamento,
     pUsuario,
 )
-from .services import montar_agenda_disponibilidades
+from .services import (
+    montar_agenda_disponibilidades,
+    montar_opcoes_agendamento,
+)
 
 
 class BaseAgendaResultadoTests(TestCase):
@@ -195,7 +199,6 @@ class AgendaDisponibilidadesTests(BaseAgendaResultadoTests):
                 self.inicio.replace(hour=9),
             ),
         )
-
         self.assertEqual(
             (livres[1]['inicio'], livres[1]['fim']),
             (
@@ -204,7 +207,134 @@ class AgendaDisponibilidadesTests(BaseAgendaResultadoTests):
             ),
         )
 
-    def test_tela_exibe_agenda_apenas_para_consulta(self):
+    def test_agenda_preserva_limites_exatos_ao_dividir_periodo(self):
+
+        inicio_disponivel = self.inicio.replace(
+            hour=6,
+            minute=30,
+        )
+        fim_disponivel = self.inicio.replace(
+            hour=18,
+            minute=30,
+        )
+        self.disponibilidade.data_hora_inicio = inicio_disponivel
+        self.disponibilidade.data_hora_fim = fim_disponivel
+        self.disponibilidade.save(
+            update_fields=[
+                'data_hora_inicio',
+                'data_hora_fim',
+            ]
+        )
+
+        self.criar_solicitacao(
+            self.inicio.replace(hour=7),
+            self.inicio.replace(hour=8),
+            'EM_ANÁLISE',
+        )
+
+        agenda = montar_agenda_disponibilidades(
+            [self.disponibilidade],
+            agora=inicio_disponivel - timedelta(hours=1),
+        )
+
+        livres = agenda[0].intervalos_livres
+
+        self.assertEqual(
+            (livres[0]['inicio'], livres[0]['fim']),
+            (
+                inicio_disponivel,
+                self.inicio.replace(hour=7),
+            ),
+        )
+        self.assertEqual(
+            (livres[1]['inicio'], livres[1]['fim']),
+            (
+                self.inicio.replace(hour=8),
+                fim_disponivel,
+            ),
+        )
+
+    def test_nova_banca_pode_comecar_quando_anterior_termina(self):
+
+        self.criar_solicitacao(
+            self.inicio.replace(hour=10),
+            self.inicio.replace(hour=11),
+            'APROVADA',
+        )
+
+        opcoes = montar_opcoes_agendamento(
+            [self.disponibilidade],
+            agora=self.inicio - timedelta(hours=1),
+        )
+
+        horarios = opcoes['espacos'][str(self.espaco.id)]['datas'][
+            self.inicio.date().isoformat()
+        ]
+
+        self.assertIn(
+            '11:00',
+            [horario['inicio'] for horario in horarios],
+        )
+
+    def test_duracao_definida_pela_coordenacao_gera_termino(self):
+
+        configuracao = ConfiguracaoAgendamento.carregar()
+        configuracao.duracao_banca_minutos = 90
+        configuracao.save()
+
+        opcoes = montar_opcoes_agendamento(
+            [self.disponibilidade],
+            agora=self.inicio - timedelta(hours=1),
+        )
+
+        primeira = opcoes['espacos'][str(self.espaco.id)]['datas'][
+            self.inicio.date().isoformat()
+        ][0]
+
+        self.assertEqual(primeira['inicio'], '08:00')
+        self.assertEqual(primeira['fim'], '09:30')
+
+    def test_coordenacao_pode_alterar_duracao_das_bancas(self):
+
+        self.client.force_login(self.usuario_coordenacao)
+
+        response = self.client.post(
+            reverse('gerenciar_espacos'),
+            {
+                'tipo_formulario': 'configuracao',
+                'configuracao-duracao_banca_minutos': '45',
+            },
+        )
+
+        self.assertRedirects(response, reverse('gerenciar_espacos'))
+        self.assertEqual(
+            ConfiguracaoAgendamento.carregar().duracao_banca_minutos,
+            45,
+        )
+
+    def test_disponibilidade_deve_comecar_e_terminar_no_mesmo_dia(self):
+
+        inicio = self.inicio
+        fim = inicio + timedelta(days=1, hours=1)
+
+        formulario = DisponibilidadeEspacoForm(
+            data={
+                'espaco': self.espaco.pk,
+                'data_hora_inicio_0': inicio.strftime('%Y-%m-%d'),
+                'data_hora_inicio_1': inicio.strftime('%H:%M'),
+                'data_hora_fim_0': fim.strftime('%Y-%m-%d'),
+                'data_hora_fim_1': fim.strftime('%H:%M'),
+                'observacao': '',
+            }
+        )
+
+        self.assertFalse(formulario.is_valid())
+        self.assertIn(
+            'mesma data',
+            formulario.errors['data_hora_fim'][0],
+        )
+
+    def test_tela_exibe_seletor_sem_agenda_duplicada(self):
 
         self.preparar_reservas()
 
@@ -218,27 +348,32 @@ class AgendaDisponibilidadesTests(BaseAgendaResultadoTests):
 
         self.assertContains(
             response,
-            'Agenda de horários disponíveis'
+            'Escolha um horário disponível'
         )
 
         self.assertContains(
             response,
-            'Horários livres'
+            'Selecione o dia da banca'
         )
 
         self.assertContains(
             response,
-            'Reservados ou em análise'
+            'Selecione o horário inicial'
+        )
+
+        self.assertContains(
+            response,
+            'data-appointment-picker'
+        )
+
+        self.assertContains(
+            response,
+            'solicitacao-agendamento-dados'
         )
 
         self.assertNotContains(
             response,
-            'Usar período'
-        )
-
-        self.assertNotContains(
-            response,
-            'data-usar-periodo'
+            'data-agenda-slot'
         )
 
 

@@ -214,6 +214,10 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'core.urls'
 
+# Quando o token de um formulário expira (por exemplo, após um novo deploy),
+# mantém a proteção CSRF e mostra uma orientação compreensível ao usuário.
+CSRF_FAILURE_VIEW = 'bancasapp.views.csrf_falhou'
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',

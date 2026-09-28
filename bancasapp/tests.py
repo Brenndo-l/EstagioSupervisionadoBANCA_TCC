@@ -14,6 +14,7 @@ from .models import (
     SolicitacaoAgendamento,
     ComposicaoBanca,
     BancaTCC,
+    ConfiguracaoAgendamento,
     DisponibilidadeEspaco,
     
 )
@@ -457,6 +458,13 @@ class AgendamentoTests(TestCase):
 
     def setUp(self):
 
+        # Esta classe usa historicamente períodos de duas horas. A duração
+        # agora é uma regra configurável pela Coordenação.
+        ConfiguracaoAgendamento.objects.create(
+            pk=1,
+            duracao_banca_minutos=120,
+        )
+
         # Docente que fará a solicitação
         self.usuario_docente = User.objects.create_user(
             username='docente@ufac.br',
@@ -617,6 +625,49 @@ class AgendamentoTests(TestCase):
         self.assertEqual(
             SolicitacaoAgendamento.objects.count(),
             0
+        )
+
+    def test_horario_exatamente_no_inicio_e_aceito_com_campos_separados(self):
+
+        self.client.force_login(
+            self.usuario_docente
+        )
+
+        inicio = self.disponibilidade.data_hora_inicio
+        fim = inicio + timedelta(hours=2)
+
+        response = self.client.post(
+            reverse('solicitar_banca'),
+            {
+                **self.dados_academicos_solicitacao(),
+                'espaco': self.espaco.id,
+                'opcao_data_inicio_0': inicio.strftime('%Y-%m-%d'),
+                'opcao_data_inicio_1': inicio.strftime('%H:%M'),
+                'opcao_data_fim_0': fim.strftime('%Y-%m-%d'),
+                'opcao_data_fim_1': fim.strftime('%H:%M'),
+                'avaliador_interno': self.avaliador.id,
+                'segundo_avaliador_interno': (
+                    self.segundo_avaliador.id
+                ),
+                'nome_avaliador_externo': '',
+                'instituicao_avaliador_externo': '',
+                'arquivo_tcc': criar_pdf_teste(),
+            }
+        )
+
+        self.assertRedirects(
+            response,
+            reverse('dashboard')
+        )
+
+        solicitacao = SolicitacaoAgendamento.objects.get()
+        self.assertEqual(
+            solicitacao.opcao_data_inicio,
+            inicio,
+        )
+        self.assertEqual(
+            solicitacao.opcao_data_fim,
+            fim,
         )
 
 
@@ -1396,6 +1447,11 @@ class AgendamentoTests(TestCase):
 class AvaliacaoSolicitacaoTests(TestCase):
 
     def setUp(self):
+
+        ConfiguracaoAgendamento.objects.create(
+            pk=1,
+            duracao_banca_minutos=120,
+        )
 
         # Usuário da Coordenação
         self.usuario_coordenacao = User.objects.create_user(
@@ -4724,6 +4780,11 @@ class AutocompleteDocentesTests(TestCase):
         )
 
     def setUp(self):
+
+        ConfiguracaoAgendamento.objects.create(
+            pk=1,
+            duracao_banca_minutos=120,
+        )
 
         self.orientador = self.criar_docente(
             'orientador.autocomplete@ufac.br',

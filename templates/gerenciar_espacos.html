@@ -13,6 +13,39 @@
     </p>
 </section>
 
+<section class="coord-card coord-section-card schedule-policy-card">
+    <header class="section-header coord-section-header">
+        <div>
+            <span class="coord-card-kicker">REGRA DE AGENDAMENTO</span>
+            <h2>Duração padrão das bancas</h2>
+            <p>
+                Essa duração será usada para gerar os horários disponíveis.
+                O docente escolhe apenas o início; o término é automático.
+            </p>
+        </div>
+    </header>
+
+    <form method="POST" class="coord-form schedule-policy-form">
+        {% csrf_token %}
+        <input type="hidden" name="tipo_formulario" value="configuracao">
+
+        <div class="form-field">
+            <label for="{{ form_configuracao.duracao_banca_minutos.id_for_label }}">
+                {{ form_configuracao.duracao_banca_minutos.label }}
+            </label>
+            {{ form_configuracao.duracao_banca_minutos }}
+            {{ form_configuracao.duracao_banca_minutos.errors }}
+            <small class="form-ajuda">
+                {{ form_configuracao.duracao_banca_minutos.help_text }}
+            </small>
+        </div>
+
+        <button type="submit" class="btn-enviar">
+            SALVAR DURAÇÃO
+        </button>
+    </form>
+</section>
+
 <section class="coord-form-grid" aria-label="Cadastros de espaços e disponibilidades">
 
     <article class="coord-card coord-card--form">
@@ -57,7 +90,7 @@
             </p>
         </header>
 
-        <form method="POST" class="coord-form">
+        <form method="POST" class="coord-form" data-scheduling-form>
             {% csrf_token %}
 
             <input
@@ -96,6 +129,34 @@
                     {{ form_disponibilidade.data_hora_fim.errors }}
                 </div>
             </div>
+
+            <small class="form-ajuda schedule-day-help">
+                Cadastre um dia por vez. Para outro dia, crie uma nova
+                disponibilidade para a sala.
+            </small>
+
+            <div class="schedule-tools schedule-tools--compact">
+                <div>
+                    <strong>Definir término rapidamente</strong>
+                    <small>
+                        A partir do início informado.
+                    </small>
+                </div>
+
+                <div class="schedule-duration-options" aria-label="Duração do período">
+                    <button type="button" data-duration-minutes="60">1 hora</button>
+                    <button type="button" data-duration-minutes="120">2 horas</button>
+                    <button type="button" data-duration-minutes="240">4 horas</button>
+                    <button type="button" data-duration-minutes="480">8 horas</button>
+                </div>
+            </div>
+
+            <p
+                class="schedule-feedback"
+                data-schedule-feedback
+                role="status"
+                hidden
+            ></p>
 
             <div class="form-field">
                 <label for="{{ form_disponibilidade.observacao.id_for_label }}">

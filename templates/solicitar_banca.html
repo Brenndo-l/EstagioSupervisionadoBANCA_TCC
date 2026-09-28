@@ -10,99 +10,16 @@
     </p>
 </div>
 
-<div class="table-container" style="margin-bottom: 30px;">
-
-    <h2>Agenda de horários disponíveis</h2>
-
-    <p>
-        Os períodos em análise ou já aprovados aparecem como ocupados.
-        Solicitações recusadas ou expiradas liberam novamente o horário.
-        Consulte os intervalos livres e escolha manualmente no formulário
-        a sala, a data e os horários desejados.
-    </p>
-
-    {% if disponibilidades %}
-
-        <table class="agenda-tabela">
-            <thead>
-                <tr>
-                    <th>Espaço</th>
-                    <th>Data</th>
-                    <th>Período disponibilizado</th>
-                    <th>Horários livres</th>
-                    <th>Reservados ou em análise</th>
-                    <th>Observação</th>
-                </tr>
-            </thead>
-
-            <tbody>
-
-                {% for disponibilidade in disponibilidades %}
-
-                    <tr>
-                        <td>{{ disponibilidade.espaco.nome }}</td>
-
-                        <td>
-                            {{ disponibilidade.data_hora_inicio|date:"d/m/Y" }}
-                        </td>
-
-                        <td>
-                            {{ disponibilidade.data_hora_inicio|date:"H:i" }}
-                            até
-                            {{ disponibilidade.data_hora_fim|date:"H:i" }}
-                        </td>
-
-                        <td class="agenda-intervalos">
-                            {% for intervalo in disponibilidade.intervalos_livres %}
-                                <span class="agenda-periodo agenda-periodo--livre">
-                                    {{ intervalo.inicio|date:"H:i" }}–{{ intervalo.fim|date:"H:i" }}
-                                </span>
-                            {% empty %}
-                                <span class="agenda-sem-horario">
-                                    Sem horário livre
-                                </span>
-                            {% endfor %}
-                        </td>
-
-                        <td class="agenda-intervalos">
-                            {% for intervalo in disponibilidade.intervalos_ocupados %}
-                                <span class="agenda-periodo agenda-periodo--ocupado">
-                                    {{ intervalo.inicio|date:"H:i" }}–{{ intervalo.fim|date:"H:i" }}
-                                </span>
-                            {% empty %}
-                                <span class="agenda-totalmente-livre">
-                                    Nenhuma reserva
-                                </span>
-                            {% endfor %}
-                        </td>
-
-                        <td>
-                            {{ disponibilidade.observacao|default:"—" }}
-                        </td>
-                    </tr>
-
-                {% endfor %}
-
-            </tbody>
-        </table>
-
-    {% else %}
-
-        <p>
-            A Coordenação ainda não disponibilizou horários futuros
-            para novas bancas.
-        </p>
-
-    {% endif %}
-
-</div>
-
-<div class="form-container form-container--amplo">
+<div
+    class="form-container form-container--amplo"
+    id="formulario-solicitacao"
+>
 
     <form
         method="POST"
         enctype="multipart/form-data"
         class="form-solicitacao"
+        data-scheduling-form
     >
         {% csrf_token %}
 
@@ -160,31 +77,9 @@
             Agendamento e composição da banca
         </h2>
 
+        {% include 'includes/seletor_agendamento.html' with seletor_id='solicitacao-agendamento' %}
+
         <div class="form-grid">
-
-            <div class="form-field form-field--full">
-                <label for="{{ form.espaco.id_for_label }}">
-                    {{ form.espaco.label }}
-                </label>
-
-                {{ form.espaco }}
-            </div>
-
-            <div class="form-field">
-                <label for="{{ form.opcao_data_inicio.id_for_label }}">
-                    {{ form.opcao_data_inicio.label }}
-                </label>
-
-                {{ form.opcao_data_inicio }}
-            </div>
-
-            <div class="form-field">
-                <label for="{{ form.opcao_data_fim.id_for_label }}">
-                    {{ form.opcao_data_fim.label }}
-                </label>
-
-                {{ form.opcao_data_fim }}
-            </div>
 
             <div class="form-field form-field--full">
                 <label for="{{ form.arquivo_tcc.id_for_label }}">

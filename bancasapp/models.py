@@ -107,6 +107,47 @@ class EspacoFisico(models.Model):
     def __str__(self):
         return self.nome
 
+
+class ConfiguracaoAgendamento(models.Model):
+    """Configuração única das regras de horário das bancas."""
+
+    DURACOES_PERMITIDAS = (
+        (30, '30 minutos'),
+        (45, '45 minutos'),
+        (60, '1 hora'),
+        (90, '1 hora e 30 minutos'),
+        (120, '2 horas'),
+    )
+
+    duracao_banca_minutos = models.PositiveSmallIntegerField(
+        choices=DURACOES_PERMITIDAS,
+        default=60,
+        verbose_name='Duração padrão da banca',
+        help_text=(
+            'O término será calculado automaticamente a partir '
+            'do horário inicial escolhido.'
+        ),
+    )
+
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Configuração de agendamento'
+        verbose_name_plural = 'Configurações de agendamento'
+
+    @classmethod
+    def carregar(cls):
+        configuracao, _ = cls.objects.get_or_create(pk=1)
+        return configuracao
+
+    def save(self, *args, **kwargs):
+        # O sistema possui uma única configuração institucional.
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'Duração da banca: {self.get_duracao_banca_minutos_display()}'
+
 # Períodos em que uma sala ou laboratório está disponível
 class DisponibilidadeEspaco(models.Model):
 

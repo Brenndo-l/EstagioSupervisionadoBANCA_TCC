@@ -74,6 +74,11 @@ class CabecalhosSegurancaTests(TestCase):
         )
 
         self.assertEqual(resposta.status_code, 403)
+        self.assertContains(
+            resposta,
+            'O formulário expirou',
+            status_code=403,
+        )
         self.assertEqual(TentativaAcesso.objects.count(), 0)
 
 

@@ -9,6 +9,7 @@ from django.utils import timezone
 from .models import (
     BancaTCC,
     ComposicaoBanca,
+    ConfiguracaoAgendamento,
     Discente,
     ProjetoTCC,
     SolicitacaoAgendamento,
@@ -288,6 +289,7 @@ def _proximo_minuto(instante):
 def montar_agenda_disponibilidades(
     disponibilidades,
     agora=None,
+    excluir_solicitacao_id=None,
 ):
     """
     Anexa a cada disponibilidade os períodos livres e ocupados.
@@ -342,6 +344,11 @@ def montar_agenda_disponibilidades(
             'opcao_data_fim',
         )
     )
+
+    if excluir_solicitacao_id:
+        solicitacoes = solicitacoes.exclude(
+            pk=excluir_solicitacao_id
+        )
 
     solicitacoes_por_espaco = defaultdict(list)
 
@@ -428,3 +435,84 @@ def montar_agenda_disponibilidades(
         )
 
     return disponibilidades
+
+
+def montar_opcoes_agendamento(
+    disponibilidades,
+    *,
+    agora=None,
+    excluir_solicitacao_id=None,
+):
+    """
+    Gera opções serializáveis para o seletor de sala, data e horário.
+
+    Cada opção reserva exatamente a duração definida pela Coordenação.
+    Os inícios avançam de 30 em 30 minutos, sempre incluindo o começo
+    exato de cada intervalo livre. Assim, se uma banca termina às 11:00,
+    outra pode começar às 11:00 sem conflito.
+    """
+
+    configuracao = ConfiguracaoAgendamento.carregar()
+    duracao = timedelta(
+        minutes=configuracao.duracao_banca_minutos
+    )
+    passo = timedelta(minutes=30)
+
+    agenda = montar_agenda_disponibilidades(
+        disponibilidades,
+        agora=agora,
+        excluir_solicitacao_id=excluir_solicitacao_id,
+    )
+
+    espacos = {}
+
+    for disponibilidade in agenda:
+        espaco_id = str(disponibilidade.espaco_id)
+        dados_espaco = espacos.setdefault(
+            espaco_id,
+            {
+                'nome': disponibilidade.espaco.nome,
+                'datas': {},
+            },
+        )
+
+        for intervalo in disponibilidade.intervalos_livres:
+            inicio = intervalo['inicio']
+            fim_livre = intervalo['fim']
+
+            while inicio + duracao <= fim_livre:
+                inicio_local = timezone.localtime(inicio)
+                fim_local = timezone.localtime(inicio + duracao)
+                data_iso = inicio_local.date().isoformat()
+                opcoes_data = dados_espaco['datas'].setdefault(
+                    data_iso,
+                    [],
+                )
+
+                opcao = {
+                    'inicio': inicio_local.strftime('%H:%M'),
+                    'fim': fim_local.strftime('%H:%M'),
+                    'inicio_iso': inicio_local.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    ),
+                    'fim_iso': fim_local.strftime(
+                        '%Y-%m-%dT%H:%M'
+                    ),
+                }
+
+                if opcao not in opcoes_data:
+                    opcoes_data.append(opcao)
+
+                inicio += passo
+
+    for dados_espaco in espacos.values():
+        for opcoes in dados_espaco['datas'].values():
+            opcoes.sort(key=lambda item: item['inicio_iso'])
+
+    return {
+        'duracao_minutos': configuracao.duracao_banca_minutos,
+        'duracao_rotulo': (
+            configuracao.get_duracao_banca_minutos_display()
+        ),
+        'espacos': espacos,
+    }

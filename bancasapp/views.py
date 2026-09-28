@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from .forms import (
     AvaliacaoSolicitacaoForm,
     CadastroDocenteForm,
+    ConfiguracaoAgendamentoForm,
     DisponibilidadeEspacoForm,
     EdicaoSolicitacaoCoordenacaoForm,
     EspacoFisicoForm,
@@ -14,6 +15,7 @@ from .forms import (
 from .models import (
     BancaTCC,
     ComposicaoBanca,
+    ConfiguracaoAgendamento,
     Discente,
     DisponibilidadeEspaco,
     EspacoFisico,
@@ -49,6 +51,7 @@ from .services import (
     criar_solicitacao_banca_segura,
     expirar_solicitacoes_vencidas,
     montar_agenda_disponibilidades,
+    montar_opcoes_agendamento,
     SolicitacaoBancaInvalida,
 )
 from django.conf import settings
@@ -75,6 +78,27 @@ def erro_403(request, exception=None):
             ),
         },
         status=403
+    )
+
+
+def csrf_falhou(request, reason=''):
+    """Explica a expiração do formulário sem enfraquecer o CSRF."""
+
+    return render(
+        request,
+        'erro_sistema.html',
+        {
+            'codigo_erro': '403',
+            'titulo_erro': 'O formulário expirou',
+            'mensagem_erro': (
+                'A página ficou aberta por muito tempo ou foi carregada '
+                'antes de uma atualização do sistema. Volte para o login, '
+                'atualize a página e envie os dados novamente.'
+            ),
+            'url_retorno': 'login',
+            'texto_retorno': 'Voltar para o login',
+        },
+        status=403,
     )
 
 
@@ -822,12 +846,28 @@ def editar_solicitacao_coordenacao(
             orientador=composicao.orientador
         )
 
+    opcoes_agendamento = montar_opcoes_agendamento(
+        DisponibilidadeEspaco.objects
+        .select_related('espaco')
+        .filter(
+            ativo=True,
+            espaco__ativo=True,
+            data_hora_fim__gt=timezone.now(),
+        )
+        .order_by('data_hora_inicio', 'espaco__nome'),
+        excluir_solicitacao_id=solicitacao.id,
+    )
+
     return render(
         request,
         'editar_solicitacao_coordenacao.html',
         {
             'solicitacao': solicitacao,
             'form': form,
+            'opcoes_agendamento': opcoes_agendamento,
+            'duracao_banca_rotulo': (
+                opcoes_agendamento['duracao_rotulo']
+            ),
         }
     )
 
@@ -985,7 +1025,7 @@ def solicitar_banca(request):
             orientador=perfil_logado
         )
 
-    disponibilidades = montar_agenda_disponibilidades(
+    opcoes_agendamento = montar_opcoes_agendamento(
         DisponibilidadeEspaco.objects
         .select_related('espaco')
         .filter(
@@ -1004,7 +1044,10 @@ def solicitar_banca(request):
         'solicitar_banca.html',
         {
             'form': form,
-            'disponibilidades': disponibilidades,
+            'opcoes_agendamento': opcoes_agendamento,
+            'duracao_banca_rotulo': (
+                opcoes_agendamento['duracao_rotulo']
+            ),
             'orientador_logado': perfil_logado,
         }
     )
@@ -2884,14 +2927,45 @@ def gerenciar_espacos(request):
         prefix='disponibilidade'
     )
 
+    configuracao_agendamento = (
+        ConfiguracaoAgendamento.carregar()
+    )
+
+    form_configuracao = ConfiguracaoAgendamentoForm(
+        instance=configuracao_agendamento,
+        prefix='configuracao',
+    )
+
     if request.method == 'POST':
 
         tipo_formulario = request.POST.get(
             'tipo_formulario'
         )
 
+        if tipo_formulario == 'configuracao':
+
+            form_configuracao = ConfiguracaoAgendamentoForm(
+                request.POST,
+                instance=configuracao_agendamento,
+                prefix='configuracao',
+            )
+
+            if form_configuracao.is_valid():
+                form_configuracao.save()
+
+                messages.success(
+                    request,
+                    'Duração padrão das bancas atualizada com sucesso.'
+                )
+
+                return redirect('gerenciar_espacos')
+
+            for erros in form_configuracao.errors.values():
+                for erro in erros:
+                    messages.error(request, erro)
+
         # Cadastro de uma nova sala
-        if tipo_formulario == 'espaco':
+        elif tipo_formulario == 'espaco':
 
             form_espaco = EspacoFisicoForm(
                 request.POST,
@@ -3039,6 +3113,7 @@ def gerenciar_espacos(request):
     contexto = {
         'form_espaco': form_espaco,
         'form_disponibilidade': form_disponibilidade,
+        'form_configuracao': form_configuracao,
         'espacos': espacos,
         'disponibilidades': disponibilidades,
     }

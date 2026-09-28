@@ -44,7 +44,11 @@
 
         <p>{{ mensagem_erro }}</p>
 
-        {% if request.user.is_authenticated %}
+        {% if url_retorno %}
+            <a class="btn-primario" href="{% url url_retorno %}">
+                {{ texto_retorno|default:"Voltar" }}
+            </a>
+        {% elif request.user.is_authenticated %}
             <a class="btn-primario" href="{% url 'dashboard' %}">
                 Voltar ao painel
             </a>

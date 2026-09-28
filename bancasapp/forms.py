@@ -9,9 +9,11 @@ from django.contrib.auth.models import User
 from django.db.models import Q
 from django.urls import reverse
 from django.utils import timezone
+from datetime import timedelta
 from zipfile import BadZipFile, ZipFile
 from .models import (
     BancaTCC,
+    ConfiguracaoAgendamento,
     Discente,
     DisponibilidadeEspaco,
     EspacoFisico,
@@ -21,6 +23,104 @@ from .models import (
     pUsuario,
 )
 from .services import obter_bloqueio_tcc_discente
+
+
+class DataHorarioWidget(forms.MultiWidget):
+    """Exibe data e hora separadamente sem alterar o valor do modelo."""
+
+    template_name = 'widgets/data_horario.html'
+
+    def __init__(self, *, papel, attrs=None):
+
+        self.papel = papel
+
+        widgets = (
+            forms.DateInput(
+                format='%Y-%m-%d',
+                attrs={
+                    'class': 'form-input date-time-input',
+                    'type': 'date',
+                    'autocomplete': 'off',
+                    'data-date-part': '',
+                },
+            ),
+            forms.TimeInput(
+                format='%H:%M',
+                attrs={
+                    'class': 'form-input date-time-input',
+                    'type': 'time',
+                    'step': '300',
+                    'autocomplete': 'off',
+                    'data-time-part': '',
+                },
+            ),
+        )
+
+        super().__init__(widgets, attrs)
+
+    def get_context(self, name, value, attrs):
+
+        context = super().get_context(name, value, attrs)
+        context['widget']['papel'] = self.papel
+        return context
+
+    def id_for_label(self, id_):
+
+        return f'{id_}_0' if id_ else ''
+
+    def decompress(self, value):
+
+        if not value:
+            return [None, None]
+
+        if isinstance(value, str):
+            partes = value.replace(' ', 'T', 1).split('T', 1)
+
+            if len(partes) == 2:
+                return [partes[0], partes[1][:5]]
+
+            return [value, None]
+
+        if timezone.is_aware(value):
+            value = timezone.localtime(value)
+
+        return [
+            value.date(),
+            value.time().replace(second=0, microsecond=0),
+        ]
+
+    def value_from_datadict(self, data, files, name):
+        """Aceita o componente novo e os POSTs antigos do sistema/testes."""
+
+        data_separada = self.widgets[0].value_from_datadict(
+            data,
+            files,
+            f'{name}_0',
+        )
+        hora_separada = self.widgets[1].value_from_datadict(
+            data,
+            files,
+            f'{name}_1',
+        )
+
+        if data_separada or hora_separada:
+            if not data_separada or not hora_separada:
+                return ''
+
+            return f'{data_separada}T{hora_separada}'
+
+        return data.get(name)
+
+    def value_omitted_from_data(self, data, files, name):
+
+        return (
+            name not in data
+            and super().value_omitted_from_data(
+                data,
+                files,
+                name,
+            )
+        )
 
 def autocomplete_docente_widget(
     placeholder,
@@ -714,17 +814,11 @@ class SolicitacaoBancaForm(forms.ModelForm):
                     'class': 'form-input',
                 }
             ),
-            'opcao_data_inicio': forms.DateTimeInput(
-                attrs={
-                    'class': 'form-input',
-                    'type': 'datetime-local',
-                }
+            'opcao_data_inicio': DataHorarioWidget(
+                papel='inicio',
             ),
-            'opcao_data_fim': forms.DateTimeInput(
-                attrs={
-                    'class': 'form-input',
-                    'type': 'datetime-local',
-                }
+            'opcao_data_fim': DataHorarioWidget(
+                papel='fim',
             ),
         }
 
@@ -798,6 +892,20 @@ class SolicitacaoBancaForm(forms.ModelForm):
             )
             .order_by('nome')
         )
+
+        hoje = timezone.localdate().isoformat()
+
+        for nome_campo in [
+            'opcao_data_inicio',
+            'opcao_data_fim',
+        ]:
+            self.fields[nome_campo].input_formats = [
+                '%Y-%m-%dT%H:%M',
+                '%Y-%m-%d %H:%M',
+            ]
+            self.fields[nome_campo].widget.widgets[0].attrs[
+                'min'
+            ] = hoje
 
     def clean_nome_discente(self):
 
@@ -1086,6 +1194,37 @@ class SolicitacaoBancaForm(forms.ModelForm):
                     'A banca deve começar e terminar no mesmo dia.'
                 )
 
+            duracao_configurada = timedelta(
+                minutes=(
+                    ConfiguracaoAgendamento.carregar()
+                    .duracao_banca_minutos
+                )
+            )
+
+            if (
+                data_fim > data_inicio
+                and data_fim - data_inicio != duracao_configurada
+            ):
+                horario_original_inalterado = (
+                    self.instance.pk
+                    and self.instance.opcao_data_inicio == data_inicio
+                    and self.instance.opcao_data_fim == data_fim
+                )
+
+                # Mudanças de configuração valem para novos horários.
+                # Solicitações pendentes já cadastradas continuam válidas
+                # enquanto seu período original não for modificado.
+                if not horario_original_inalterado:
+                    minutos = int(
+                        duracao_configurada.total_seconds() // 60
+                    )
+                    self.add_error(
+                        'opcao_data_fim',
+                        'A duração da banca deve ser exatamente '
+                        f'{minutos} minutos, conforme a configuração '
+                        'definida pela Coordenação.'
+                    )
+
             # Agora impede realmente horários no passado.
             if data_inicio <= timezone.now():
 
@@ -1269,14 +1408,6 @@ class EdicaoSolicitacaoCoordenacaoForm(
             None
         )
 
-        self.fields[
-            'opcao_data_inicio'
-        ].widget.format = '%Y-%m-%dT%H:%M'
-
-        self.fields[
-            'opcao_data_fim'
-        ].widget.format = '%Y-%m-%dT%H:%M'
-      
 class AvaliacaoSolicitacaoForm(forms.Form):
 
     presidente = DocenteModelChoiceField(
@@ -1544,6 +1675,18 @@ class EspacoFisicoForm(forms.ModelForm):
         return nome
 
 
+class ConfiguracaoAgendamentoForm(forms.ModelForm):
+
+    class Meta:
+        model = ConfiguracaoAgendamento
+        fields = ['duracao_banca_minutos']
+        widgets = {
+            'duracao_banca_minutos': forms.Select(
+                attrs={'class': 'form-input'}
+            ),
+        }
+
+
 class DisponibilidadeEspacoForm(forms.ModelForm):
 
     class Meta:
@@ -1563,20 +1706,12 @@ class DisponibilidadeEspacoForm(forms.ModelForm):
                 }
             ),
 
-            'data_hora_inicio': forms.DateTimeInput(
-                format='%Y-%m-%dT%H:%M',
-                attrs={
-                    'class': 'form-input',
-                    'type': 'datetime-local',
-                }
+            'data_hora_inicio': DataHorarioWidget(
+                papel='inicio',
             ),
 
-            'data_hora_fim': forms.DateTimeInput(
-                format='%Y-%m-%dT%H:%M',
-                attrs={
-                    'class': 'form-input',
-                    'type': 'datetime-local',
-                }
+            'data_hora_fim': DataHorarioWidget(
+                papel='fim',
             ),
 
             'observacao': forms.TextInput(
@@ -1631,8 +1766,48 @@ class DisponibilidadeEspacoForm(forms.ModelForm):
         self.fields[
             'data_hora_fim'
         ].input_formats = [
-            '%Y-%m-%dT%H:%M'
-        ]     
+            '%Y-%m-%dT%H:%M',
+            '%Y-%m-%d %H:%M',
+        ]
+
+        if not self.instance.pk:
+            hoje = timezone.localdate().isoformat()
+
+            for nome_campo in [
+                'data_hora_inicio',
+                'data_hora_fim',
+            ]:
+                self.fields[nome_campo].widget.widgets[0].attrs[
+                    'min'
+                ] = hoje
+
+    def clean(self):
+
+        cleaned_data = super().clean()
+        inicio = cleaned_data.get('data_hora_inicio')
+        fim = cleaned_data.get('data_hora_fim')
+
+        if inicio and fim:
+            inicio_local = (
+                timezone.localtime(inicio)
+                if timezone.is_aware(inicio)
+                else inicio
+            )
+            fim_local = (
+                timezone.localtime(fim)
+                if timezone.is_aware(fim)
+                else fim
+            )
+
+            if inicio_local.date() != fim_local.date():
+                self.add_error(
+                    'data_hora_fim',
+                    'Cadastre cada dia em uma disponibilidade '
+                    'separada. O início e o término devem estar '
+                    'na mesma data.',
+                )
+
+        return cleaned_data
 
 class DiscenteForm(forms.ModelForm):
     class Meta:

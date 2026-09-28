@@ -58,9 +58,29 @@
             <h2 id="titulo-dados-corrigiveis">Dados que podem ser corrigidos</h2>
         </div>
 
-        <form method="POST" class="shared-form">
+        <form method="POST" class="shared-form" data-scheduling-form>
             {% csrf_token %}
-            {{ form.as_p }}
+
+            {{ form.non_field_errors }}
+
+            {% include 'includes/seletor_agendamento.html' with seletor_id='edicao-agendamento' %}
+
+            <div class="form-grid">
+                {% for field in form %}
+                    {% if field.name != 'espaco' and field.name != 'opcao_data_inicio' and field.name != 'opcao_data_fim' %}
+                        <div class="form-field">
+                            <label for="{{ field.id_for_label }}">
+                                {{ field.label }}
+                            </label>
+                            {{ field }}
+                            {{ field.errors }}
+                            {% if field.help_text %}
+                                <small class="form-ajuda">{{ field.help_text }}</small>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
 
             <button type="submit" class="btn-enviar">SALVAR ALTERAÇÕES</button>
         </form>

@@ -1,0 +1,127 @@
+{% with dados_id=seletor_id|add:"-dados" %}
+<section
+    class="appointment-picker"
+    data-appointment-picker
+    data-schedule-json-id="{{ dados_id }}"
+    aria-labelledby="{{ seletor_id }}-titulo"
+>
+    <header class="appointment-picker__header">
+        <span class="shared-card-kicker">DATA E HORÁRIO</span>
+        <h3 id="{{ seletor_id }}-titulo">Escolha um horário disponível</h3>
+        <p>
+            Selecione a sala, o dia e o horário inicial. O sistema mostra
+            somente opções nas quais cabe uma banca completa de
+            <strong>{{ duracao_banca_rotulo }}</strong>.
+        </p>
+    </header>
+
+    <div class="form-field appointment-picker__space">
+        <label for="{{ form.espaco.id_for_label }}">
+            {{ form.espaco.label }}
+        </label>
+        {{ form.espaco }}
+        {{ form.espaco.errors }}
+    </div>
+
+    <div class="appointment-picker__steps">
+        <section class="appointment-step">
+            <div class="appointment-step__title">
+                <span>1</span>
+                <div>
+                    <strong>Selecione o dia da banca</strong>
+                    <small data-calendar-instruction>
+                        Primeiro, escolha uma sala.
+                    </small>
+                </div>
+            </div>
+
+            <div class="schedule-calendar" data-calendar hidden>
+                <div class="schedule-calendar__header">
+                    <button
+                        type="button"
+                        class="schedule-calendar__nav"
+                        data-calendar-previous
+                        aria-label="Mês anterior"
+                    >‹</button>
+                    <strong data-calendar-title></strong>
+                    <button
+                        type="button"
+                        class="schedule-calendar__nav"
+                        data-calendar-next
+                        aria-label="Próximo mês"
+                    >›</button>
+                </div>
+
+                <div class="schedule-calendar__weekdays" aria-hidden="true">
+                    <span>Dom</span><span>Seg</span><span>Ter</span>
+                    <span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
+                </div>
+
+                <div class="schedule-calendar__days" data-calendar-days></div>
+            </div>
+        </section>
+
+        <section class="appointment-step">
+            <div class="appointment-step__title">
+                <span>2</span>
+                <div>
+                    <strong>Selecione o horário inicial</strong>
+                    <small data-selected-day-label>
+                        Escolha um dia disponível no calendário.
+                    </small>
+                </div>
+            </div>
+
+            <fieldset class="schedule-slots" data-schedule-slots disabled>
+                <legend class="sr-only">Horários disponíveis</legend>
+                <div data-schedule-slot-options>
+                    <p class="schedule-slots__empty">
+                        Os horários aparecerão após a escolha do dia.
+                    </p>
+                </div>
+            </fieldset>
+        </section>
+
+        <section class="appointment-step appointment-step--confirmation">
+            <div class="appointment-step__title">
+                <span>3</span>
+                <div>
+                    <strong>Confirmação</strong>
+                    <small>
+                        O término é calculado automaticamente pela regra da
+                        Coordenação.
+                    </small>
+                </div>
+            </div>
+
+            <div class="schedule-confirmation">
+                <div>
+                    <span>Início</span>
+                    <output data-confirmation-start>Nenhum horário escolhido</output>
+                </div>
+                <div>
+                    <span>Término</span>
+                    <output data-confirmation-end>—</output>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <div class="schedule-native-fields" aria-hidden="true">
+        {{ form.opcao_data_inicio }}
+        {{ form.opcao_data_fim }}
+    </div>
+
+    {{ form.opcao_data_inicio.errors }}
+    {{ form.opcao_data_fim.errors }}
+
+    <p
+        class="schedule-feedback"
+        data-schedule-feedback
+        role="status"
+        hidden
+    ></p>
+</section>
+
+{{ opcoes_agendamento|json_script:dados_id }}
+{% endwith %}
