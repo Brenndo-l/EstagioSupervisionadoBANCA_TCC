@@ -283,12 +283,12 @@
                             Agenda da Coordenação
                         </span>
 
-                        <h2>Próximos horários livres</h2>
+                        <h2>Salas com disponibilidade</h2>
 
                         <p>
-                            Veja as salas com bancas completas disponíveis.
-                            Esta agenda é informativa; a escolha é feita
-                            no formulário de solicitação.
+                            Consulte o início e o término das janelas livres
+                            de cada sala. Escolha o horário exato ao solicitar
+                            a banca.
                         </p>
                     </div>
 
@@ -327,9 +327,9 @@
 
                                 <div
                                     class="agenda-dashboard-livres"
-                                    aria-label="Horários livres"
+                                    aria-label="Períodos livres para consulta"
                                 >
-                                    {% for intervalo in dia.horarios %}
+                                    {% for intervalo in dia.periodos %}
                                         <span class="agenda-periodo agenda-periodo--livre">
                                             {{ intervalo.inicio }}–{{ intervalo.fim }}
                                         </span>

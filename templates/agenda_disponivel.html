@@ -4,14 +4,14 @@
 <section class="dashboard-header shared-page-hero">
     <span class="shared-page-eyebrow">AGENDA DA COORDENAÇÃO</span>
     <h1>Horários disponíveis</h1>
-    <p>Somente salas e laboratórios com horários completos para uma banca aparecem aqui. A consulta é igual para todos os docentes.</p>
+    <p>Consulte as salas e os períodos livres com espaço para uma banca completa. A agenda é igual para todos os docentes.</p>
 </section>
 
 <section class="shared-card agenda-publica">
     <div class="shared-card-header">
         <span class="shared-card-kicker">CONSULTA DE DISPONIBILIDADE</span>
-        <h2>Salas com horários livres</h2>
-        <p>Os períodos abaixo são informativos. Para reservar, abra o formulário e escolha um horário ainda disponível no seletor.</p>
+        <h2>Salas com disponibilidade</h2>
+        <p>Mostramos apenas o início e o término de cada janela livre. Para reservar, escolha o horário exato no formulário de solicitação.</p>
     </div>
 
     {% if dias %}
@@ -26,8 +26,8 @@
                         <strong>{{ dia.espaco_nome }}</strong>
                         <span>{{ dia.data|date:'l, d/m/Y' }}</span>
                     </div>
-                    <div class="agenda-dashboard-livres" aria-label="Horários disponíveis para consulta">
-                        {% for horario in dia.horarios %}
+                    <div class="agenda-dashboard-livres" aria-label="Períodos livres para consulta">
+                        {% for horario in dia.periodos %}
                             <span class="agenda-periodo agenda-periodo--livre">{{ horario.inicio }}–{{ horario.fim }}</span>
                         {% endfor %}
                     </div>

@@ -2111,14 +2111,23 @@ textarea:focus-visible {
 }
 
 .schedule-calendar__nav {
+    display: grid;
+    place-items: center;
     width: 2.5rem;
     height: 2.5rem;
+    padding: 0;
+    line-height: 0;
     border: 1px solid #cbd7e8;
     border-radius: 10px;
     color: #172554;
     background: #fff;
-    font-size: 1.55rem;
     cursor: pointer;
+}
+
+.schedule-calendar__nav svg {
+    display: block;
+    width: 1rem;
+    height: 1rem;
 }
 
 .schedule-calendar__nav:disabled {
@@ -2195,15 +2204,17 @@ textarea:focus-visible {
 
 .schedule-slot-option {
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 3.6rem;
-    padding: .55rem .4rem;
+    min-height: 3.2rem;
+    padding: .65rem .4rem;
     border: 1px solid #76a9ed;
     border-radius: 10px;
     color: #173b73;
     background: #fff;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
     cursor: pointer;
     transition: transform .15s ease, background .15s ease;
 }
@@ -2212,6 +2223,38 @@ textarea:focus-visible {
     margin-top: .1rem;
     color: #64748b;
     font-size: .72rem;
+}
+
+.schedule-slot-option--ocupado {
+    flex-direction: column;
+    gap: .18rem;
+    border-color: #d4dae3;
+    background: #f4f6f9;
+    color: #475569;
+    cursor: default;
+}
+
+.schedule-slot-option--ocupado strong {
+    font-size: .9rem;
+    line-height: 1.2;
+}
+
+.schedule-slot-option--ocupado small {
+    font-size: .75rem;
+    font-weight: 700;
+}
+
+.schedule-slot-option--analise small { color: #9a5b16; }
+.schedule-slot-option--agendado small { color: #475569; }
+.schedule-slot-option--ocupado:hover {
+    transform: none;
+    background: #f4f6f9;
+}
+
+.schedule-calendar__day.is-occupied {
+    border-color: #d4dae3;
+    background: #f4f6f9;
+    color: #475569;
 }
 
 .schedule-slot-option:hover {
@@ -2243,6 +2286,33 @@ textarea:focus-visible {
     background: #f1f5f9;
     text-align: center;
 }
+
+.schedule-slots__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem 1rem;
+    margin: .75rem 0 0;
+    color: #475569;
+    font-size: .78rem;
+    font-weight: 650;
+}
+
+.schedule-slots__legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+}
+
+.schedule-slots__key {
+    display: inline-block;
+    width: .65rem;
+    height: .65rem;
+    border-radius: 50%;
+    background: #2563eb;
+}
+
+.schedule-slots__key--analise { background: #bb7b27; }
+.schedule-slots__key--agendado { background: #64748b; }
 
 .schedule-confirmation {
     display: grid;
@@ -2607,8 +2677,17 @@ textarea:focus-visible {
     align-items: flex-end;
     display: flex;
     flex-direction: column;
+    gap: 5px;
     justify-content: center;
     min-width: 104px;
+}
+
+.agenda-dashboard-item {
+    min-height: 78px;
+}
+
+.agenda-publica .agenda-dashboard-lista {
+    margin-top: 12px;
 }
 
 .solicitacao-dashboard-item {
@@ -2742,6 +2821,16 @@ textarea:focus-visible {
 }
 .schedule-slot-input:checked + .schedule-slot-option span { color: var(--branco); }
 .schedule-slot-option { gap: .12rem; }
+.schedule-slot-option--ocupado,
+.schedule-slot-option--ocupado:hover {
+    color: #475569;
+    border-color: #d4dae3;
+    background: #f4f6f9;
+    transform: none;
+    cursor: default;
+}
+.schedule-slot-option--analise small { color: #9a5b16; }
+.schedule-slot-option--agendado small { color: #475569; }
 
 .agenda-publica { padding: clamp(1rem, 2.5vw, 2rem); }
 .agenda-publica__acao { display: inline-flex; width: auto; margin-top: 1.25rem; }

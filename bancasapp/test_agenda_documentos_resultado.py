@@ -1,7 +1,10 @@
 from datetime import timedelta
 from decimal import Decimal
+from io import StringIO
 
 from django.contrib.auth.models import User
+from django.core.management import call_command
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -9,6 +12,7 @@ from docx import Document
 
 from .documentos_banca import gerar_docx_ata, montar_dados_ata
 from .forms import DisponibilidadeEspacoForm, RegistroNotaBancaForm
+from .forms import SolicitacaoBancaForm
 from .models import (
     BancaTCC,
     ComposicaoBanca,
@@ -21,6 +25,8 @@ from .models import (
     pUsuario,
 )
 from .services import (
+    SolicitacaoBancaInvalida,
+    criar_solicitacao_banca_segura,
     montar_agenda_disponibilidades,
     montar_opcoes_agendamento,
 )
@@ -129,6 +135,294 @@ class BaseAgendaResultadoTests(TestCase):
 
 
 class AgendaDisponibilidadesTests(BaseAgendaResultadoTests):
+
+    def formulario_pronto_para_envio(self):
+        segundo = pUsuario.objects.create(
+            usuario=User.objects.create_user(
+                username='segundo.para.envio@ufac.br',
+                email='segundo.para.envio@ufac.br',
+                password='Senha123!',
+            ),
+            perfil='DOCENTE',
+        )
+        inicio = self.inicio
+        fim = inicio + timedelta(hours=1)
+        formulario = SolicitacaoBancaForm(
+            data={
+                'nome_discente': 'Discente reserva tardia',
+                'matricula_discente': '20269990001',
+                'titulo_tcc': 'Teste de concorrência da agenda',
+                'resumo_tcc': 'Teste de validação tardia do horário.',
+                'semestre_letivo': '2026.2',
+                'espaco': self.espaco.pk,
+                'opcao_data_inicio': inicio.strftime('%Y-%m-%dT%H:%M'),
+                'opcao_data_fim': fim.strftime('%Y-%m-%dT%H:%M'),
+                'avaliador_interno': self.avaliador.pk,
+                'segundo_avaliador_interno': segundo.pk,
+            },
+            files={'arquivo_tcc': SimpleUploadedFile(
+                'tcc.pdf', b'%PDF-1.4\nconteudo de teste',
+                content_type='application/pdf',
+            )},
+            orientador=self.docente,
+        )
+        self.assertTrue(formulario.is_valid(), formulario.errors)
+        return formulario, segundo
+
+    def test_reserva_da_sala_apos_validacao_impede_gravacao(self):
+        formulario, _ = self.formulario_pronto_para_envio()
+        self.criar_solicitacao(
+            self.inicio, self.inicio + timedelta(hours=1), 'APROVADA'
+        )
+        with self.assertRaises(SolicitacaoBancaInvalida) as erro:
+            criar_solicitacao_banca_segura(
+                form=formulario, orientador=self.docente
+            )
+        self.assertEqual(erro.exception.campo, 'espaco')
+        self.assertEqual(SolicitacaoAgendamento.objects.count(), 1)
+
+    def test_mudanca_da_duracao_apos_validacao_impede_gravacao(self):
+        formulario, _ = self.formulario_pronto_para_envio()
+        configuracao = ConfiguracaoAgendamento.carregar()
+        configuracao.duracao_banca_minutos = 90
+        configuracao.save()
+        with self.assertRaises(SolicitacaoBancaInvalida) as erro:
+            criar_solicitacao_banca_segura(
+                form=formulario, orientador=self.docente
+            )
+        self.assertEqual(erro.exception.campo, 'opcao_data_inicio')
+        self.assertFalse(SolicitacaoAgendamento.objects.exists())
+
+    def test_docente_em_outra_sala_apos_validacao_impede_gravacao(self):
+        formulario, _ = self.formulario_pronto_para_envio()
+        outra_sala = EspacoFisico.objects.create(nome='Sala simultânea')
+        existente = self.criar_solicitacao(
+            self.inicio, self.inicio + timedelta(hours=1), 'APROVADA'
+        )
+        existente.espaco = outra_sala
+        existente.save(update_fields=['espaco'])
+        outro_orientador = pUsuario.objects.create(
+            usuario=User.objects.create_user(
+                username='orientador.outra@ufac.br',
+                email='orientador.outra@ufac.br',
+                password='Senha123!',
+            ),
+            perfil='DOCENTE',
+        )
+        ComposicaoBanca.objects.create(
+            solicitacao=existente,
+            projeto_tcc=existente.projeto_tcc,
+            orientador=outro_orientador,
+            avaliador_interno=self.avaliador,
+        )
+        with self.assertRaises(SolicitacaoBancaInvalida) as erro:
+            criar_solicitacao_banca_segura(
+                form=formulario, orientador=self.docente
+            )
+        self.assertIsNone(erro.exception.campo)
+        self.assertEqual(SolicitacaoAgendamento.objects.count(), 1)
+
+    def test_grade_de_uma_hora_nao_oferece_opcoes_sobrepostas(self):
+        configuracao = ConfiguracaoAgendamento.carregar()
+        configuracao.duracao_banca_minutos = 60
+        configuracao.save()
+        self.disponibilidade.data_hora_inicio = self.inicio.replace(
+            hour=6, minute=30
+        )
+        self.disponibilidade.data_hora_fim = self.inicio.replace(
+            hour=10, minute=30
+        )
+        self.disponibilidade.save()
+        horarios = montar_opcoes_agendamento(
+            [self.disponibilidade],
+            agora=self.disponibilidade.data_hora_inicio - timedelta(hours=1),
+        )['espacos'][str(self.espaco.pk)]['datas'][self.inicio.date().isoformat()]
+        self.assertEqual(
+            [(h['inicio'], h['fim']) for h in horarios],
+            [('06:30', '07:30'), ('07:30', '08:30'),
+             ('08:30', '09:30'), ('09:30', '10:30')],
+        )
+
+        # Uma reserva fora da grade antiga não cria horários deslocados.
+        self.criar_solicitacao(
+            self.inicio.replace(hour=7),
+            self.inicio.replace(hour=8),
+            'EM_ANÁLISE',
+        )
+        horarios = montar_opcoes_agendamento(
+            [self.disponibilidade],
+            agora=self.disponibilidade.data_hora_inicio - timedelta(hours=1),
+        )['espacos'][str(self.espaco.pk)]['datas'][self.inicio.date().isoformat()]
+        self.assertEqual(
+            [h['inicio'] for h in horarios],
+            ['08:30', '09:30'],
+        )
+
+    def test_grade_exibe_reservas_sem_permitir_selecao(self):
+        agora = self.inicio - timedelta(hours=1)
+        pendente = self.criar_solicitacao(
+            self.inicio, self.inicio + timedelta(hours=1), 'EM_ANÁLISE'
+        )
+        self.criar_solicitacao(
+            self.inicio + timedelta(hours=1),
+            self.inicio + timedelta(hours=2),
+            'APROVADA',
+        )
+        dados = montar_opcoes_agendamento(
+            [self.disponibilidade], agora=agora
+        )['espacos'][str(self.espaco.pk)]
+        dia = self.inicio.date().isoformat()
+        self.assertEqual(
+            [(item['inicio'], item['situacao']) for item in dados['grade'][dia]],
+            [('08:00', 'em_analise'), ('09:00', 'agendado'),
+             ('10:00', 'disponivel'), ('11:00', 'disponivel')],
+        )
+        self.assertEqual(
+            [item['inicio'] for item in dados['datas'][dia]],
+            ['10:00', '11:00'],
+        )
+
+        pendente.status = 'RECUSADA'
+        pendente.save(update_fields=['status'])
+        dados = montar_opcoes_agendamento(
+            [self.disponibilidade], agora=agora
+        )['espacos'][str(self.espaco.pk)]
+        self.assertEqual(dados['grade'][dia][0]['situacao'], 'disponivel')
+
+    def test_dia_totalmente_reservado_permanece_visivel_na_grade(self):
+        self.criar_solicitacao(self.inicio, self.fim, 'APROVADA')
+        dados = montar_opcoes_agendamento(
+            [self.disponibilidade], agora=self.inicio - timedelta(hours=1)
+        )['espacos'][str(self.espaco.pk)]
+        dia = self.inicio.date().isoformat()
+        self.assertEqual(dados['datas'], {})
+        self.assertEqual(len(dados['grade'][dia]), 4)
+        self.assertTrue(all(
+            item['situacao'] == 'agendado' for item in dados['grade'][dia]
+        ))
+
+    def test_tela_docente_publica_reserva_e_navegacao_com_icones(self):
+        self.criar_solicitacao(
+            self.inicio, self.inicio + timedelta(hours=1), 'EM_ANÁLISE'
+        )
+        self.client.force_login(self.docente.usuario)
+        resposta = self.client.get(reverse('solicitar_banca'))
+        self.assertEqual(resposta.status_code, 200)
+        self.assertContains(resposta, '"situacao": "em_analise"')
+        self.assertContains(resposta, '"situacao": "disponivel"')
+        self.assertContains(resposta, 'data-calendar-next')
+        self.assertContains(resposta, '<svg aria-hidden="true"')
+        self.assertContains(resposta, 'Em análise')
+
+    def test_disponibilidade_sobreposta_mesma_sala_e_rejeitada(self):
+        inicio = self.inicio + timedelta(hours=1)
+        fim = self.fim + timedelta(hours=1)
+        dados = {
+            'espaco': self.espaco.pk,
+            'data_hora_inicio_0': inicio.strftime('%Y-%m-%d'),
+            'data_hora_inicio_1': inicio.strftime('%H:%M'),
+            'data_hora_fim_0': fim.strftime('%Y-%m-%d'),
+            'data_hora_fim_1': fim.strftime('%H:%M'),
+            'observacao': '',
+        }
+        form = DisponibilidadeEspacoForm(data=dados)
+        self.assertFalse(form.is_valid())
+        self.assertIn('coincide', str(form.errors))
+
+        self.client.force_login(self.usuario_coordenacao)
+        resposta = self.client.post(
+            reverse('gerenciar_espacos'),
+            {'tipo_formulario': 'disponibilidade', **{
+                f'disponibilidade-{chave}': valor
+                for chave, valor in dados.items()
+            }},
+        )
+        self.assertEqual(resposta.status_code, 200)
+        self.assertEqual(DisponibilidadeEspaco.objects.count(), 1)
+
+    def test_auditoria_detecta_periodos_legados_sobrepostos(self):
+        # O auditor é apenas leitura; não desativa registros em produção.
+        duplicada = DisponibilidadeEspaco.objects.create(
+            espaco=self.espaco,
+            data_hora_inicio=self.inicio + timedelta(minutes=30),
+            data_hora_fim=self.fim,
+            ativo=True,
+        )
+        saida = StringIO()
+        call_command('auditar_integridade_sgtcc', stdout=saida)
+        self.assertIn('DISPONIBILIDADES_SOBREPOSTAS', saida.getvalue())
+        self.assertIn(f'IDs: {duplicada.pk}', saida.getvalue())
+
+        opcoes = montar_opcoes_agendamento(
+            [duplicada, self.disponibilidade],
+            agora=self.inicio - timedelta(hours=1),
+        )['espacos'][str(self.espaco.pk)]['datas'][self.inicio.date().isoformat()]
+        self.assertEqual([item['inicio'] for item in opcoes],
+                         ['08:00', '09:00', '10:00', '11:00'])
+
+    def test_mesma_grade_para_contas_docentes_diferentes(self):
+        outro = User.objects.create_user(
+            username='outro.agenda@ufac.br',
+            email='outro.agenda@ufac.br',
+            password='Senha123!',
+        )
+        pUsuario.objects.create(usuario=outro, perfil='DOCENTE')
+        self.client.force_login(self.docente.usuario)
+        primeira = self.client.get(reverse('solicitar_banca'))
+        self.client.force_login(outro)
+        segunda = self.client.get(reverse('solicitar_banca'))
+        self.assertEqual(
+            primeira.context['opcoes_agendamento']['espacos'],
+            segunda.context['opcoes_agendamento']['espacos'],
+        )
+        self.assertContains(segunda, 'data-appointment-picker')
+
+    def test_agenda_informativa_e_painel_mostram_janela_compacta(self):
+        self.client.force_login(self.docente.usuario)
+        painel = self.client.get(reverse('dashboard'))
+        agenda = self.client.get(reverse('agenda_disponivel'))
+        self.assertEqual(painel.status_code, 200)
+        self.assertEqual(agenda.status_code, 200)
+        self.assertContains(painel, self.espaco.nome)
+        self.assertContains(agenda, self.espaco.nome)
+        self.assertContains(agenda, '08:00–12:00')
+        self.assertContains(painel, '08:00–12:00')
+        self.assertNotContains(agenda, '08:00–09:00')
+        self.assertNotContains(agenda, 'data-agenda-slot')
+
+    def test_reserva_divide_apenas_janelas_livres_na_consulta(self):
+        self.criar_solicitacao(
+            self.inicio + timedelta(hours=1),
+            self.inicio + timedelta(hours=2),
+            'EM_ANÁLISE',
+        )
+        self.client.force_login(self.docente.usuario)
+        resposta = self.client.get(reverse('agenda_disponivel'))
+        self.assertContains(resposta, '08:00–09:00')
+        self.assertContains(resposta, '10:00–12:00')
+        self.assertNotContains(resposta, '10:00–11:00')
+
+    def test_espaco_ocupado_nao_aparece_na_agenda(self):
+        self.criar_solicitacao(self.inicio, self.fim, 'APROVADA')
+        self.client.force_login(self.docente.usuario)
+        painel = self.client.get(reverse('dashboard'))
+        agenda = self.client.get(reverse('agenda_disponivel'))
+        self.assertEqual(painel.context['total_salas'], 0)
+        self.assertNotContains(agenda, self.espaco.nome)
+
+    def test_termino_2359_e_valido_no_widget(self):
+        hora = self.inicio.replace(hour=23, minute=59)
+        formulario = DisponibilidadeEspacoForm(data={
+            'espaco': self.espaco.pk,
+            'data_hora_inicio_0': hora.strftime('%Y-%m-%d'),
+            'data_hora_inicio_1': '12:30',
+            'data_hora_fim_0': hora.strftime('%Y-%m-%d'),
+            'data_hora_fim_1': '23:59',
+        })
+        # O período 12:30–23:59 começa após a janela 08:00–12:00.
+        self.assertTrue(formulario.is_valid(), formulario.errors)
+        self.assertIn('23:59', str(formulario['data_hora_fim']))
+        self.assertIn('step="60"', str(formulario['data_hora_fim']))
 
     def preparar_reservas(self):
 

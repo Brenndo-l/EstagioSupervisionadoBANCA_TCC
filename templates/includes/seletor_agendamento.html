@@ -42,14 +42,22 @@
                         class="schedule-calendar__nav"
                         data-calendar-previous
                         aria-label="Mês anterior"
-                    >‹</button>
+                    >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                            <path d="M14.5 5.5 8 12l6.5 6.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
                     <strong data-calendar-title></strong>
                     <button
                         type="button"
                         class="schedule-calendar__nav"
                         data-calendar-next
                         aria-label="Próximo mês"
-                    >›</button>
+                    >
+                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none">
+                            <path d="M9.5 5.5 16 12l-6.5 6.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
                 </div>
 
                 <div class="schedule-calendar__weekdays" aria-hidden="true">
@@ -73,13 +81,18 @@
             </div>
 
             <fieldset class="schedule-slots" data-schedule-slots disabled>
-                <legend class="sr-only">Horários disponíveis</legend>
+                <legend class="sr-only">Horários da sala</legend>
                 <div data-schedule-slot-options>
                     <p class="schedule-slots__empty">
                         Os horários aparecerão após a escolha do dia.
                     </p>
                 </div>
             </fieldset>
+            <p class="schedule-slots__legend">
+                <span><i class="schedule-slots__key schedule-slots__key--livre" aria-hidden="true"></i>Livre para solicitar</span>
+                <span><i class="schedule-slots__key schedule-slots__key--analise" aria-hidden="true"></i>Em análise</span>
+                <span><i class="schedule-slots__key schedule-slots__key--agendado" aria-hidden="true"></i>Agendado</span>
+            </p>
         </section>
 
         <section class="appointment-step appointment-step--confirmation">

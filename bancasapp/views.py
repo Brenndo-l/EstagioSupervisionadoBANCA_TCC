@@ -254,11 +254,30 @@ def _agenda_publicada():
     for espaco_id, espaco in opcoes['espacos'].items():
         for data_iso, horarios in espaco['datas'].items():
             if horarios:
+                # A agenda de consulta mostra janelas contínuas, não cada
+                # bloco oferecido no formulário de solicitação. Uma reserva
+                # divide a janela; blocos consecutivos formam uma só faixa.
+                periodos = []
+                for horario in sorted(
+                    horarios, key=lambda item: item['inicio_iso']
+                ):
+                    if (
+                        periodos
+                        and periodos[-1]['fim_iso'] == horario['inicio_iso']
+                    ):
+                        periodos[-1]['fim'] = horario['fim']
+                        periodos[-1]['fim_iso'] = horario['fim_iso']
+                    else:
+                        periodos.append({
+                            'inicio': horario['inicio'],
+                            'fim': horario['fim'],
+                            'fim_iso': horario['fim_iso'],
+                        })
                 dias.append({
                     'espaco_id': espaco_id,
                     'espaco_nome': espaco['nome'],
                     'data': date.fromisoformat(data_iso),
-                    'horarios': horarios,
+                    'periodos': periodos,
                 })
     dias.sort(key=lambda item: (item['data'], item['espaco_nome']))
     return opcoes, dias
@@ -730,6 +749,38 @@ def editar_solicitacao_coordenacao(
                     )
                 )
 
+                # O formulário foi validado antes de entrar na transação.
+                # Outra solicitação pode ter ocupado a sala ou um docente
+                # nesse intervalo. Compartilhe as travas usadas no envio
+                # docente e repita todas as regras sob a transação.
+                EspacoFisico.objects.select_for_update().get(
+                    pk=form.cleaned_data['espaco'].pk
+                )
+                participantes_ids = sorted({
+                    perfil.pk for perfil in (
+                        composicao_bloqueada.orientador,
+                        form.cleaned_data.get('coorientador'),
+                        form.cleaned_data.get('avaliador_interno'),
+                        form.cleaned_data.get('segundo_avaliador_interno'),
+                    ) if perfil is not None
+                })
+                list(
+                    pUsuario.objects.select_for_update()
+                    .filter(pk__in=participantes_ids).order_by('pk')
+                )
+                form.full_clean()
+                if not form.is_valid():
+                    messages.error(
+                        request,
+                        'A disponibilidade ou um dos participantes mudou '
+                        'durante a edição. Revise os horários e envie '
+                        'novamente.'
+                    )
+                    return redirect(
+                        'editar_solicitacao_coordenacao',
+                        solicitacao_id=solicitacao.id,
+                    )
+
                 # Atualiza somente sala e horários.
                 # Projeto, solicitante e PDF permanecem
                 # exatamente como estavam.
@@ -992,7 +1043,7 @@ def solicitar_banca(request):
                 )
             except SolicitacaoBancaInvalida as erro:
                 form.add_error(
-                    'matricula_discente',
+                    erro.campo,
                     erro.mensagem,
                 )
             else:

@@ -4,6 +4,7 @@ from datetime import timedelta
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from .models import (
@@ -11,8 +12,11 @@ from .models import (
     ComposicaoBanca,
     ConfiguracaoAgendamento,
     Discente,
+    DisponibilidadeEspaco,
+    EspacoFisico,
     ProjetoTCC,
     SolicitacaoAgendamento,
+    pUsuario,
 )
 
 
@@ -27,8 +31,9 @@ class BloqueioTCCDiscente:
 class SolicitacaoBancaInvalida(Exception):
     """Falha de regra de negócio detectada na gravação da solicitação."""
 
-    def __init__(self, mensagem):
+    def __init__(self, mensagem, campo='matricula_discente'):
         self.mensagem = mensagem
+        self.campo = campo
         super().__init__(mensagem)
 
 
@@ -199,21 +204,33 @@ def criar_solicitacao_banca_segura(*, form, orientador):
     # A validação inicial do formulário pode ficar obsoleta entre o GET,
     # o POST e a gravação. Trave a sala e confira novamente disponibilidade
     # e conflitos antes de criar qualquer projeto/solicitação.
-    from .models import DisponibilidadeEspaco, EspacoFisico
-
     sala = EspacoFisico.objects.select_for_update().get(
         pk=form.cleaned_data['espaco'].pk
     )
     inicio = form.cleaned_data['opcao_data_inicio']
     fim = form.cleaned_data['opcao_data_fim']
-    if not sala.ativo or not DisponibilidadeEspaco.objects.filter(
+    periodos_validos = DisponibilidadeEspaco.objects.filter(
         espaco=sala, ativo=True,
         data_hora_inicio__lte=inicio,
         data_hora_fim__gte=fim,
-    ).exists():
+    )
+    if not sala.ativo or not periodos_validos.exists():
         raise SolicitacaoBancaInvalida(
             'O horário deixou de estar disponível para esta sala. '
-            'Atualize a página e selecione outro horário.'
+            'Atualize a página e selecione outro horário.',
+            campo='espaco',
+        )
+    duracao = timedelta(
+        minutes=ConfiguracaoAgendamento.carregar().duracao_banca_minutos
+    )
+    if fim - inicio != duracao or not any(
+        (inicio - periodo.data_hora_inicio) % duracao == timedelta(0)
+        for periodo in periodos_validos
+    ):
+        raise SolicitacaoBancaInvalida(
+            'A regra de duração ou a grade de horários foi alterada. '
+            'Atualize a página e escolha um dos horários publicados.',
+            campo='opcao_data_inicio',
         )
     if SolicitacaoAgendamento.objects.filter(
         espaco=sala,
@@ -222,7 +239,47 @@ def criar_solicitacao_banca_segura(*, form, orientador):
     ).exclude(status__in=['RECUSADA', 'EXPIRADA']).exists():
         raise SolicitacaoBancaInvalida(
             'Outra banca ocupou este horário. Atualize a página e '
-            'selecione outro horário.'
+            'selecione outro horário.',
+            campo='espaco',
+        )
+
+    participantes = [
+        orientador,
+        form.cleaned_data.get('coorientador'),
+        form.cleaned_data.get('avaliador_interno'),
+        segundo_avaliador,
+    ]
+    participantes_ids = sorted({
+        docente.pk for docente in participantes if docente is not None
+    })
+    # A sala sozinha não protege um docente que apareça simultaneamente
+    # em duas bancas de laboratórios distintos. Bloqueie todos os perfis
+    # em ordem estável e consulte novamente sob a mesma transação.
+    list(
+        pUsuario.objects.select_for_update()
+        .filter(pk__in=participantes_ids).order_by('pk')
+    )
+    filtro_participantes = (
+        Q(composicao_banca__orientador_id__in=participantes_ids)
+        | Q(composicao_banca__coorientador_id__in=participantes_ids)
+        | Q(composicao_banca__avaliador_interno_id__in=participantes_ids)
+        | Q(composicao_banca__segundo_avaliador_interno_id__in=participantes_ids)
+        | Q(composicao_banca__presidente_id__in=participantes_ids)
+    )
+    if (
+        SolicitacaoAgendamento.objects.filter(
+            opcao_data_inicio__lt=fim,
+            opcao_data_fim__gt=inicio,
+        )
+        .exclude(status__in=['RECUSADA', 'EXPIRADA'])
+        .filter(filtro_participantes)
+        .exists()
+    ):
+        raise SolicitacaoBancaInvalida(
+            'Um dos docentes indicados já participa de outra banca neste '
+            'horário, inclusive se ela ocorrer em outra sala. Atualize a '
+            'página e escolha outro horário ou outra composição.',
+            campo=None,
         )
 
     projeto = ProjetoTCC.objects.create(
@@ -394,6 +451,7 @@ def montar_agenda_disponibilidades(
         )
         fim_disponibilidade = disponibilidade.data_hora_fim
         intervalos_ocupados = []
+        reservas = []
 
         if inicio_util < fim_disponibilidade:
 
@@ -413,6 +471,12 @@ def montar_agenda_disponibilidades(
 
                 if inicio_ocupado >= fim_ocupado:
                     continue
+
+                reservas.append({
+                    'inicio': inicio_ocupado,
+                    'fim': fim_ocupado,
+                    'status': solicitacao.status,
+                })
 
                 if (
                     intervalos_ocupados
@@ -458,6 +522,7 @@ def montar_agenda_disponibilidades(
             )
 
         disponibilidade.intervalos_ocupados = intervalos_ocupados
+        disponibilidade.reservas = reservas
         disponibilidade.intervalos_livres = intervalos_livres
         disponibilidade.possui_horario_livre = bool(
             intervalos_livres
@@ -477,7 +542,9 @@ def montar_opcoes_agendamento(
 
     A grade é ancorada no início ORIGINAL de cada disponibilidade e
     avança exatamente uma duração de banca por vez. Uma reserva nunca
-    desloca a grade: apenas retira os blocos com os quais se cruza.
+    desloca a grade: os blocos reservados continuam visíveis, sem permitir
+    seleção. ``datas`` contém somente opções livres e ``grade`` contém
+    todos os blocos futuros, incluindo os estados das reservas.
     A mesma lista é exibida a todos os docentes, sem filtro pessoal.
     """
 
@@ -527,6 +594,7 @@ def montar_opcoes_agendamento(
             {
                 'nome': disponibilidade.espaco.nome,
                 'datas': {},
+                'grade': {},
             },
         )
 
@@ -535,40 +603,54 @@ def montar_opcoes_agendamento(
 
         while inicio + duracao <= limite:
             fim = inicio + duracao
-            ocupado = any(
-                inicio < intervalo['fim']
-                and fim > intervalo['inicio']
-                for intervalo in disponibilidade.intervalos_ocupados
-            )
-
-            if inicio > agora and not ocupado:
+            if inicio > agora:
                 inicio_local = timezone.localtime(inicio)
                 fim_local = timezone.localtime(fim)
                 data_iso = inicio_local.date().isoformat()
                 if fim_local.date() == inicio_local.date():
-                    opcoes_data = dados_espaco['datas'].setdefault(
-                        data_iso, []
-                    )
                     opcao = {
                         'inicio': inicio_local.strftime('%H:%M'),
                         'fim': fim_local.strftime('%H:%M'),
                         'inicio_iso': inicio_local.strftime('%Y-%m-%dT%H:%M'),
                         'fim_iso': fim_local.strftime('%Y-%m-%dT%H:%M'),
                     }
+                    reservas = [
+                        reserva for reserva in disponibilidade.reservas
+                        if inicio < reserva['fim']
+                        and fim > reserva['inicio']
+                    ]
+                    if any(
+                        reserva['status'] == 'APROVADA'
+                        for reserva in reservas
+                    ):
+                        opcao['situacao'] = 'agendado'
+                    elif reservas:
+                        opcao['situacao'] = 'em_analise'
+                    else:
+                        opcao['situacao'] = 'disponivel'
+
+                    grade_data = dados_espaco['grade'].setdefault(
+                        data_iso, []
+                    )
                     # Protege a tela também de dados legados com períodos
                     # duplicados/sobrepostos na mesma sala.
                     if not any(
                         opcao['inicio_iso'] < existente['fim_iso']
                         and opcao['fim_iso'] > existente['inicio_iso']
-                        for existente in opcoes_data
+                        for existente in grade_data
                     ):
-                        opcoes_data.append(opcao)
+                        grade_data.append(opcao)
+                        if opcao['situacao'] == 'disponivel':
+                            dados_espaco['datas'].setdefault(
+                                data_iso, []
+                            ).append(opcao)
 
             inicio += duracao
 
     for dados_espaco in espacos.values():
-        for opcoes in dados_espaco['datas'].values():
-            opcoes.sort(key=lambda item: item['inicio_iso'])
+        for chave in ('datas', 'grade'):
+            for opcoes in dados_espaco[chave].values():
+                opcoes.sort(key=lambda item: item['inicio_iso'])
 
     return {
         'duracao_minutos': configuracao.duracao_banca_minutos,

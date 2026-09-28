@@ -437,12 +437,14 @@
                 const espaco = dadosDoEspaco();
                 const horarios = (
                     espaco && dataSelecionada
-                    ? espaco.datas[dataSelecionada] || []
+                    ? espaco.grade[dataSelecionada] || []
                     : []
                 );
 
                 opcoesHorarios.replaceChildren();
-                grupoHorarios.disabled = horarios.length === 0;
+                grupoHorarios.disabled = !horarios.some(function (opcao) {
+                    return opcao.situacao === 'disponivel';
+                });
 
                 if (!horarios.length) {
                     const vazio = document.createElement('p');
@@ -459,6 +461,29 @@
                 rotuloDia.textContent = formatarData(dataSelecionada);
 
                 horarios.forEach(function (opcao, indice) {
+                    if (opcao.situacao !== 'disponivel') {
+                        const ocupado = document.createElement('div');
+                        const horario = document.createElement('strong');
+                        const estado = document.createElement('small');
+                        const aprovado = opcao.situacao === 'agendado';
+
+                        ocupado.className = 'schedule-slot-option schedule-slot-option--ocupado';
+                        ocupado.classList.add(
+                            aprovado
+                            ? 'schedule-slot-option--agendado'
+                            : 'schedule-slot-option--analise'
+                        );
+                        horario.textContent = opcao.inicio + ' – ' + opcao.fim;
+                        estado.textContent = aprovado ? 'Agendado' : 'Em análise';
+                        ocupado.setAttribute(
+                            'aria-label', horario.textContent + ': ' + estado.textContent
+                        );
+                        ocupado.appendChild(horario);
+                        ocupado.appendChild(estado);
+                        opcoesHorarios.appendChild(ocupado);
+                        return;
+                    }
+
                     const identificador = (
                         seletor.dataset.scheduleJsonId
                         + '-horario-'
@@ -475,11 +500,7 @@
 
                     label.htmlFor = identificador;
                     label.className = 'schedule-slot-option';
-                    const inicioTexto = document.createElement('strong');
-                    inicioTexto.textContent = opcao.inicio;
-                    const fimTexto = document.createElement('span');
-                    fimTexto.textContent = 'até ' + opcao.fim;
-                    label.append(inicioTexto, fimTexto);
+                    label.textContent = opcao.inicio + ' – ' + opcao.fim;
 
                     radio.addEventListener('change', function () {
                         selecionarHorario(opcao);
@@ -530,23 +551,28 @@
                         doisDigitos(mes + 1),
                         doisDigitos(dia)
                     ].join('-');
+                    const comHorario = Boolean(espaco.grade[dataIso]);
                     const disponivel = Boolean(espaco.datas[dataIso]);
                     const botao = document.createElement('button');
 
                     botao.type = 'button';
                     botao.textContent = dia;
                     botao.className = 'schedule-calendar__day';
-                    botao.disabled = !disponivel;
+                    botao.disabled = !comHorario;
+                    if (comHorario && !disponivel) {
+                        botao.classList.add('is-occupied');
+                    }
 
                     if (dataSelecionada === dataIso) {
                         botao.classList.add('is-selected');
                         botao.setAttribute('aria-current', 'date');
                     }
 
-                    if (disponivel) {
+                    if (comHorario) {
                         botao.setAttribute(
                             'aria-label',
-                            'Selecionar ' + formatarData(dataIso)
+                            (disponivel ? 'Selecionar ' : 'Consultar horários ocupados de ')
+                            + formatarData(dataIso)
                         );
                         botao.addEventListener('click', function () {
                             dataSelecionada = dataIso;
@@ -583,7 +609,7 @@
                     return;
                 }
 
-                const datas = Object.keys(espaco.datas).sort();
+                const datas = Object.keys(espaco.grade).sort();
                 mesesDisponiveis = Array.from(
                     new Set(datas.map(function (data) {
                         return data.slice(0, 7);
@@ -592,7 +618,7 @@
 
                 if (
                     dataSelecionada
-                    && !espaco.datas[dataSelecionada]
+                    && !espaco.grade[dataSelecionada]
                 ) {
                     dataSelecionada = null;
                 }
@@ -607,7 +633,7 @@
 
                 instrucaoCalendario.textContent = (
                     datas.length
-                    ? 'Dias destacados possuem horários disponíveis.'
+                    ? 'Dias azuis têm horários livres; dias em cinza mostram reservas.'
                     : 'Esta sala não possui horários completos disponíveis.'
                 );
 

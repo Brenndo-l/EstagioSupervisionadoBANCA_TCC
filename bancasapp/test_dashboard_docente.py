@@ -225,7 +225,7 @@ class DashboardDocenteTests(TestCase):
 
         self.assertContains(
             response,
-            'Próximos horários livres'
+            'Salas com disponibilidade'
         )
 
         self.assertContains(
@@ -235,7 +235,7 @@ class DashboardDocenteTests(TestCase):
 
         self.assertContains(
             response,
-            'informe manualmente'
+            'Escolha o horário exato'
         )
 
         self.assertNotContains(

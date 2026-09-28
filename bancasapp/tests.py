@@ -536,10 +536,7 @@ class AgendamentoTests(TestCase):
         self.disponibilidade = (
             DisponibilidadeEspaco.objects.create(
                 espaco=self.espaco,
-                data_hora_inicio=(
-                    self.inicio_agendamento
-                    - timedelta(hours=1)
-                ),
+                data_hora_inicio=self.inicio_agendamento,
                 data_hora_fim=(
                     self.fim_agendamento
                     + timedelta(hours=1)
@@ -1843,10 +1840,7 @@ class AvaliacaoSolicitacaoTests(TestCase):
 
         DisponibilidadeEspaco.objects.create(
             espaco=novo_espaco,
-            data_hora_inicio=(
-                novo_inicio
-                - timedelta(hours=1)
-            ),
+            data_hora_inicio=novo_inicio,
             data_hora_fim=(
                 novo_fim
                 + timedelta(hours=1)
@@ -4841,10 +4835,7 @@ class AutocompleteDocentesTests(TestCase):
 
         DisponibilidadeEspaco.objects.create(
             espaco=self.espaco,
-            data_hora_inicio=(
-                self.inicio
-                - timedelta(hours=1)
-            ),
+            data_hora_inicio=self.inicio,
             data_hora_fim=(
                 self.fim
                 + timedelta(hours=1)
