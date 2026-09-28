@@ -29,6 +29,7 @@ urlpatterns = [
         views.dashboard,
         name='dashboard'
     ),
+    path('agenda/', views.agenda_disponivel, name='agenda_disponivel'),
     path(
         'bancas/',
         views.visualizar_bancas,

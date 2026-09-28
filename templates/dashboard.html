@@ -286,14 +286,14 @@
                         <h2>Próximos horários livres</h2>
 
                         <p>
-                            Consulte os intervalos ainda disponíveis e
-                            informe manualmente a sala, a data e o horário
-                            ao solicitar a banca.
+                            Veja as salas com bancas completas disponíveis.
+                            Esta agenda é informativa; a escolha é feita
+                            no formulário de solicitação.
                         </p>
                     </div>
 
                     <a
-                        href="{% url 'solicitar_banca' %}"
+                        href="{% url 'agenda_disponivel' %}"
                         class="btn-filter"
                     >
                         Ver agenda completa
@@ -302,42 +302,36 @@
 
                 {% if agenda_resumida %}
                     <ul class="agenda-dashboard-lista">
-                        {% for disponibilidade in agenda_resumida %}
+                        {% for dia in agenda_resumida %}
                             <li class="agenda-dashboard-item">
                                 <div class="agenda-dashboard-data">
                                     <span>
-                                        {{ disponibilidade.data_hora_inicio|date:"d" }}
+                                        {{ dia.data|date:"d" }}
                                     </span>
 
                                     <small>
-                                        {{ disponibilidade.data_hora_inicio|date:"M" }}
+                                        {{ dia.data|date:"M" }}
                                     </small>
                                 </div>
 
                                 <div class="agenda-dashboard-conteudo">
                                     <strong>
-                                        {{ disponibilidade.espaco.nome }}
+                                        {{ dia.espaco_nome }}
                                     </strong>
 
                                     <span>
-                                        Período da Coordenação:
-                                        {{ disponibilidade.data_hora_inicio|date:"H:i" }}–{{ disponibilidade.data_hora_fim|date:"H:i" }}
+                                        {{ dia.data|date:"l, d/m/Y" }}
                                     </span>
 
-                                    {% if disponibilidade.observacao %}
-                                        <small>
-                                            {{ disponibilidade.observacao }}
-                                        </small>
-                                    {% endif %}
                                 </div>
 
                                 <div
                                     class="agenda-dashboard-livres"
                                     aria-label="Horários livres"
                                 >
-                                    {% for intervalo in disponibilidade.intervalos_livres %}
+                                    {% for intervalo in dia.horarios %}
                                         <span class="agenda-periodo agenda-periodo--livre">
-                                            {{ intervalo.inicio|date:"H:i" }}–{{ intervalo.fim|date:"H:i" }}
+                                            {{ intervalo.inicio }}–{{ intervalo.fim }}
                                         </span>
                                     {% endfor %}
                                 </div>

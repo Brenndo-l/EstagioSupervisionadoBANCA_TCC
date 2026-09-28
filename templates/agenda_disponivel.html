@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="dashboard-header shared-page-hero">
+    <span class="shared-page-eyebrow">AGENDA DA COORDENAÇÃO</span>
+    <h1>Horários disponíveis</h1>
+    <p>Somente salas e laboratórios com horários completos para uma banca aparecem aqui. A consulta é igual para todos os docentes.</p>
+</section>
+
+<section class="shared-card agenda-publica">
+    <div class="shared-card-header">
+        <span class="shared-card-kicker">CONSULTA DE DISPONIBILIDADE</span>
+        <h2>Salas com horários livres</h2>
+        <p>Os períodos abaixo são informativos. Para reservar, abra o formulário e escolha um horário ainda disponível no seletor.</p>
+    </div>
+
+    {% if dias %}
+        <ul class="agenda-dashboard-lista">
+            {% for dia in dias %}
+                <li class="agenda-dashboard-item">
+                    <div class="agenda-dashboard-data" aria-label="{{ dia.data|date:'d/m/Y' }}">
+                        <span>{{ dia.data|date:'d' }}</span>
+                        <small>{{ dia.data|date:'M' }}</small>
+                    </div>
+                    <div class="agenda-dashboard-conteudo">
+                        <strong>{{ dia.espaco_nome }}</strong>
+                        <span>{{ dia.data|date:'l, d/m/Y' }}</span>
+                    </div>
+                    <div class="agenda-dashboard-livres" aria-label="Horários disponíveis para consulta">
+                        {% for horario in dia.horarios %}
+                            <span class="agenda-periodo agenda-periodo--livre">{{ horario.inicio }}–{{ horario.fim }}</span>
+                        {% endfor %}
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+        {% if dias.has_other_pages %}
+            <nav class="agenda-paginacao" aria-label="Páginas da agenda">
+                {% if dias.has_previous %}<a href="?pagina={{ dias.previous_page_number }}">Anterior</a>{% endif %}
+                <span>Página {{ dias.number }} de {{ dias.paginator.num_pages }}</span>
+                {% if dias.has_next %}<a href="?pagina={{ dias.next_page_number }}">Próxima</a>{% endif %}
+            </nav>
+        {% endif %}
+        <a class="btn-enviar agenda-publica__acao" href="{% url 'solicitar_banca' %}">SOLICITAR BANCA</a>
+    {% else %}
+        <div class="docente-dashboard-vazio">
+            <strong>Não há horários completos disponíveis</strong>
+            <p>A Coordenação ainda não publicou períodos futuros ou todos os horários estão ocupados.</p>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

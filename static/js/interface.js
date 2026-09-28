@@ -221,14 +221,7 @@
     }
 
     function limparSelecaoAgenda(formulario) {
-        delete formulario.dataset.slotEnd;
-
-        document.querySelectorAll('[data-agenda-slot]').forEach(
-            function (botao) {
-                botao.classList.remove('is-selected');
-                botao.removeAttribute('aria-pressed');
-            }
-        );
+        // A agenda pública é informativa; somente o seletor reserva horário.
     }
 
     function atualizarLimites(formulario) {
@@ -266,28 +259,6 @@
         }
     }
 
-    function definirFimPadrao(formulario) {
-        const grupoInicio = formulario.querySelector(
-            '[data-date-time-role="inicio"]'
-        );
-        const grupoFim = formulario.querySelector(
-            '[data-date-time-role="fim"]'
-        );
-        const inicio = lerDataHora(grupoInicio);
-        const fimAtual = lerDataHora(grupoFim);
-
-        if (!inicio || (fimAtual && fimAtual > inicio)) {
-            atualizarLimites(formulario);
-            return;
-        }
-
-        escreverDataHora(
-            grupoFim,
-            new Date(inicio.getTime() + (60 * 60 * 1000))
-        );
-        atualizarLimites(formulario);
-    }
-
     document.querySelectorAll('[data-scheduling-form]').forEach(
         function (formulario) {
             const grupoInicio = formulario.querySelector(
@@ -302,7 +273,7 @@
                 function (campo) {
                     campo.addEventListener('change', function () {
                         limparSelecaoAgenda(formulario);
-                        definirFimPadrao(formulario);
+                        atualizarLimites(formulario);
                     });
                 }
             );
@@ -325,58 +296,6 @@
                     limparSelecaoAgenda(formulario);
                 });
             }
-
-            formulario.querySelectorAll('[data-duration-minutes]').forEach(
-                function (botao) {
-                    botao.addEventListener('click', function () {
-                        const inicio = lerDataHora(grupoInicio);
-
-                        if (!inicio) {
-                            mostrarRetorno(
-                                formulario,
-                                'Informe primeiro a data e a hora de início.',
-                                'warning'
-                            );
-                            campoDoGrupo(
-                                grupoInicio,
-                                '[data-date-part]'
-                            ).focus();
-                            return;
-                        }
-
-                        const minutos = Number(
-                            botao.dataset.durationMinutes
-                        );
-                        let fim = new Date(
-                            inicio.getTime() + (minutos * 60 * 1000)
-                        );
-
-                        if (formulario.dataset.slotEnd) {
-                            const limite = new Date(
-                                formulario.dataset.slotEnd
-                            );
-
-                            if (fim > limite) {
-                                fim = limite;
-                            }
-                        }
-
-                        escreverDataHora(
-                            formulario.querySelector(
-                                '[data-date-time-role="fim"]'
-                            ),
-                            fim
-                        );
-                        atualizarLimites(formulario);
-
-                        mostrarRetorno(
-                            formulario,
-                            'Término calculado. Revise o período antes de enviar.',
-                            'success'
-                        );
-                    });
-                }
-            );
 
             atualizarLimites(formulario);
         }
@@ -556,10 +475,11 @@
 
                     label.htmlFor = identificador;
                     label.className = 'schedule-slot-option';
-                    label.innerHTML = (
-                        '<strong>' + opcao.inicio + '</strong>'
-                        + '<span>até ' + opcao.fim + '</span>'
-                    );
+                    const inicioTexto = document.createElement('strong');
+                    inicioTexto.textContent = opcao.inicio;
+                    const fimTexto = document.createElement('span');
+                    fimTexto.textContent = 'até ' + opcao.fim;
+                    label.append(inicioTexto, fimTexto);
 
                     radio.addEventListener('change', function () {
                         selecionarHorario(opcao);

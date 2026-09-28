@@ -1,10 +1,11 @@
 from django.core.management.base import BaseCommand, CommandError
-from django.db.models import Count, F, Q
+from django.db.models import Count, Exists, F, OuterRef, Q
 
 from bancasapp.models import (
     BancaTCC,
     ComposicaoBanca,
     Discente,
+    DisponibilidadeEspaco,
     SolicitacaoAgendamento,
 )
 
@@ -256,7 +257,28 @@ class Command(BaseCommand):
             .exclude(status='FINALIZADA')
         )
 
+        periodo_anterior_sobreposto = (
+            DisponibilidadeEspaco.objects.filter(
+                ativo=True,
+                espaco_id=OuterRef('espaco_id'),
+                pk__lt=OuterRef('pk'),
+                data_hora_inicio__lt=OuterRef('data_hora_fim'),
+                data_hora_fim__gt=OuterRef('data_hora_inicio'),
+            )
+        )
+        disponibilidades_duplicadas = (
+            DisponibilidadeEspaco.objects.filter(ativo=True)
+            .annotate(sobreposta=Exists(periodo_anterior_sobreposto))
+            .filter(sobreposta=True)
+        )
+
         return (
+            (
+                'DISPONIBILIDADES_SOBREPOSTAS',
+                'Período ativo que coincide com outro da mesma sala. '
+                'Revise os IDs antes de desativar qualquer registro.',
+                disponibilidades_duplicadas,
+            ),
             (
                 'MATRICULA_COM_FLUXOS_SIMULTANEOS',
                 (

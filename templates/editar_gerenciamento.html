@@ -15,9 +15,11 @@
         <p>Revise os campos abaixo antes de salvar as alterações.</p>
     </div>
 
-    <form method="POST" class="shared-form">
+    <form method="POST" class="shared-form" data-scheduling-form>
         {% csrf_token %}
         {{ form.as_p }}
+
+        <p class="schedule-feedback" data-schedule-feedback role="status" hidden></p>
 
         <button type="submit" class="btn-enviar">{{ texto_botao }}</button>
     </form>

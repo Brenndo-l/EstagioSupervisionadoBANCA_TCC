@@ -30,6 +30,7 @@ from django.contrib import messages
 from django.db.models import Q
 from django.http import FileResponse, HttpResponse
 from pathlib import Path
+from datetime import date
 from .documentos_banca import (
     gerar_docx_ata,
     gerar_pdf_ata,
@@ -240,6 +241,37 @@ def obter_banca_da_solicitacao(solicitacao):
 
 # 1. Tela inicial do sistema (Dashboard com os botões principais)
 # 1. Tela inicial do sistema
+def _agenda_publicada():
+    """Uma única grade pública para agenda, painel e solicitação."""
+    agora = timezone.now()
+    opcoes = montar_opcoes_agendamento(
+        DisponibilidadeEspaco.objects.select_related('espaco')
+        .filter(ativo=True, espaco__ativo=True, data_hora_fim__gt=agora)
+        .order_by('data_hora_inicio', 'espaco__nome', 'pk'),
+        agora=agora,
+    )
+    dias = []
+    for espaco_id, espaco in opcoes['espacos'].items():
+        for data_iso, horarios in espaco['datas'].items():
+            if horarios:
+                dias.append({
+                    'espaco_id': espaco_id,
+                    'espaco_nome': espaco['nome'],
+                    'data': date.fromisoformat(data_iso),
+                    'horarios': horarios,
+                })
+    dias.sort(key=lambda item: (item['data'], item['espaco_nome']))
+    return opcoes, dias
+
+
+@docente_required
+def agenda_disponivel(request):
+    _, dias = _agenda_publicada()
+    return render(request, 'agenda_disponivel.html', {
+        'dias': Paginator(dias, 12).get_page(request.GET.get('pagina')),
+    })
+
+
 @usuario_interno_required
 def dashboard(request):
 
@@ -422,46 +454,9 @@ def dashboard(request):
         ultimos_pedidos = None
         historico_decisoes = None
 
-        disponibilidades = (
-            montar_agenda_disponibilidades(
-                DisponibilidadeEspaco.objects
-                .select_related(
-                    'espaco'
-                )
-                .filter(
-                    ativo=True,
-                    espaco__ativo=True,
-                    data_hora_fim__gt=agora,
-                )
-                .order_by(
-                    'data_hora_inicio',
-                    'espaco__nome',
-                ),
-                agora=agora,
-            )
-        )
-
-        # Disponibilidades completamente ocupadas
-        # não fazem a sala aparecer como disponível.
-        disponibilidades_com_horario = [
-            disponibilidade
-            for disponibilidade in disponibilidades
-            if disponibilidade.possui_horario_livre
-        ]
-
-        # Conta cada sala apenas uma vez, mesmo que ela
-        # possua várias disponibilidades futuras.
-        total_salas = len(
-            {
-                disponibilidade.espaco_id
-                for disponibilidade
-                in disponibilidades_com_horario
-            }
-        )
-
-        agenda_resumida = (
-            disponibilidades_com_horario[:5]
-        )
+        _, dias_agenda = _agenda_publicada()
+        total_salas = len({dia['espaco_id'] for dia in dias_agenda})
+        agenda_resumida = dias_agenda[:5]
 
         solicitacoes_recentes = (
             SolicitacaoAgendamento.objects
@@ -3002,19 +2997,21 @@ def gerenciar_espacos(request):
                 )
             )
 
-            if form_disponibilidade.is_valid():
+            # Serializa cadastros da MESMA sala antes de verificar
+            # períodos sobrepostos (inclusive duas abas simultâneas).
+            with transaction.atomic():
+                espaco_id = request.POST.get('disponibilidade-espaco', '')
+                if espaco_id.isdecimal():
+                    EspacoFisico.objects.select_for_update().filter(
+                        pk=int(espaco_id)
+                    ).first()
+                formulario_valido = form_disponibilidade.is_valid()
+                if formulario_valido:
+                    disponibilidade = form_disponibilidade.save(commit=False)
+                    disponibilidade.criada_por = request.user
+                    disponibilidade.save()
 
-                disponibilidade = (
-                    form_disponibilidade.save(
-                        commit=False
-                    )
-                )
-
-                disponibilidade.criada_por = (
-                    request.user
-                )
-
-                disponibilidade.save()
+            if formulario_valido:
 
                 messages.success(
                     request,
@@ -3186,9 +3183,28 @@ def editar_espaco(request, espaco_id):
             instance=espaco
         )
 
-        if form.is_valid():
+        with transaction.atomic():
+            espaco_id = request.POST.get('espaco', '')
+            ids_espaco = [disponibilidade.espaco_id]
+            if espaco_id.isdecimal():
+                ids_espaco.append(int(espaco_id))
+            list(EspacoFisico.objects.select_for_update().filter(
+                pk__in=sorted(set(ids_espaco))
+            ).order_by('pk'))
+            formulario_valido = form.is_valid()
+            if formulario_valido and _disponibilidade_possui_compromisso(
+                disponibilidade
+            ):
+                form.add_error(
+                    None,
+                    'Esta disponibilidade passou a ter uma banca '
+                    'vinculada. Atualize a página antes de editar.'
+                )
+                formulario_valido = False
+            if formulario_valido:
+                form.save()
 
-            form.save()
+        if formulario_valido:
 
             messages.success(
                 request,

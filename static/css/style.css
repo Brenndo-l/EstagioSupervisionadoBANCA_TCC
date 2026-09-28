@@ -2710,6 +2710,44 @@ textarea:focus-visible {
     margin-bottom: 26px;
 }
 
+/* Uma coluna antes de comprimir dois seletores de data/hora lado a lado. */
+@media (max-width: 1500px) {
+    .coord-form-grid,
+    .coord-form-row,
+    .appointment-picker__steps {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.appointment-picker {
+    border-color: var(--borda);
+    background: var(--cinza-50);
+}
+.appointment-picker__header h3 { color: var(--azul-900); }
+.appointment-picker__header p { color: var(--texto-suave); }
+.appointment-step__title > span { background: var(--azul-800); }
+.schedule-calendar__nav,
+.schedule-calendar__day,
+.schedule-slot-option,
+.schedule-confirmation output { color: var(--azul-800); }
+.schedule-calendar__day,
+.schedule-slot-option:hover { background: var(--azul-50); }
+.schedule-calendar__day:hover:not(:disabled),
+.schedule-calendar__day:focus-visible,
+.schedule-calendar__day.is-selected,
+.schedule-slot-input:checked + .schedule-slot-option {
+    color: var(--branco);
+    border-color: var(--azul-700);
+    background: var(--azul-700);
+}
+.schedule-slot-input:checked + .schedule-slot-option span { color: var(--branco); }
+.schedule-slot-option { gap: .12rem; }
+
+.agenda-publica { padding: clamp(1rem, 2.5vw, 2rem); }
+.agenda-publica__acao { display: inline-flex; width: auto; margin-top: 1.25rem; }
+.agenda-paginacao { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: center; margin-top: 1.25rem; }
+.agenda-paginacao a { color: var(--azul-800); font-weight: 750; }
+
 .coord-card {
     background: var(--branco);
     border: 1px solid var(--borda);

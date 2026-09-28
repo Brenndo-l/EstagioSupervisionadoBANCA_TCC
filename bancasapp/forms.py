@@ -49,7 +49,7 @@ class DataHorarioWidget(forms.MultiWidget):
                 attrs={
                     'class': 'form-input date-time-input',
                     'type': 'time',
-                    'step': '300',
+                    'step': '60',
                     'autocomplete': 'off',
                     'data-time-part': '',
                 },
@@ -1245,7 +1245,7 @@ class SolicitacaoBancaForm(forms.ModelForm):
 
                 # O intervalo solicitado precisa estar totalmente
                 # contido em uma disponibilidade ativa.
-                disponibilidade_valida = (
+                disponibilidades_validas = (
                     DisponibilidadeEspaco.objects
                     .filter(
                         espaco=espaco,
@@ -1254,16 +1254,33 @@ class SolicitacaoBancaForm(forms.ModelForm):
                         data_hora_inicio__lte=data_inicio,
                         data_hora_fim__gte=data_fim,
                     )
-                    .exists()
                 )
 
-                if not disponibilidade_valida:
+                if not disponibilidades_validas.exists():
 
                     self.add_error(
                         'opcao_data_inicio',
                         'O período solicitado não está dentro '
                         'de um horário disponibilizado pela '
                         'Coordenação para este espaço.'
+                    )
+                elif (
+                    data_fim - data_inicio == duracao_configurada
+                    and not (
+                        self.instance.pk
+                        and self.instance.opcao_data_inicio == data_inicio
+                        and self.instance.opcao_data_fim == data_fim
+                    )
+                    and not any(
+                        (data_inicio - periodo.data_hora_inicio)
+                        % duracao_configurada == timedelta(0)
+                        for periodo in disponibilidades_validas
+                    )
+                ):
+                    self.add_error(
+                        'opcao_data_inicio',
+                        'Escolha um dos horários completos da grade '
+                        'publicada pela Coordenação para esta sala.'
                     )
 
                 # Horários se cruzam quando:
@@ -1806,6 +1823,27 @@ class DisponibilidadeEspacoForm(forms.ModelForm):
                     'separada. O início e o término devem estar '
                     'na mesma data.',
                 )
+
+            espaco = cleaned_data.get('espaco')
+            if espaco and fim > inicio:
+                conflito = (
+                    DisponibilidadeEspaco.objects.filter(
+                        espaco=espaco,
+                        ativo=True,
+                        data_hora_inicio__lt=fim,
+                        data_hora_fim__gt=inicio,
+                    )
+                    .exclude(pk=self.instance.pk)
+                    .exists()
+                )
+                if conflito:
+                    self.add_error(
+                        None,
+                        'Já existe uma disponibilidade ativa para '
+                        'este laboratório/sala que coincide com o '
+                        'período informado. Edite a existente em vez '
+                        'de cadastrar outra sobreposta.',
+                    )
 
         return cleaned_data
 

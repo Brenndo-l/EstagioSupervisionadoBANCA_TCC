@@ -196,6 +196,35 @@ def criar_solicitacao_banca_segura(*, form, orientador):
             bloqueio.mensagem
         )
 
+    # A validação inicial do formulário pode ficar obsoleta entre o GET,
+    # o POST e a gravação. Trave a sala e confira novamente disponibilidade
+    # e conflitos antes de criar qualquer projeto/solicitação.
+    from .models import DisponibilidadeEspaco, EspacoFisico
+
+    sala = EspacoFisico.objects.select_for_update().get(
+        pk=form.cleaned_data['espaco'].pk
+    )
+    inicio = form.cleaned_data['opcao_data_inicio']
+    fim = form.cleaned_data['opcao_data_fim']
+    if not sala.ativo or not DisponibilidadeEspaco.objects.filter(
+        espaco=sala, ativo=True,
+        data_hora_inicio__lte=inicio,
+        data_hora_fim__gte=fim,
+    ).exists():
+        raise SolicitacaoBancaInvalida(
+            'O horário deixou de estar disponível para esta sala. '
+            'Atualize a página e selecione outro horário.'
+        )
+    if SolicitacaoAgendamento.objects.filter(
+        espaco=sala,
+        opcao_data_inicio__lt=fim,
+        opcao_data_fim__gt=inicio,
+    ).exclude(status__in=['RECUSADA', 'EXPIRADA']).exists():
+        raise SolicitacaoBancaInvalida(
+            'Outra banca ocupou este horário. Atualize a página e '
+            'selecione outro horário.'
+        )
+
     projeto = ProjetoTCC.objects.create(
         titulo=form.cleaned_data['titulo_tcc'],
         resumo=form.cleaned_data['resumo_tcc'],
@@ -446,17 +475,17 @@ def montar_opcoes_agendamento(
     """
     Gera opções serializáveis para o seletor de sala, data e horário.
 
-    Cada opção reserva exatamente a duração definida pela Coordenação.
-    Os inícios avançam de 30 em 30 minutos, sempre incluindo o começo
-    exato de cada intervalo livre. Assim, se uma banca termina às 11:00,
-    outra pode começar às 11:00 sem conflito.
+    A grade é ancorada no início ORIGINAL de cada disponibilidade e
+    avança exatamente uma duração de banca por vez. Uma reserva nunca
+    desloca a grade: apenas retira os blocos com os quais se cruza.
+    A mesma lista é exibida a todos os docentes, sem filtro pessoal.
     """
 
     configuracao = ConfiguracaoAgendamento.carregar()
     duracao = timedelta(
         minutes=configuracao.duracao_banca_minutos
     )
-    passo = timedelta(minutes=30)
+    agora = agora or timezone.now()
 
     agenda = montar_agenda_disponibilidades(
         disponibilidades,
@@ -465,8 +494,33 @@ def montar_opcoes_agendamento(
     )
 
     espacos = {}
+    periodos_aceitos = defaultdict(list)
 
-    for disponibilidade in agenda:
+    for disponibilidade in sorted(
+        agenda, key=lambda item: (item.data_hora_inicio, item.pk or 0)
+    ):
+        if (
+            not disponibilidade.ativo
+            or not disponibilidade.espaco.ativo
+            or disponibilidade.data_hora_fim <= agora
+        ):
+            continue
+
+        # Dados legados podem conter duas disponibilidades ativas para a
+        # mesma sala. Nunca publique a grade deslocada do segundo registro:
+        # mantenha apenas o primeiro até que a Coordenação revise a auditoria.
+        periodos_sala = periodos_aceitos[disponibilidade.espaco_id]
+        if any(
+            disponibilidade.data_hora_inicio < fim_aceito
+            and disponibilidade.data_hora_fim > inicio_aceito
+            for inicio_aceito, fim_aceito in periodos_sala
+        ):
+            continue
+        periodos_sala.append((
+            disponibilidade.data_hora_inicio,
+            disponibilidade.data_hora_fim,
+        ))
+
         espaco_id = str(disponibilidade.espaco_id)
         dados_espaco = espacos.setdefault(
             espaco_id,
@@ -476,34 +530,41 @@ def montar_opcoes_agendamento(
             },
         )
 
-        for intervalo in disponibilidade.intervalos_livres:
-            inicio = intervalo['inicio']
-            fim_livre = intervalo['fim']
+        inicio = disponibilidade.data_hora_inicio
+        limite = disponibilidade.data_hora_fim
 
-            while inicio + duracao <= fim_livre:
+        while inicio + duracao <= limite:
+            fim = inicio + duracao
+            ocupado = any(
+                inicio < intervalo['fim']
+                and fim > intervalo['inicio']
+                for intervalo in disponibilidade.intervalos_ocupados
+            )
+
+            if inicio > agora and not ocupado:
                 inicio_local = timezone.localtime(inicio)
-                fim_local = timezone.localtime(inicio + duracao)
+                fim_local = timezone.localtime(fim)
                 data_iso = inicio_local.date().isoformat()
-                opcoes_data = dados_espaco['datas'].setdefault(
-                    data_iso,
-                    [],
-                )
+                if fim_local.date() == inicio_local.date():
+                    opcoes_data = dados_espaco['datas'].setdefault(
+                        data_iso, []
+                    )
+                    opcao = {
+                        'inicio': inicio_local.strftime('%H:%M'),
+                        'fim': fim_local.strftime('%H:%M'),
+                        'inicio_iso': inicio_local.strftime('%Y-%m-%dT%H:%M'),
+                        'fim_iso': fim_local.strftime('%Y-%m-%dT%H:%M'),
+                    }
+                    # Protege a tela também de dados legados com períodos
+                    # duplicados/sobrepostos na mesma sala.
+                    if not any(
+                        opcao['inicio_iso'] < existente['fim_iso']
+                        and opcao['fim_iso'] > existente['inicio_iso']
+                        for existente in opcoes_data
+                    ):
+                        opcoes_data.append(opcao)
 
-                opcao = {
-                    'inicio': inicio_local.strftime('%H:%M'),
-                    'fim': fim_local.strftime('%H:%M'),
-                    'inicio_iso': inicio_local.strftime(
-                        '%Y-%m-%dT%H:%M'
-                    ),
-                    'fim_iso': fim_local.strftime(
-                        '%Y-%m-%dT%H:%M'
-                    ),
-                }
-
-                if opcao not in opcoes_data:
-                    opcoes_data.append(opcao)
-
-                inicio += passo
+            inicio += duracao
 
     for dados_espaco in espacos.values():
         for opcoes in dados_espaco['datas'].values():
